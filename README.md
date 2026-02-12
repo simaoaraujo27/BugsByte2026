@@ -1,2 +1,2 @@
 # BugsByte2026
-Repositório para a Hackaton Bugsbyte 2026
+Repositório para a Hackathon Bugsbyte 2026
