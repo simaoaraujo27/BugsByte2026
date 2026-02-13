@@ -102,7 +102,7 @@ const goToIngredients = () => {
 .title {
   font-size: 3rem;
   font-weight: 800;
-  color: #e74c3c;
+  color: #4fd1c5;
   margin-bottom: 40px;
   text-transform: uppercase;
   line-height: 1.2;
@@ -128,7 +128,7 @@ input {
   padding: 16px;
   font-size: 1.2rem;
   font-weight: bold;
-  background: #e74c3c;
+  background: #0ea5a0;
   color: white;
   border: none;
   border-radius: 12px;
@@ -138,7 +138,7 @@ input {
 
 .btn-action:hover {
   transform: scale(1.02);
-  background: #c0392b;
+  background: #0b8f8b;
 }
 
 .options-grid {

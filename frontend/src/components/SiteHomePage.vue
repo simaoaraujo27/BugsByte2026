@@ -3,6 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import SidebarNav from './SidebarNav.vue'
 import Negotiator from './Negotiator.vue'
 import ShopFinder from './ShopFinder.vue'
+import ProfilePanel from './ProfilePanel.vue'
 
 const sections = [
   { id: 'inicio', label: 'Inicio', icon: '🏠' },
@@ -131,6 +132,10 @@ watch(isDarkMode, (value) => {
             <span class="toggle-knob"></span>
           </button>
         </div>
+      </div>
+
+      <div v-else-if="activeSection === 'perfil'">
+        <ProfilePanel />
       </div>
 
       <div v-else>
