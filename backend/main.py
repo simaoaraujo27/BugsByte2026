@@ -45,3 +45,4 @@ def read_item(item_id: int, db: Session = Depends(get_db)):
 @app.get("/")
 async def root():
     return {"message": "Welcome to the FastAPI Backend!"}
+
