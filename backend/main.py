@@ -3,9 +3,9 @@ import uuid
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
-# Use absolute imports to allow running from backend directory
-import models, schemas, shops, negotiator
-from database import SessionLocal, engine, get_db
+# Use relative imports for package execution
+from . import models, schemas, shops, negotiator
+from .database import SessionLocal, engine, get_db
 from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
