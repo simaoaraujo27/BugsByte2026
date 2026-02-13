@@ -9,7 +9,7 @@
             A nossa app adapta receitas às tuas calorias e mostra onde comprar ingredientes ou pedir takeaway perto de ti.
           </p>
           <div class="hero-actions">
-            <router-link to="/profile" class="btn btn-primary">Começar Agora</router-link>
+            <router-link to="/login" class="btn btn-primary">Começar Agora</router-link>
             <button class="btn btn-secondary" type="button">Saber Mais</button>
           </div>
         </div>
@@ -92,7 +92,7 @@
       <section class="section cta-final">
         <h3>Pronto para começar?</h3>
         <p>Começa em menos de 2 minutos e recebe sugestões à tua medida.</p>
-        <button class="btn btn-primary" type="button">Criar Conta Gratuitamente</button>
+        <router-link to="/login" class="btn btn-primary">Criar Conta Gratuitamente</router-link>
       </section>
     </main>
   </div>
