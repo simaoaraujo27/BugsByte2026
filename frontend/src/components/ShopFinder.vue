@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, nextTick } from 'vue';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -84,13 +84,15 @@ const askForLocation = () => {
   }
 
   navigator.geolocation.getCurrentPosition(
-    (position) => {
+    async (position) => {
       userLocation.value = {
         lat: position.coords.latitude,
         lon: position.coords.longitude
       };
       localStorage.setItem('locationConsent', 'granted');
       locationConsent.value = 'granted';
+      
+      await nextTick();
       initMap(userLocation.value.lat, userLocation.value.lon);
       error.value = null;
       
@@ -124,7 +126,7 @@ const searchLocation = () => {
   }, 500);
 };
 
-const selectLocation = (loc) => {
+const selectLocation = async (loc) => {
   userLocation.value = { lat: parseFloat(loc.lat), lon: parseFloat(loc.lon) };
   manualQuery.value = loc.display_name;
   showSuggestions.value = false;
@@ -132,6 +134,7 @@ const selectLocation = (loc) => {
   locationConsent.value = 'denied'; // Manual mode
   localStorage.setItem('locationConsent', 'denied');
   
+  await nextTick();
   initMap(userLocation.value.lat, userLocation.value.lon);
   
   // Auto search if ingredients present
