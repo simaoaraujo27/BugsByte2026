@@ -1,10 +1,17 @@
+<script setup>
+import Home from './components/Home.vue'
+import UserInfo from './components/UserInfo.vue'
+
+const isProfileRoute = window.location.pathname === '/profile'
+</script>
+
 <template>
   <div class="page-background">
     <header class="topbar">
-      <img alt="Logo" class="logo" src="./assets/logo.svg" />
-      <p class="app-name">BugsByte</p>
+      <img alt="Logo" class="logo" src="./assets/logo.png" />
     </header>
-    <router-view />
+    <UserInfo v-if="isProfileRoute" />
+    <Home v-else />
   </div>
 </template>
 
@@ -24,7 +31,6 @@
 .topbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   max-width: 1120px;
   margin: 0 auto;
   padding-bottom: 16px;
@@ -34,13 +40,6 @@
   display: block;
   width: 56px;
   height: 56px;
-}
-
-.app-name {
-  margin: 0;
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #3b566d;
 }
 
 @media (max-width: 640px) {

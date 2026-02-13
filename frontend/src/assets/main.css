@@ -1,12 +1,3 @@
-@import "tailwindcss";
-
-@theme {
-  --color-nutri-orange: #FF6B6B;
-  --color-nutri-green: #4ECDC4;
-  --color-nutri-dark: #2C3E50;
-  --color-nutri-light: #F7F9F9;
-}
-
 @import './base.css';
 
 #app {

@@ -5,7 +5,7 @@ defineEmits(['navigate'])
 <template>
   <div class="page">
     <header class="topbar">
-      <img alt="Logo" class="logo" src="../assets/logo.svg" />
+      <img alt="Logo" class="logo" src="../assets/logo.png" />
       <p class="hackathon-badge">Built for Hackathon 2026</p>
     </header>
 
