@@ -29,6 +29,8 @@ class User(Base):
     idade = Column(Integer)
     # Add reset_token for forgot password functionality
     reset_token = Column(String, nullable=True)
+    goal = Column(String, nullable=True)
+    activity_level = Column(String, nullable=True)
 
     allergens = relationship("Allergen", secondary=user_allergens, back_populates="users")
 

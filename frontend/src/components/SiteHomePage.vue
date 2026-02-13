@@ -3,30 +3,50 @@ import { ref } from 'vue'
 import SidebarNav from './SidebarNav.vue'
 
 const sections = [
-  { id: 'inicio', label: 'Inicio' },
-  { id: 'receitas', label: 'Receitas' },
-  { id: 'favoritos', label: 'Favoritos' },
-  { id: 'perfil', label: 'Perfil' }
+  { id: 'inicio', label: 'Inicio', icon: '🏠' },
+  { id: 'gerar-receita', label: 'Gerar Receita', icon: '🍽️' },
+  { id: 'tenho-fome', label: 'Tenho Fome', icon: '🍔', highlight: true },
+  { id: 'supermercados', label: 'Supermercados & Compras', icon: '🛒' },
+  { id: 'restaurantes', label: 'Restaurantes Perto', icon: '🍴' },
+  { id: 'diario', label: 'Diario / Tracking', icon: '📊' },
+  { id: 'favoritos', label: 'Favoritos', icon: '❤️' },
+  { id: 'perfil', label: 'Perfil', icon: '👤' }
 ]
 
 const activeSection = ref('inicio')
 
 const sectionContent = {
   inicio: {
-    title: 'Pagina Inicial',
-    subtitle: 'Este sera o dashboard principal da aplicacao.'
+    title: 'Dashboard Inicial',
+    subtitle: 'Calorias do dia, streak e o atalho para "Tenho Fome".'
   },
-  receitas: {
-    title: 'Receitas',
-    subtitle: 'Aqui vao aparecer receitas ajustadas ao teu objetivo.'
+  'gerar-receita': {
+    title: 'Gerar Receita',
+    subtitle: 'Receitas saudaveis, por ingredientes ou por upload de foto.'
+  },
+  'tenho-fome': {
+    title: 'Tenho Fome (Asneira Mode)',
+    subtitle: 'Escolhe um prato e recebe versao DIY saudavel e versao restaurante perto.'
+  },
+  supermercados: {
+    title: 'Supermercados & Compras',
+    subtitle: 'Lista automatica de compras e ingredientes necessarios.'
+  },
+  restaurantes: {
+    title: 'Restaurantes Perto',
+    subtitle: 'Restaurantes num raio local, abertos agora e alinhados com calorias.'
+  },
+  diario: {
+    title: 'Diario / Tracking',
+    subtitle: 'Acompanha calorias, historico semanal e progresso.'
   },
   favoritos: {
     title: 'Favoritos',
-    subtitle: 'Nesta area vais guardar as tuas opcoes preferidas.'
+    subtitle: 'Receitas e restaurantes guardados.'
   },
   perfil: {
     title: 'Perfil',
-    subtitle: 'Dados pessoais, metas e preferencias alimentares.'
+    subtitle: 'Dados fisicos, objetivo, dieta, alergenios e localizacao.'
   }
 }
 </script>

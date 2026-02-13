@@ -58,20 +58,17 @@ def get_shop_type(ingredients: List[str], api_key: Optional[str] = None) -> str:
         # Fallback to a safe default if the AI fails
         return "supermarket"
 
-def find_nearby_shops(shop_tag: str, lat: float, lon: float, radius: int = 3000) -> List[Dict]:
+def find_nearby_shops(tag_value: str, lat: float, lon: float, radius: int = 3000, key: str = "shop") -> List[Dict]:
     """
-    Queries the Overpass API for shops matching the tag around the given coordinates.
-    Returns a list of dictionaries with name, lat, lon, and distance.
+    Queries the Overpass API for nodes/ways with key=tag_value around the given coordinates.
     """
     overpass_url = "https://overpass-api.de/api/interpreter"
     
-    # Construct Overpass QL query
-    # We use 'center' to get coordinates for ways/relations easily
     query = f"""
     [out:json][timeout:25];
     (
-      node["shop"="{shop_tag}"](around:{radius},{lat},{lon});
-      way["shop"="{shop_tag}"](around:{radius},{lat},{lon});
+      node["{key}"="{tag_value}"](around:{radius},{lat},{lon});
+      way["{key}"="{tag_value}"](around:{radius},{lat},{lon});
     );
     out center;
     """
