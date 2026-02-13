@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Float, ForeignKey, Table
 from sqlalchemy.orm import relationship
-from .database import Base
+from database import Base
 
 # Association table for many-to-many relationship between User and Allergen
 user_allergens = Table(
