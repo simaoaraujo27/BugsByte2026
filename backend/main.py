@@ -2,10 +2,23 @@ import hashlib
 import uuid
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
+import os
 from dotenv import load_dotenv
-# Use relative imports for package execution
-from . import models, schemas, shops, negotiator
-from .database import SessionLocal, engine, get_db
+
+# Force load .env from the current directory
+env_path = os.path.join(os.path.dirname(__file__), '.env')
+load_dotenv(env_path)
+
+print("="*30)
+print(f"Loading .env from: {env_path}")
+print(f"API Key present: {'Yes' if os.getenv('OPENAI_API_KEY') else 'No'}")
+print(f"Base URL: {os.getenv('OPENAI_BASE_URL', 'Default (OpenAI)')}")
+print(f"Model: {os.getenv('OPENAI_MODEL', 'Default')}")
+print("="*30)
+
+# Use absolute imports
+import models, schemas, shops, negotiator
+from database import SessionLocal, engine, get_db
 from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()

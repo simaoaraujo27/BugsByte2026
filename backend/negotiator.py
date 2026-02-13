@@ -3,52 +3,54 @@ import json
 from typing import List, Dict, Optional
 from openai import OpenAI
 import schemas
+from fastapi import HTTPException
 
 def negotiate_craving(craving: str, target_calories: int = 600, api_key: Optional[str] = None) -> schemas.NegotiatorResponse:
     final_api_key = api_key or os.getenv("OPENAI_API_KEY")
-    if not final_api_key:
-        # For dev/testing without key, return mock
-        # raise ValueError("OpenAI API key is required.")
-        print("Warning: No API key, using mock negotiator response.")
-        return schemas.NegotiatorResponse(
-            original_craving=craving,
-            message="Mock response: That sounds delicious, but let's try a lighter version!",
-            recipe=schemas.Recipe(
-                title=f"Lighter {craving}",
-                calories=target_calories - 100,
-                time_minutes=25,
-                ingredients=["Zucchini", "Chicken Breast", "Olive Oil", "Spices"],
-                steps=["Slice zucchini", "Grill chicken", "Mix and serve"]
-            ),
-            restaurant_search_term=craving
-        )
+    base_url = os.getenv("OPENAI_BASE_URL")
+    model = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
 
-    client = OpenAI(api_key=final_api_key)
+    if not final_api_key:
+        raise ValueError("A chave da API OpenAI/Groq não foi configurada no ficheiro .env")
+
+    # Auto-detect Groq key
+    if final_api_key.startswith("gsk_") and not base_url:
+        print("Auto-detected Groq key. Switching to Groq API.")
+        base_url = "https://api.groq.com/openai/v1"
+        model = "llama-3.3-70b-versatile"
+
+    client = OpenAI(
+        api_key=final_api_key,
+        base_url=base_url
+    )
 
     prompt = (
-        f"The user is craving '{craving}'. They have a target of around {target_calories} kcal. "
-        "Act as a nutritional negotiator. "
-        "1. Create a healthier, lower-calorie homemade version of this dish (DIY). "
-        "2. Provide a search term to find restaurants serving this dish. "
-        "Return a JSON object with this structure: "
+        f"O utilizador está com um desejo incontrolável de '{craving}'. O teu objetivo é negociar uma versão saudável de cerca de {target_calories} kcal. "
+        "Atua como um Chef de Cozinha e Nutricionista de renome em Portugal (PT-PT). "
+        "A receita deve ser EXTREMAMENTE detalhada e profissional. "
+        "1. Cria uma versão 'Gourmet Saudável' do prato (DIY). "
+        "2. Divide a resposta em secções claras: 'Ingredientes Necessários' (com quantidades precisas), 'Preparação dos Alimentos' e 'Instruções de Confeção Passo-a-Passo'. "
+        "3. Adiciona uma secção de 'Dicas de Chef' para tornar o prato mais saboroso sem somar calorias. "
+        "4. O tom deve ser motivador e sofisticado. "
+        "Retorna um objeto JSON com esta estrutura: "
         "{ "
-        "  'message': 'A witty short comment about their craving', "
+        "  'message': 'Uma resposta carismática e motivadora em PT-PT sobre como esta versão é superior ao desejo original', "
         "  'recipe': { "
-        "    'title': 'Name of the healthy version', "
+        "    'title': 'Nome sofisticado da versão saudável', "
         "    'calories': 550, "
-        "    'time_minutes': 30, "
-        "    'ingredients': ['list', 'of', 'simple', 'ingredients'], "
-        "    'steps': ['step 1', 'step 2'] "
+        "    'time_minutes': 35, "
+        "    'ingredients': ['Lista exaustiva e detalhada com quantidades (ex: 200g de peito de frango)'], "
+        "    'steps': ['Passo 1: Preparação detalhada...', 'Passo 2: Técnica de confeção...', 'Passo 3: Finalização e empratamento...', 'Dica Pro: ...'] "
         "  }, "
-        "  'restaurant_search_term': 'search term for map' "
+        "  'restaurant_search_term': 'termo de pesquisa para o mapa' "
         "}"
     )
 
     try:
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model=model,
             messages=[
-                {"role": "system", "content": "You are a helpful nutritionist assistant. Return only valid JSON."},
+                {"role": "system", "content": "You are a helpful nutritionist assistant. Always answer in Portuguese (Portugal). Return only valid JSON."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7,
@@ -59,22 +61,11 @@ def negotiate_craving(craving: str, target_calories: int = 600, api_key: Optiona
         
         return schemas.NegotiatorResponse(
             original_craving=craving,
-            message=data.get('message', 'Here is a healthy alternative!'),
+            message=data.get('message', 'Aqui está uma alternativa saudável!'),
             recipe=schemas.Recipe(**data.get('recipe', {})),
             restaurant_search_term=data.get('restaurant_search_term', craving)
         )
     except Exception as e:
-        print(f"Error in negotiator: {e}")
-        # Fallback response
-        return schemas.NegotiatorResponse(
-            original_craving=craving,
-            message="Couldn't generate a specific recipe, but here is a generic healthy option.",
-            recipe=schemas.Recipe(
-                title=f"Healthy {craving}", 
-                calories=target_calories, 
-                time_minutes=30, 
-                ingredients=["Fresh vegetables", "Lean protein", "Whole grains"], 
-                steps=["Grill the protein", "Steam vegetables", "Serve together"]
-            ),
-            restaurant_search_term=craving
-        )
+        print(f"Erro no negotiator: {e}")
+        # Re-raise the exception to be handled by the API layer
+        raise HTTPException(status_code=500, detail=f"Erro ao gerar receita: {str(e)}")

@@ -25,13 +25,25 @@ def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
 
 def get_shop_type(ingredients: List[str], api_key: Optional[str] = None) -> str:
     """
-    Uses OpenAI API to determine the best OpenStreetMap shop tag for a list of ingredients.
+    Uses OpenAI API (or compatible like Groq) to determine the best OpenStreetMap shop tag.
     """
     final_api_key = api_key or os.getenv("OPENAI_API_KEY")
+    base_url = os.getenv("OPENAI_BASE_URL")
+    model = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
+
     if not final_api_key:
         raise ValueError("OpenAI API key is required but was not provided or found in environment variables.")
 
-    client = OpenAI(api_key=final_api_key)
+    # Auto-detect Groq key
+    if final_api_key.startswith("gsk_") and not base_url:
+        print("Auto-detected Groq key. Switching to Groq API.")
+        base_url = "https://api.groq.com/openai/v1"
+        model = "llama-3.3-70b-versatile"
+
+    client = OpenAI(
+        api_key=final_api_key,
+        base_url=base_url
+    )
 
     ingredients_str = ", ".join(ingredients)
     prompt = (
@@ -43,7 +55,7 @@ def get_shop_type(ingredients: List[str], api_key: Optional[str] = None) -> str:
 
     try:
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model=model,
             messages=[
                 {"role": "system", "content": "You are a helpful assistant that maps ingredients to OpenStreetMap tags."},
                 {"role": "user", "content": prompt}
@@ -55,26 +67,21 @@ def get_shop_type(ingredients: List[str], api_key: Optional[str] = None) -> str:
         return tag
     except Exception as e:
         print(f"Error communicating with OpenAI: {e}")
-        # Fallback to a safe default if the AI fails
-        return "supermarket"
+        # No more hardcoded fallback
+        raise e
 
 def find_nearby_shops(tag_value: str, lat: float, lon: float, radius: int = 3000, key: str = "shop") -> List[Dict]:
     """
-    Queries the Overpass API for nodes/ways with key=tag_value around the given coordinates.
+    Queries the Overpass API for nodes/ways/relations with key=tag_value around the given coordinates.
     """
-    overpass_url = "https://overpass-api.de/api/interpreter"
+    # Switching to an alternative reliable mirror
+    overpass_url = "https://overpass.kumi.systems/api/interpreter"
     
-    query = f"""
-    [out:json][timeout:25];
-    (
-      node["{key}"="{tag_value}"](around:{radius},{lat},{lon});
-      way["{key}"="{tag_value}"](around:{radius},{lat},{lon});
-    );
-    out center;
-    """
+    # Flat query to avoid parsing issues
+    query = f'[out:json][timeout:90];nwr["{key}"="{tag_value}"](around:{radius},{lat},{lon});out center;'
 
     try:
-        response = requests.get(overpass_url, params={'data': query})
+        response = requests.get(overpass_url, params={'data': query}, timeout=100)
         response.raise_for_status()
         data = response.json()
         
@@ -93,7 +100,7 @@ def find_nearby_shops(tag_value: str, lat: float, lon: float, radius: int = 3000
             distance = haversine_distance(lat, lon, shop_lat, shop_lon)
             
             shop_info = {
-                'name': element.get('tags', {}).get('name', 'Unknown'),
+                'name': element.get('tags', {}).get('name', 'Desconhecido'),
                 'lat': shop_lat,
                 'lon': shop_lon,
                 'distance': round(distance, 2)
