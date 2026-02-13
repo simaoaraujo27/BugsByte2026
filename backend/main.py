@@ -30,35 +30,69 @@ app.add_middleware(
 )
 
 @app.post("/users/", response_model=schemas.User)
+
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+
     db_user = db.query(models.User).filter(models.User.username == user.username).first()
+
     if db_user:
+
         raise HTTPException(status_code=400, detail="Username already registered")
+
     
+
     hashed_password = get_password_hash(user.password)
+
     
+
     # Create user instance without allergens first
+
     new_user = models.User(
+
         username=user.username,
+
         hashed_password=hashed_password,
+
         peso=user.peso,
+
         altura=user.altura,
+
         sexo=user.sexo,
-        idade=user.idade
+
+        idade=user.idade,
+
+        goal=user.goal,
+
+        activity_level=user.activity_level
+
     )
+
     db.add(new_user)
+
     
+
     # Handle allergens
+
     for allergen_name in user.allergens:
+
         db_allergen = db.query(models.Allergen).filter(models.Allergen.name == allergen_name).first()
+
         if not db_allergen:
+
             db_allergen = models.Allergen(name=allergen_name)
+
             db.add(db_allergen)
+
             db.flush() # Use flush instead of commit to keep it in the transaction
+
         new_user.allergens.append(db_allergen)
 
+
+
     db.commit()
+
     db.refresh(new_user)
+
     return new_user
 
 @app.post("/login/")

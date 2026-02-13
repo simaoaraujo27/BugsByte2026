@@ -27,6 +27,8 @@ class User(Base):
     altura = Column(Float)
     sexo = Column(String)
     idade = Column(Integer)
+    goal = Column(String, nullable=True)
+    activity_level = Column(String, nullable=True)
 
     allergens = relationship("Allergen", secondary=user_allergens, back_populates="users")
 
