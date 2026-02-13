@@ -4,8 +4,6 @@ import LoginPage from '../components/LoginPage.vue'
 import UserInfo from '../components/UserInfo.vue'
 import SiteHomePage from '../components/SiteHomePage.vue'
 import ForgotPassword from '../components/ForgotPassword.vue'
-import ShopFinder from '../components/ShopFinder.vue'
-import Negotiator from '../components/Negotiator.vue'
 
 const routes = [
   {
@@ -32,16 +30,6 @@ const routes = [
     path: '/dashboard',
     name: 'Dashboard',
     component: SiteHomePage
-  },
-  {
-    path: '/shops',
-    name: 'ShopFinder',
-    component: ShopFinder
-  },
-  {
-    path: '/negotiator',
-    name: 'Negotiator',
-    component: Negotiator
   }
 ]
 
