@@ -12,3 +12,30 @@ class Item(ItemBase):
 
     class ConfigDict:
         from_attributes = True
+
+class AllergenBase(BaseModel):
+    name: str
+
+class Allergen(AllergenBase):
+    id: int
+
+    class ConfigDict:
+        from_attributes = True
+
+class UserBase(BaseModel):
+    username: str
+    peso: float
+    altura: float
+    sexo: str
+    idade: int
+
+class UserCreate(UserBase):
+    password: str
+    allergens: list[str] = []
+
+class User(UserBase):
+    id: int
+    allergens: list[Allergen] = []
+
+    class ConfigDict:
+        from_attributes = True

@@ -1,0 +1,30 @@
+[
+    {
+        "id": 1,
+        "name": "Produto A",
+        "category": "Eletrônicos",
+        "price": 1200.50,
+        "in_stock": true
+    },
+    {
+        "id": 2,
+        "name": "Produto B",
+        "category": "Livros",
+        "price": 25.00,
+        "in_stock": true
+    },
+    {
+        "id": 3,
+        "name": "Produto C",
+        "category": "Roupas",
+        "price": 75.99,
+        "in_stock": false
+    },
+    {
+        "id": 4,
+        "name": "Produto D",
+        "category": "Eletrônicos",
+        "price": 300.00,
+        "in_stock": true
+    }
+]
