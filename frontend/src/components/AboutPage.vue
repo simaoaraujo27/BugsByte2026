@@ -24,16 +24,16 @@ const goHome = () => {
         <h2 class="section-title">O Que Fazemos?</h2>
         <div class="feature-list">
           <div class="feature-item">
-            <h3>Transformação de Refeições com IA</h3>
-            <p>Desejando uma lasanha, mas preocupado com as calorias? Diz-nos o que queres comer e a nossa IA irá gerar uma versão mais saudável da receita, ajustada às tuas necessidades calóricas, sem comprometer o sabor.</p>
+            <h3>Transformação de Refeições</h3>
+            <p>Desejas uma lasanha, mas estás preocupado com as calorias? Diz-nos o que queres comer e a nós entregamos-te uma versão mais saudável da receita, ajustada às tuas necessidades calóricas, sem comprometer o sabor.</p>
           </div>
           <div class="feature-item">
             <h3>Sugestões Locais Inteligentes</h3>
-            <p>Depois de escolheres a tua receita, mostramos-te os supermercados mais próximos onde podes comprar os ingredientes. Se não te apetecer cozinhar, também sugerimos restaurantes de takeaway que oferecem opções saudáveis semelhantes.</p>
+            <p>Depois de escolheres a tua receita, mostramos-te os supermercados mais próximos onde podes comprar os ingredientes. Se não te apetecer cozinhar, também sugerimos restaurantes de takeaway que oferecem opções saudáveis semelhantes ou supermercados com refeições já prontas.</p>
           </div>
           <div class="feature-item">
             <h3>"Assalto ao Frigorífico"</h3>
-            <p>Não sabes o que fazer com os ingredientes que tens em casa? Tira uma foto ao interior do teu frigorífico e a nossa app sugere-te receitas deliciosas e saudáveis que podes fazer com o que já tens.</p>
+            <p>Não sabes o que fazer com os ingredientes que tens em casa? Tira uma foto ao interior do teu frigorífico ou dá-nos uma lista de ingredientes e nós sugerimos-te receitas deliciosas e saudáveis que podes fazer com o que já tens.</p>
           </div>
           <div class="feature-item">
             <h3>Acompanhamento de Objetivos</h3>
