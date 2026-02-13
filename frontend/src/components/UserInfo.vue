@@ -95,7 +95,7 @@
         </div>
 
         <div class="form-actions full-width">
-          <button type="submit" class="btn btn-primary">Sign Up</button>
+          <button type="submit" class="btn btn-primary max-w-xs mx-auto">Sign Up</button>
           
           <div class="login-link">
               Already have an account? <router-link to="/login">Sign in</router-link>
