@@ -1,8 +1,11 @@
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import hashlib
 import uuid
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
-import os
 from dotenv import load_dotenv
 
 # Force load .env from the current directory
@@ -16,12 +19,10 @@ print(f"Base URL: {os.getenv('OPENAI_BASE_URL', 'Default (OpenAI)')}")
 print(f"Model: {os.getenv('OPENAI_MODEL', 'Default')}")
 print("="*30)
 
-# Use absolute imports
+# Use absolute imports (as per local requirement and working state)
 import models, schemas, shops, negotiator
 from database import SessionLocal, engine, get_db
 from fastapi.middleware.cors import CORSMiddleware
-
-load_dotenv()
 
 models.Base.metadata.create_all(bind=engine)
 

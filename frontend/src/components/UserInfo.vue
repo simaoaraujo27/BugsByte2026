@@ -178,28 +178,20 @@ const submitForm = async () => {
 
 <style scoped>
 .signup-page {
+  position: relative;
   min-height: 100vh;
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-image: url('https://images.unsplash.com/photo-1490818387583-1baba5e638af?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80');
+  background-image:
+    linear-gradient(120deg, rgba(6, 24, 48, 0.58) 0%, rgba(10, 20, 34, 0.46) 45%, rgba(13, 18, 26, 0.5) 100%),
+    url('https://images.unsplash.com/photo-1490818387583-1baba5e638af?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   padding: 20px;
-}
-
-/* Add an overlay to improve readability if the image is too bright */
-.signup-page::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.4); /* Dark overlay */
-  z-index: 1;
+  overflow: hidden;
 }
 
 .user-info-form {
@@ -214,7 +206,7 @@ const submitForm = async () => {
   --success: #38a169;
 
   position: relative;
-  z-index: 2; /* Place above the overlay */
+  z-index: 1;
   width: 100%;
   max-width: 720px;
   /* Remove margin auto since parent flex centers it */
@@ -336,6 +328,7 @@ const submitForm = async () => {
 }
 
 .form-actions {
+  grid-column: 1 / -1;
   margin-top: 24px;
   display: flex;
   flex-direction: column;
