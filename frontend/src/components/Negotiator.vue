@@ -1,15 +1,14 @@
 <script setup>
 import { ref } from 'vue';
-import { useRouter } from 'vue-router';
 
-const router = useRouter();
+const emit = defineEmits(['choice']);
+
 const craving = ref('');
 const result = ref(null);
 const loading = ref(false);
 const error = ref(null);
 
 const negotiate = async () => {
-  // ... (same as before) ...
   if (!craving.value.trim()) return;
 
   loading.value = true;
@@ -34,12 +33,17 @@ const negotiate = async () => {
 };
 
 const goToIngredients = () => {
-  const ingredients = result.value.recipe.ingredients.join(',');
-  router.push({ path: '/shops', query: { ingredients } });
+  emit('choice', {
+    type: 'diy',
+    ingredients: result.value.recipe.ingredients.join(',')
+  });
 };
 
 const goToRestaurants = () => {
-  router.push({ path: '/shops', query: { mode: 'restaurant', term: result.value.restaurant_search_term } });
+  emit('choice', {
+    type: 'lazy',
+    term: result.value.restaurant_search_term
+  });
 };
 </script>
 

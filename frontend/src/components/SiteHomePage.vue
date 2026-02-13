@@ -1,6 +1,8 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import SidebarNav from './SidebarNav.vue'
+import Negotiator from './Negotiator.vue'
+import ShopFinder from './ShopFinder.vue'
 
 const sections = [
   { id: 'inicio', label: 'Inicio', icon: '🏠' },
@@ -14,6 +16,40 @@ const sections = [
 ]
 
 const activeSection = ref('inicio')
+
+// State for ShopFinder parameters
+const shopParams = ref({
+  ingredients: '',
+  mode: 'shop',
+  term: ''
+})
+
+const handleNegotiationChoice = (choice) => {
+  if (choice.type === 'diy') {
+    shopParams.value = {
+      ingredients: choice.ingredients,
+      mode: 'shop',
+      term: ''
+    }
+    activeSection.value = 'supermercados'
+  } else if (choice.type === 'lazy') {
+    shopParams.value = {
+      ingredients: '',
+      mode: 'restaurant',
+      term: choice.term
+    }
+    activeSection.value = 'restaurantes'
+  }
+}
+
+// When manually clicking supermarket or restaurant, maybe reset params?
+// Or keep them. Usually better to reset if not coming from Negotiator.
+const selectSection = (id) => {
+  if (id !== 'supermercados' && id !== 'restaurantes' && id !== 'tenho-fome') {
+    // Reset if going elsewhere? Optional.
+  }
+  activeSection.value = id
+}
 
 const sectionContent = {
   inicio: {
@@ -53,11 +89,31 @@ const sectionContent = {
 
 <template>
   <div class="site-layout">
-    <SidebarNav :sections="sections" :active-section="activeSection" @select="activeSection = $event" />
+    <SidebarNav :sections="sections" :active-section="activeSection" @select="selectSection" />
 
     <main class="content">
-      <h1>{{ sectionContent[activeSection].title }}</h1>
-      <p>{{ sectionContent[activeSection].subtitle }}</p>
+      <div v-if="activeSection === 'tenho-fome'">
+        <Negotiator @choice="handleNegotiationChoice" />
+      </div>
+      
+      <div v-else-if="activeSection === 'supermercados'">
+        <ShopFinder 
+          :initial-ingredients="shopParams.ingredients" 
+          mode="shop" 
+        />
+      </div>
+
+      <div v-else-if="activeSection === 'restaurantes'">
+        <ShopFinder 
+          :initial-ingredients="shopParams.term" 
+          mode="restaurant" 
+        />
+      </div>
+
+      <div v-else>
+        <h1>{{ sectionContent[activeSection].title }}</h1>
+        <p>{{ sectionContent[activeSection].subtitle }}</p>
+      </div>
     </main>
   </div>
 </template>
