@@ -1,9 +1,12 @@
 import hashlib
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
-from . import models, schemas
+from dotenv import load_dotenv
+from . import models, schemas, shops
 from .database import SessionLocal, engine, get_db
 from fastapi.middleware.cors import CORSMiddleware
+
+load_dotenv()
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -28,7 +31,6 @@ app.add_middleware(
 
 @app.post("/users/", response_model=schemas.User)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    # ... existing implementation ...
     db_user = db.query(models.User).filter(models.User.username == user.username).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Username already registered")
@@ -75,6 +77,21 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
 def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     users = db.query(models.User).offset(skip).limit(limit).all()
     return users
+
+@app.post("/shops/find", response_model=list[schemas.Shop])
+def find_shops(request: schemas.ShopSearchRequest):
+    # 1. Determine the shop type using OpenAI
+    shop_tag = shops.get_shop_type(request.ingredients)
+    
+    # 2. Find nearby shops using Overpass API
+    found_shops = shops.find_nearby_shops(
+        shop_tag, 
+        request.lat, 
+        request.lon, 
+        request.radius
+    )
+    
+    return found_shops
 
 @app.post("/items/", response_model=schemas.Item)
 def create_item(item: schemas.ItemCreate, db: Session = Depends(get_db)):
