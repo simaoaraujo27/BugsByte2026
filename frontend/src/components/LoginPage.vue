@@ -1,7 +1,9 @@
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import logo from '@/assets/logo.png'
 
+const router = useRouter()
 const email = ref('')
 const password = ref('')
 const rememberMe = ref(false)
@@ -27,7 +29,7 @@ const handleLogin = () => {
   console.log('Logging in with:', { email: email.value, rememberMe: rememberMe.value })
   // Simulate API call
   successMessage.value = 'Welcome back, Chef!'
-  setTimeout(() => { successMessage.value = '' }, 3000)
+  router.push('/dashboard')
 }
 
 const triggerNegotiator = () => {
