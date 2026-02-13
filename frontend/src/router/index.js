@@ -10,8 +10,8 @@ const routes = [
     component: Home
   },
   {
-    path: '/profile',
-    name: 'Profile',
+    path: '/signup',
+    name: 'SignUp',
     component: UserInfo
   },
   {

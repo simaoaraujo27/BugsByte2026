@@ -1,107 +1,161 @@
 <template>
-  <div class="user-info-form">
-    <h2 class="form-title">Vamos começar.</h2>
-    <p class="form-subtitle">Precisamos de alguns dados para criar o teu perfil.</p>
+  <div class="signup-page">
+    <div class="user-info-form">
+      <h2 class="form-title">Create Account</h2>
+      <p class="form-subtitle">We need a few details to create your profile.</p>
 
-    <form @submit.prevent="submitForm" class="form-grid">
-      <div class="form-group">
-        <label for="gender">Género</label>
-        <select id="gender" v-model="form.gender">
-          <option value="male">Masculino</option>
-          <option value="female">Feminino</option>
-          <option value="other">Outro</option>
-        </select>
+      <!-- Error/Success Messages -->
+      <div v-if="errorMessage" class="message error">
+        {{ errorMessage }}
+      </div>
+      <div v-if="successMessage" class="message success">
+        {{ successMessage }}
       </div>
 
-      <div class="form-group">
-        <label for="age">Idade</label>
-        <input type="number" id="age" v-model.number="form.age" placeholder="25" />
-      </div>
-
-      <div class="form-group">
-        <label for="height">Altura (cm)</label>
-        <input type="number" id="height" v-model.number="form.height" placeholder="175" />
-      </div>
-
-      <div class="form-group">
-        <label for="weight">Peso (kg)</label>
-        <input type="number" id="weight" v-model.number="form.weight" placeholder="70" />
-      </div>
-
-      <div class="form-group full-width">
-        <label>Objetivo Principal</label>
-        <div class="radio-group">
-          <label class="radio-label">
-            <input type="radio" name="goal" value="lose" v-model="form.goal" />
-            Perder Peso
-          </label>
-          <label class="radio-label">
-            <input type="radio" name="goal" value="maintain" v-model="form.goal" />
-            Manter Peso
-          </label>
-          <label class="radio-label">
-            <input type="radio" name="goal" value="gain" v-model="form.goal" />
-            Ganhar Massa
-          </label>
+      <form @submit.prevent="submitForm" class="form-grid">
+        <!-- Account Info -->
+        <div class="form-group full-width">
+          <label for="username">Email (Username)</label>
+          <input type="email" id="username" v-model="form.username" placeholder="chef@nutriventures.com" required />
         </div>
-      </div>
 
-      <div class="form-group full-width">
-        <label>Nível de Atividade</label>
-        <div class="radio-group">
-          <label class="radio-label">
-            <input type="radio" name="activity" value="sedentary" v-model="form.activityLevel" />
-            Sedentário
-          </label>
-          <label class="radio-label">
-            <input type="radio" name="activity" value="light" v-model="form.activityLevel" />
-            Leve
-          </label>
-          <label class="radio-label">
-            <input type="radio" name="activity" value="moderate" v-model="form.activityLevel" />
-            Moderado
-          </label>
-          <label class="radio-label">
-            <input type="radio" name="activity" value="high" v-model="form.activityLevel" />
-            Elevado
-          </label>
+        <div class="form-group full-width">
+          <label for="password">Password</label>
+          <input type="password" id="password" v-model="form.password" placeholder="••••••••" required />
         </div>
-      </div>
 
-      <div class="form-group full-width">
-        <label for="allergies">Alergias ou Restrições (separadas por vírgula)</label>
-        <input type="text" id="allergies" v-model="form.allergies" placeholder="Ex: glúten, lactose" />
-      </div>
+        <!-- Personal Info -->
+        <div class="form-group">
+          <label for="gender">Gender</label>
+          <select id="gender" v-model="form.sexo">
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
 
-      <div class="form-actions full-width">
-        <button type="submit" class="btn btn-primary">Criar Perfil</button>
-      </div>
-    </form>
+        <div class="form-group">
+          <label for="age">Age</label>
+          <input type="number" id="age" v-model.number="form.idade" placeholder="25" required />
+        </div>
+
+        <div class="form-group">
+          <label for="height">Height (cm)</label>
+          <input type="number" id="height" v-model.number="form.altura" placeholder="175" required />
+        </div>
+
+        <div class="form-group">
+          <label for="weight">Weight (kg)</label>
+          <input type="number" id="weight" v-model.number="form.peso" placeholder="70" required />
+        </div>
+
+        <!-- Goals (Not yet in backend schema but kept for UI completeness if needed later) -->
+        <!-- Ideally these should map to backend or be removed if strictly following current schema -->
+        
+        <div class="form-group full-width">
+          <label for="allergies">Allergies (comma separated)</label>
+          <input type="text" id="allergies" v-model="allergiesInput" placeholder="Ex: gluten, lactose" />
+        </div>
+
+        <div class="form-actions full-width">
+          <button type="submit" class="btn btn-primary">Create Profile</button>
+          <div class="login-link">
+              Already have an account? <router-link to="/login">Sign in</router-link>
+          </div>
+        </div>
+      </form>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { reactive } from 'vue';
+import { reactive, ref } from 'vue';
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
+const errorMessage = ref('');
+const successMessage = ref('');
+const allergiesInput = ref('');
 
 const form = reactive({
-  gender: 'male',
-  age: null,
-  height: null,
-  weight: null,
-  goal: 'maintain',
-  activityLevel: 'sedentary',
-  allergies: '',
+  username: '',
+  password: '',
+  sexo: 'male',
+  idade: null,
+  altura: null,
+  peso: null,
 });
 
-const submitForm = () => {
-  // Aqui ficará a lógica para enviar os dados para o backend
-  console.log('Form data:', form);
-  alert('Perfil criado com sucesso! (Ver dados na consola)');
+const submitForm = async () => {
+  errorMessage.value = '';
+  successMessage.value = '';
+
+  // Process allergies from string to array
+  const allergens = allergiesInput.value
+    .split(',')
+    .map(a => a.trim())
+    .filter(a => a.length > 0);
+
+  const payload = {
+    ...form,
+    allergens: allergens
+  };
+
+  try {
+    const response = await fetch('http://localhost:8000/users/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Registration failed');
+    }
+
+    const data = await response.json();
+    console.log('User created:', data);
+    successMessage.value = 'Profile created successfully! Redirecting to login...';
+    
+    setTimeout(() => {
+        router.push('/login');
+    }, 2000);
+
+  } catch (error) {
+    console.error('Registration error:', error);
+    errorMessage.value = error.message;
+  }
 };
 </script>
 
 <style scoped>
-/* Cores e estilos adaptados do App.vue */
+.signup-page {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-image: url('https://images.unsplash.com/photo-1490818387583-1baba5e638af?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  padding: 20px;
+}
+
+/* Add an overlay to improve readability if the image is too bright */
+.signup-page::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4); /* Dark overlay */
+  z-index: 1;
+}
+
 .user-info-form {
   --bg-main: #f4fbf8;
   --bg-soft: #ffffff;
@@ -110,14 +164,21 @@ const submitForm = () => {
   --accent: #0f766e;
   --accent-hover: #0b5c56;
   --line: #d7e7e0;
+  --error: #e53e3e;
+  --success: #38a169;
 
+  position: relative;
+  z-index: 2; /* Place above the overlay */
+  width: 100%;
   max-width: 720px;
-  margin: 40px auto;
+  /* Remove margin auto since parent flex centers it */
+  margin: 0; 
   padding: 28px;
-  background: var(--bg-soft);
+  background: rgba(255, 255, 255, 0.95); /* Slightly transparent white background */
+  backdrop-filter: blur(10px); /* Frosted glass effect */
   border: 1px solid var(--line);
   border-radius: 20px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.07);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
   font-family: Sora, 'Segoe UI', Tahoma, sans-serif;
   color: var(--text-main);
 }
@@ -127,12 +188,34 @@ const submitForm = () => {
   font-size: 2.1rem;
   letter-spacing: -0.02em;
   color: var(--text-main);
+  text-align: center;
 }
 
 .form-subtitle {
   margin: 0 0 24px;
   font-size: 1.05rem;
   color: var(--text-muted);
+  text-align: center;
+}
+
+.message {
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.message.error {
+  background-color: #fff5f5;
+  color: var(--error);
+  border: 1px solid #feb2b2;
+}
+
+.message.success {
+  background-color: #f0fff4;
+  color: var(--success);
+  border: 1px solid #9ae6b4;
 }
 
 .form-grid {
@@ -157,8 +240,7 @@ const submitForm = () => {
   color: var(--text-main);
 }
 
-.form-group input[type='text'],
-.form-group input[type='number'],
+.form-group input,
 .form-group select {
   width: 100%;
   padding: 12px 14px;
@@ -178,50 +260,22 @@ const submitForm = () => {
   box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.15);
 }
 
-.radio-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 4px;
-}
-
-.radio-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  cursor: pointer;
-  background: var(--bg-soft);
-  transition: border-color 0.2s, background-color 0.2s;
-}
-
-.radio-label:hover {
-  border-color: #b8d5cb;
-}
-
-.radio-label input[type='radio'] {
-  accent-color: var(--accent);
-}
-
-input[type='radio']:checked + .radio-label {
-    border-color: var(--accent);
-    background-color: #f0fafa;
-}
-
 .form-actions {
   margin-top: 24px;
-  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
 }
 
 .btn {
   border-radius: 999px;
-  padding: 12px 24px;
+  padding: 12px 48px;
   font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
   transition: background-color 0.2s, box-shadow 0.2s;
+  width: 100%;
 }
 
 .btn-primary {
@@ -234,5 +288,26 @@ input[type='radio']:checked + .radio-label {
 .btn-primary:hover {
   background: var(--accent-hover);
   box-shadow: 0 6px 18px rgba(15, 118, 110, 0.28);
+}
+
+.login-link {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.login-link a {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 700;
+}
+
+.login-link a:hover {
+    text-decoration: underline;
+}
+
+@media (max-width: 600px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

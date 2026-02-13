@@ -61,12 +61,8 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db.refresh(new_user)
     return new_user
 
-class LoginRequest(schemas.BaseModel):
-    username: str
-    password: str
-
 @app.post("/login/")
-def login(request: LoginRequest, db: Session = Depends(get_db)):
+def login(request: schemas.LoginRequest, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter(models.User.username == request.username).first()
     if not db_user or db_user.hashed_password != get_password_hash(request.password):
         raise HTTPException(status_code=401, detail="Invalid username or password")
