@@ -38,13 +38,6 @@ const goToIngredients = () => {
     ingredients: result.value.recipe.ingredients.join(',')
   });
 };
-
-const goToRestaurants = () => {
-  emit('choice', {
-    type: 'lazy',
-    term: result.value.restaurant_search_term
-  });
-};
 </script>
 
 <template>
@@ -68,11 +61,11 @@ const goToRestaurants = () => {
     <div v-else class="results-screen">
       <h2>{{ result.message }}</h2>
       
-      <div class="options-grid">
+      <div class="options-grid single-option">
         <!-- Option A: DIY -->
         <div class="option-card diy">
           <div class="card-header">
-            <h3>Opção A: Faz tu mesmo (Saudável)</h3>
+            <h3>Faz tu mesmo (Saudável)</h3>
             <span class="calories">{{ result.recipe.calories }} kcal</span>
           </div>
           <div class="recipe-content">
@@ -84,17 +77,6 @@ const goToRestaurants = () => {
           </div>
           <button @click="goToIngredients" class="btn-primary">
             🛒 Comprar Ingredientes
-          </button>
-        </div>
-
-        <!-- Option B: Lazy -->
-        <div class="option-card lazy">
-          <div class="card-header">
-            <h3>Opção B: Preguiça (Restaurantes)</h3>
-          </div>
-          <p>Não queres cozinhar? Encontra onde comer perto de ti.</p>
-          <button @click="goToRestaurants" class="btn-secondary">
-            🍔 Ver Restaurantes
           </button>
         </div>
       </div>
@@ -163,6 +145,13 @@ input {
   text-align: left;
 }
 
+.options-grid.single-option {
+  grid-template-columns: 1fr;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .option-card {
   border: 1px solid #ddd;
   border-radius: 16px;
@@ -175,11 +164,6 @@ input {
 .diy {
   background: #f4fbf8;
   border-color: #07a374;
-}
-
-.lazy {
-  background: #fdf2f2;
-  border-color: #e74c3c;
 }
 
 .card-header {
@@ -209,7 +193,7 @@ input {
   color: #555;
 }
 
-.btn-primary, .btn-secondary {
+.btn-primary {
   width: 100%;
   padding: 12px;
   border: none;
@@ -221,11 +205,6 @@ input {
 
 .btn-primary {
   background: #07a374;
-  color: white;
-}
-
-.btn-secondary {
-  background: #e74c3c;
   color: white;
 }
 

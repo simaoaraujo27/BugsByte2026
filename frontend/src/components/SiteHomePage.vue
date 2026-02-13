@@ -9,7 +9,6 @@ const sections = [
   { id: 'gerar-receita', label: 'Gerar Receita', icon: '🍽️' },
   { id: 'tenho-fome', label: 'Tenho Fome', icon: '🍔', highlight: true },
   { id: 'supermercados', label: 'Supermercados & Compras', icon: '🛒' },
-  { id: 'restaurantes', label: 'Restaurantes Perto', icon: '🍴' },
   { id: 'diario', label: 'Diario / Tracking', icon: '📊' },
   { id: 'favoritos', label: 'Favoritos', icon: '❤️' },
   { id: 'perfil', label: 'Perfil', icon: '👤' }
@@ -32,22 +31,12 @@ const handleNegotiationChoice = (choice) => {
       term: ''
     }
     activeSection.value = 'supermercados'
-  } else if (choice.type === 'lazy') {
-    shopParams.value = {
-      ingredients: '',
-      mode: 'restaurant',
-      term: choice.term
-    }
-    activeSection.value = 'restaurantes'
   }
 }
 
 // When manually clicking supermarket or restaurant, maybe reset params?
 // Or keep them. Usually better to reset if not coming from Negotiator.
 const selectSection = (id) => {
-  if (id !== 'supermercados' && id !== 'restaurantes' && id !== 'tenho-fome') {
-    // Reset if going elsewhere? Optional.
-  }
   activeSection.value = id
 }
 
@@ -62,15 +51,11 @@ const sectionContent = {
   },
   'tenho-fome': {
     title: 'Tenho Fome (Asneira Mode)',
-    subtitle: 'Escolhe um prato e recebe versao DIY saudavel e versao restaurante perto.'
+    subtitle: 'Escolhe um prato e recebe versao DIY saudavel.'
   },
   supermercados: {
     title: 'Supermercados & Compras',
     subtitle: 'Lista automatica de compras e ingredientes necessarios.'
-  },
-  restaurantes: {
-    title: 'Restaurantes Perto',
-    subtitle: 'Restaurantes num raio local, abertos agora e alinhados com calorias.'
   },
   diario: {
     title: 'Diario / Tracking',
@@ -100,13 +85,6 @@ const sectionContent = {
         <ShopFinder 
           :initial-ingredients="shopParams.ingredients" 
           mode="shop" 
-        />
-      </div>
-
-      <div v-else-if="activeSection === 'restaurantes'">
-        <ShopFinder 
-          :initial-ingredients="shopParams.term" 
-          mode="restaurant" 
         />
       </div>
 
