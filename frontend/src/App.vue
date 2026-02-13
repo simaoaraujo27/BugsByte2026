@@ -1,65 +1,25 @@
 <script setup>
-import { ref, onMounted } from 'vue';
-
-const items = ref([]);
-
-onMounted(async () => {
-  try {
-    const response = await fetch('http://localhost:8000/items/');
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    items.value = await response.json();
-  } catch (error) {
-    console.error('Error fetching items:', error);
-  }
-});
+import LoginPage from './components/LoginPage.vue';
 </script>
 
 <template>
-  <header>
-    <img alt="Vue logo" class="logo" src="./assets/logo.svg" width="125" height="125" />
-    <div class="wrapper">
-      <h1>Vue.js Frontend with FastAPI Backend</h1>
-    </div>
-  </header>
-
-  <main>
-    <h2>Items from Backend:</h2>
-    <p v-if="items.length === 0">No items found. Try adding some via the backend API.</p>
-    <ul>
-      <li v-for="item in items" :key="item.id">
-        <strong>{{ item.name }}</strong>: {{ item.description }} (ID: {{ item.id }})
-      </li>
-    </ul>
-  </main>
+  <LoginPage />
 </template>
 
-<style scoped>
-header {
-  line-height: 1.5;
+<style>
+/* Reset some default styles to let Tailwind take over */
+body {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
 }
-
-.logo {
+#app {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  padding: 0;
+  margin: 0;
   display: block;
-  margin: 0 auto 2rem;
-}
-
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
-
-  .logo {
-    margin: 0 2rem 0 0;
-  }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
 }
 </style>
