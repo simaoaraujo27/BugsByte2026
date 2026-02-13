@@ -1,3 +1,4 @@
+import hashlib
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from . import models, schemas
@@ -7,6 +8,9 @@ from fastapi.middleware.cors import CORSMiddleware
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
+def get_password_hash(password: str) -> str:
+    return hashlib.sha256(password.encode()).hexdigest()
 
 # Configure CORS to allow frontend to access the backend
 origins = [
@@ -21,6 +25,56 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.post("/users/", response_model=schemas.User)
+def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    # ... existing implementation ...
+    db_user = db.query(models.User).filter(models.User.username == user.username).first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="Username already registered")
+    
+    hashed_password = get_password_hash(user.password)
+    
+    # Create user instance without allergens first
+    new_user = models.User(
+        username=user.username,
+        hashed_password=hashed_password,
+        peso=user.peso,
+        altura=user.altura,
+        sexo=user.sexo,
+        idade=user.idade
+    )
+    db.add(new_user)
+    
+    # Handle allergens
+    for allergen_name in user.allergens:
+        db_allergen = db.query(models.Allergen).filter(models.Allergen.name == allergen_name).first()
+        if not db_allergen:
+            db_allergen = models.Allergen(name=allergen_name)
+            db.add(db_allergen)
+            db.flush() # Use flush instead of commit to keep it in the transaction
+        new_user.allergens.append(db_allergen)
+
+    db.commit()
+    db.refresh(new_user)
+    return new_user
+
+class LoginRequest(schemas.BaseModel):
+    username: str
+    password: str
+
+@app.post("/login/")
+def login(request: LoginRequest, db: Session = Depends(get_db)):
+    db_user = db.query(models.User).filter(models.User.username == request.username).first()
+    if not db_user or db_user.hashed_password != get_password_hash(request.password):
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+    
+    return {"message": "Login successful", "user_id": db_user.id}
+
+@app.get("/users/", response_model=list[schemas.User])
+def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    users = db.query(models.User).offset(skip).limit(limit).all()
+    return users
 
 @app.post("/items/", response_model=schemas.Item)
 def create_item(item: schemas.ItemCreate, db: Session = Depends(get_db)):
