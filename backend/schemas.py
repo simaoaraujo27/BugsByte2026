@@ -39,3 +39,15 @@ class User(UserBase):
 
     class ConfigDict:
         from_attributes = True
+
+class Shop(BaseModel):
+    name: str
+    lat: float
+    lon: float
+    distance: float
+
+class ShopSearchRequest(BaseModel):
+    ingredients: list[str]
+    lat: float
+    lon: float
+    radius: int = 3000
