@@ -1,5 +1,11 @@
 <script setup>
-defineEmits(['navigate'])
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+
+const goToLogin = () => {
+  router.push('/login')
+}
 </script>
 
 <template>
@@ -18,7 +24,7 @@ defineEmits(['navigate'])
             A nossa app adapta receitas às tuas calorias e mostra onde comprar ingredientes ou pedir takeaway perto de ti.
           </p>
           <div class="hero-actions">
-            <button class="btn btn-primary" type="button" @click="$emit('navigate', 'login')">Começar Agora</button>
+            <button class="btn btn-primary" type="button" @click="goToLogin">Começar Agora</button>
             <button class="btn btn-secondary" type="button">Saber Mais</button>
           </div>
         </div>
@@ -101,7 +107,7 @@ defineEmits(['navigate'])
       <section class="section cta-final">
         <h3>Pronto para começar?</h3>
         <p>Começa em menos de 2 minutos e recebe sugestões à tua medida.</p>
-        <button class="btn btn-primary" type="button" @click="$emit('navigate', 'login')">Criar Conta Gratuitamente</button>
+        <button class="btn btn-primary" type="button" @click="goToLogin">Criar Conta Gratuitamente</button>
       </section>
     </main>
   </div>
