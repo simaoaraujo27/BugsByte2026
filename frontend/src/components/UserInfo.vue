@@ -96,8 +96,15 @@
 
         <div class="form-actions full-width">
           <button type="submit" class="btn btn-primary">Sign Up</button>
+          
           <div class="login-link">
               Already have an account? <router-link to="/login">Sign in</router-link>
+          </div>
+
+          <div class="footer-actions">
+            <router-link to="/" class="back-link">
+              &larr; Go Back to Home
+            </router-link>
           </div>
         </div>
       </form>
@@ -333,7 +340,28 @@ const submitForm = async () => {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 16px;
+  text-align: center;
+}
+
+.footer-actions {
+  margin-top: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+  width: 100%;
+}
+
+.back-link {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s;
+}
+
+.back-link:hover {
+  color: var(--text-main);
 }
 
 .btn {
