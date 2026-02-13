@@ -35,10 +35,6 @@ defineEmits(['select'])
 
 <style scoped>
 .menu-item {
-  --text-main: #11263f;
-  --text-muted: #54667e;
-  --accent-soft: #e3f7f2;
-
   border: 0;
   border-radius: 10px;
   padding: 10px 12px;
@@ -56,29 +52,29 @@ defineEmits(['select'])
 }
 
 .menu-item:hover {
-  background: #f3f7fb;
+  background: var(--menu-hover-bg);
   color: var(--text-main);
   transform: translateX(2px);
 }
 
 .menu-item.active {
-  background: var(--accent-soft);
-  color: #0a705d;
+  background: var(--menu-active-bg);
+  color: var(--menu-active-text);
 }
 
 .menu-item.highlight {
-  background: #fff1e7;
-  color: #9a3412;
+  background: var(--menu-highlight-bg);
+  color: var(--menu-highlight-text);
   font-weight: 700;
 }
 
 .menu-item.highlight:hover {
-  background: #ffe5d2;
+  background: var(--menu-highlight-hover-bg);
 }
 
 .menu-item.highlight.active {
-  background: #ffd9bd;
-  color: #7c2d12;
+  background: var(--menu-highlight-active-bg);
+  color: var(--menu-highlight-active-text);
 }
 
 .item-icon {

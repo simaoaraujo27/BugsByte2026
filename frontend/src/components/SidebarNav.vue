@@ -40,12 +40,6 @@ defineEmits(['select'])
 
 <style scoped>
 .sidebar {
-  --sidebar-bg: #ffffff;
-  --line: #dbe3eb;
-  --text-main: #11263f;
-  --text-muted: #54667e;
-  --accent-soft: #e3f7f2;
-
   border-right: 1px solid var(--line);
   background: var(--sidebar-bg);
   padding: 24px 16px;
