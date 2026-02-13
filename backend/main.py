@@ -1,9 +1,10 @@
 import hashlib
+import uuid
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
-from . import models, schemas, shops
-from .database import SessionLocal, engine, get_db
+import models, schemas, shops
+from database import SessionLocal, engine, get_db
 from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
@@ -68,6 +69,27 @@ def login(request: schemas.LoginRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid username or password")
     
     return {"message": "Login successful", "user_id": db_user.id}
+
+@app.post("/forgot-password/")
+def forgot_password(request: schemas.ForgotPasswordRequest, db: Session = Depends(get_db)):
+    db_user = db.query(models.User).filter(models.User.username == request.username).first()
+    if not db_user:
+        # Security: Don't reveal if user exists or not, just return success
+        return {"message": "If the email exists, a reset link has been sent."}
+    
+    # Generate a random token
+    token = str(uuid.uuid4())
+    db_user.reset_token = token
+    db.commit()
+    
+    # SIMULATE EMAIL SENDING (Free & Reliable for Hackathon)
+    print("="*50)
+    print(f"EMAIL SIMULATION FOR: {request.username}")
+    print(f"Subject: Reset Your Password")
+    print(f"Body: Click here to reset your password: http://localhost:5173/reset-password?token={token}")
+    print("="*50)
+    
+    return {"message": "If the email exists, a reset link has been sent."}
 
 @app.get("/users/", response_model=list[schemas.User])
 def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):

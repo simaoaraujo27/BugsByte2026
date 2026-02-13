@@ -27,6 +27,8 @@ class User(Base):
     altura = Column(Float)
     sexo = Column(String)
     idade = Column(Integer)
+    # Add reset_token for forgot password functionality
+    reset_token = Column(String, nullable=True)
 
     allergens = relationship("Allergen", secondary=user_allergens, back_populates="users")
 
