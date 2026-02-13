@@ -45,23 +45,53 @@
         </div>
 
         <div class="form-group">
-          <label for="weight">Weight (kg)</label>
+          <label for="weight">Peso (kg)</label>
           <input type="number" id="weight" v-model.number="form.peso" placeholder="70" required />
         </div>
 
-        <!-- Goals (Not yet in backend schema but kept for UI completeness if needed later) -->
-        <!-- Ideally these should map to backend or be removed if strictly following current schema -->
-        
         <div class="form-group full-width">
-          <label for="allergies">Allergies (comma separated)</label>
-          <input type="text" id="allergies" v-model="allergiesInput" placeholder="Ex: gluten, lactose" />
+          <label>Objetivo Principal</label>
+          <div class="radio-group">
+            <label class="radio-label">
+              <input type="radio" name="goal" value="lose" v-model="form.goal" />
+              Perder Peso
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="goal" value="maintain" v-model="form.goal" />
+              Manter Peso
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="goal" value="gain" v-model="form.goal" />
+              Ganhar Massa Muscular
+            </label>
+          </div>
         </div>
 
-        <div class="form-actions full-width">
-          <button type="submit" class="btn btn-primary">Create Profile</button>
-          <div class="login-link">
-              Already have an account? <router-link to="/login">Sign in</router-link>
+        <div class="form-group full-width">
+          <label>Nível de Atividade</label>
+          <div class="radio-group">
+            <label class="radio-label">
+              <input type="radio" name="activity" value="sedentary" v-model="form.activity_level" />
+              Sedentário
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="activity" value="light" v-model="form.activity_level" />
+              Leve
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="activity" value="moderate" v-model="form.activity_level" />
+              Moderado
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="activity" value="high" v-model="form.activity_level" />
+              Elevado
+            </label>
           </div>
+        </div>
+        
+        <div class="form-group full-width">
+          <label for="allergies">Alergias (separadas por vírgula)</label>
+          <input type="text" id="allergies" v-model="allergiesInput" placeholder="Ex: glúten, lactose" />
         </div>
       </form>
     </div>
@@ -84,6 +114,8 @@ const form = reactive({
   idade: null,
   altura: null,
   peso: null,
+  goal: 'maintain',
+  activity_level: 'sedentary',
 });
 
 const submitForm = async () => {
@@ -258,6 +290,35 @@ const submitForm = async () => {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.15);
+}
+
+.radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 4px;
+  justify-content: flex-start;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+  background: var(--bg-soft);
+  transition: border-color 0.2s, background-color 0.2s;
+  white-space: nowrap;
+}
+
+.radio-label:hover {
+  border-color: #b8d5cb;
+}
+
+.radio-label input[type='radio'] {
+  accent-color: var(--accent);
 }
 
 .form-actions {

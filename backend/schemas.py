@@ -28,6 +28,8 @@ class UserBase(BaseModel):
     altura: float
     sexo: str
     idade: int
+    goal: str | None = None
+    activity_level: str | None = None
 
 class UserCreate(UserBase):
     password: str
