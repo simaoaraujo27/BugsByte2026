@@ -1,2 +1,3 @@
 # VSCode modules
 .vscode/
+*.code-workspace
