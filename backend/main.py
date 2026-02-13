@@ -1,9 +1,11 @@
 import hashlib
+import uuid
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
-from . import models, schemas, shops, negotiator
-from .database import SessionLocal, engine, get_db
+# Use absolute imports to allow running from backend directory
+import models, schemas, shops, negotiator
+from database import SessionLocal, engine, get_db
 from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
@@ -30,69 +32,37 @@ app.add_middleware(
 )
 
 @app.post("/users/", response_model=schemas.User)
-
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-
     db_user = db.query(models.User).filter(models.User.username == user.username).first()
-
     if db_user:
-
         raise HTTPException(status_code=400, detail="Username already registered")
-
     
-
     hashed_password = get_password_hash(user.password)
-
     
-
     # Create user instance without allergens first
-
     new_user = models.User(
-
         username=user.username,
-
         hashed_password=hashed_password,
-
         peso=user.peso,
-
         altura=user.altura,
-
         sexo=user.sexo,
-
         idade=user.idade,
-
         goal=user.goal,
-
         activity_level=user.activity_level
-
     )
-
     db.add(new_user)
-
     
-
     # Handle allergens
-
     for allergen_name in user.allergens:
-
         db_allergen = db.query(models.Allergen).filter(models.Allergen.name == allergen_name).first()
-
         if not db_allergen:
-
             db_allergen = models.Allergen(name=allergen_name)
-
             db.add(db_allergen)
-
             db.flush() # Use flush instead of commit to keep it in the transaction
-
         new_user.allergens.append(db_allergen)
 
-
-
     db.commit()
-
     db.refresh(new_user)
-
     return new_user
 
 @app.post("/login/")
@@ -102,6 +72,27 @@ def login(request: schemas.LoginRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid username or password")
     
     return {"message": "Login successful", "user_id": db_user.id}
+
+@app.post("/forgot-password/")
+def forgot_password(request: schemas.ForgotPasswordRequest, db: Session = Depends(get_db)):
+    db_user = db.query(models.User).filter(models.User.username == request.username).first()
+    if not db_user:
+        # Security: Don't reveal if user exists or not, just return success
+        return {"message": "If the email exists, a reset link has been sent."}
+    
+    # Generate a random token
+    token = str(uuid.uuid4())
+    db_user.reset_token = token
+    db.commit()
+    
+    # SIMULATE EMAIL SENDING (Free & Reliable for Hackathon)
+    print("="*50)
+    print(f"EMAIL SIMULATION FOR: {request.username}")
+    print(f"Subject: Reset Your Password")
+    print(f"Body: Click here to reset your password: http://localhost:5173/reset-password?token={token}")
+    print("="*50)
+    
+    return {"message": "If the email exists, a reset link has been sent."}
 
 @app.post("/negotiator/negotiate", response_model=schemas.NegotiatorResponse)
 def negotiate_craving(request: schemas.NegotiatorRequest):
@@ -116,13 +107,6 @@ def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
 def find_shops(request: schemas.ShopSearchRequest):
     if request.mode == "restaurant":
         # Search for restaurants
-        # We can search for amenity=restaurant, or cuisine=request.ingredients[0] if provided
-        # For simplicity, we search for amenity=restaurant (or fast_food)
-        # But if the user provides a term like "pizza", we might want cuisine=pizza
-        # Let's keep it simple: search for all restaurants for now, or use the first 'ingredient' as a keyword?
-        # The 'ingredients' field in the request might contain the search term if mode is restaurant.
-        
-        # If specific search term is passed in ingredients
         search_val = "restaurant"
         key = "amenity"
         

@@ -46,6 +46,9 @@ class LoginRequest(BaseModel):
     username: str
     password: str
 
+class ForgotPasswordRequest(BaseModel):
+    username: str
+
 class Shop(BaseModel):
     name: str
     lat: float

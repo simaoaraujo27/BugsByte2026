@@ -27,6 +27,8 @@ class User(Base):
     altura = Column(Float)
     sexo = Column(String)
     idade = Column(Integer)
+    # Add reset_token for forgot password functionality
+    reset_token = Column(String, nullable=True)
     goal = Column(String, nullable=True)
     activity_level = Column(String, nullable=True)
 
