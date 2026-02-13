@@ -1,5 +1,6 @@
 <script setup>
 import logo from '@/assets/logo.png'
+import SidebarItem from './SidebarItem.vue'
 
 defineProps({
   sections: {
@@ -24,16 +25,15 @@ defineEmits(['select'])
     <div class="menu-divider" aria-hidden="true"></div>
 
     <nav class="menu" aria-label="Navegacao principal">
-      <button
+      <SidebarItem
         v-for="section in sections"
         :key="section.id"
-        type="button"
-        class="menu-item"
-        :class="{ active: activeSection === section.id }"
-        @click="$emit('select', section.id)"
-      >
-        {{ section.label }}
-      </button>
+        :label="section.label"
+        :icon="section.icon"
+        :active="activeSection === section.id"
+        :highlight="Boolean(section.highlight)"
+        @select="$emit('select', section.id)"
+      />
     </nav>
   </aside>
 </template>
@@ -76,29 +76,6 @@ defineEmits(['select'])
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.menu-item {
-  border: 0;
-  border-radius: 10px;
-  padding: 10px 12px;
-  text-align: left;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  background: transparent;
-  cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease;
-}
-
-.menu-item:hover {
-  background: #f3f7fb;
-  color: var(--text-main);
-}
-
-.menu-item.active {
-  background: var(--accent-soft);
-  color: #0a705d;
 }
 
 @media (max-width: 860px) {
