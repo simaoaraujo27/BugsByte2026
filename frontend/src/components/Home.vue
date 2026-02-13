@@ -5,7 +5,7 @@
         <p class="eyebrow">O QUE VAMOS COMER HOJE?</p>
         <h1>Come melhor sem deixar de comer o que gostas.</h1>
         <p class="subtitle">
-          A nossa app adapta receitas as tuas calorias e mostra onde comprar ingredientes ou pedir takeaway perto de ti.
+          Adaptamos receitas as tuas necessidades e mostramos-te onde comprar ingredientes ou pedir takeaway perto de ti.
         </p>
         <div class="hero-actions">
           <a class="btn btn-primary" href="/profile">Comecar Agora</a>
@@ -17,8 +17,8 @@
         <span class="shape" aria-hidden="true"></span>
         <p class="card-label">EXEMPLO RAPIDO</p>
         <h2>"Quero francesinha."</h2>
-        <p class="card-text">Versao 800 kcal + supermercado mais proximo para comprar ingredientes.</p>
-        <span class="card-pill">2 opcoes sugeridas</span>
+        <p class="card-text">Versão 800 kcal + supermercado mais proximo para comprar ingredientes.</p>
+        <span class="card-pill">2 opções sugeridas</span>
       </aside>
     </section>
 
@@ -26,18 +26,18 @@
       <article class="panel panel-problem">
         <h3>O Problema</h3>
         <ul>
-          <li>E dificil comer saudavel sem perder tempo.</li>
+          <li>E dificil comer saudável sem perder tempo.</li>
           <li>Nem sempre sabes o que cozinhar com o que tens em casa.</li>
-          <li>Quando ha pressa, acabas por escolher opcoes piores.</li>
+          <li>Quando há pressa, acabas por escolher opções piores.</li>
         </ul>
       </article>
 
       <article class="panel panel-solution">
         <h3>A Nossa Solucao</h3>
         <ul>
-          <li>AI que transforma desejos em opcoes equilibradas.</li>
-          <li>Receitas personalizadas ao teu objetivo calorico.</li>
-          <li>Sugestoes locais para comprar ingredientes ou pedir comida.</li>
+          <li>Transformámos os teus desejos em opções equilibradas.</li>
+          <li>Receitas personalizadas ao teu objetivo calórico.</li>
+          <li>Sugestões locais para comprar ingredientes ou pedir comida.</li>
         </ul>
       </article>
     </section>
@@ -49,7 +49,7 @@
         <article class="step-card">
           <span class="step-index">1</span>
           <h4>Criar conta</h4>
-          <p>Definir perfil, alergenios e objetivo.</p>
+          <p>Definir perfil, alergénios e objetivo.</p>
         </article>
         <article class="step-card">
           <span class="step-index">2</span>

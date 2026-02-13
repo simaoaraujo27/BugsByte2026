@@ -2,7 +2,7 @@ import os
 import json
 from typing import List, Dict, Optional
 from openai import OpenAI
-from . import schemas
+import schemas
 
 def negotiate_craving(craving: str, target_calories: int = 600, api_key: Optional[str] = None) -> schemas.NegotiatorResponse:
     final_api_key = api_key or os.getenv("OPENAI_API_KEY")

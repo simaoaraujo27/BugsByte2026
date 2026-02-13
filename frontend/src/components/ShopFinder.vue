@@ -258,12 +258,15 @@ onMounted(() => {
         <p>Partilha a tua localização para melhores resultados.</p>
         <div class="buttons">
           <button @click="askForLocation" class="btn-primary">📍 Usar GPS Atual</button>
-          <span class="or">ou</span>
         </div>
       </div>
 
+      <div class="method-divider" aria-hidden="true">
+        <span>OU</span>
+      </div>
+
       <div class="manual-search">
-        <label>Pesquisar zona manualmente:</label>
+        <label>Pesquisar zona manualmente (sem GPS):</label>
         <div class="search-wrapper">
           <input 
             v-model="manualQuery" 
@@ -357,13 +360,26 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
   margin-top: 12px;
 }
 
-.or {
-  color: #999;
-  font-size: 0.9rem;
+.method-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0 16px;
+  color: #8a96a3;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.method-divider::before,
+.method-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e7edf3;
 }
 
 .manual-search {

@@ -25,7 +25,7 @@ const goToLogin = () => {
           </p>
           <div class="hero-actions">
             <button class="btn btn-primary" type="button" @click="goToLogin">Começar Agora</button>
-            <button class="btn btn-secondary" type="button">Saber Mais</button>
+            <router-link to="/about" class="btn btn-secondary">Saber Mais</router-link>
           </div>
         </div>
 
