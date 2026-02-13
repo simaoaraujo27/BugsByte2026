@@ -1,11 +1,15 @@
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import hashlib
 import uuid
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 # Use relative imports for package execution
-from . import models, schemas, shops, negotiator
-from .database import SessionLocal, engine, get_db
+from backend import models, schemas, shops, negotiator
+from backend.database import SessionLocal, engine, get_db
 from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
