@@ -51,3 +51,21 @@ class ShopSearchRequest(BaseModel):
     lat: float
     lon: float
     radius: int = 3000
+    mode: str = "shop" # 'shop' or 'restaurant'
+
+class Recipe(BaseModel):
+    title: str
+    calories: int
+    time_minutes: int
+    ingredients: list[str]
+    steps: list[str]
+
+class NegotiatorRequest(BaseModel):
+    craving: str
+    target_calories: int = 600
+
+class NegotiatorResponse(BaseModel):
+    original_craving: str
+    message: str
+    recipe: Recipe
+    restaurant_search_term: str

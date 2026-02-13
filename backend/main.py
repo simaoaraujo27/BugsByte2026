@@ -2,7 +2,7 @@ import hashlib
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
-from . import models, schemas, shops
+from . import models, schemas, shops, negotiator
 from .database import SessionLocal, engine, get_db
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -73,6 +73,10 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
     
     return {"message": "Login successful", "user_id": db_user.id}
 
+@app.post("/negotiator/negotiate", response_model=schemas.NegotiatorResponse)
+def negotiate_craving(request: schemas.NegotiatorRequest):
+    return negotiator.negotiate_craving(request.craving, request.target_calories)
+
 @app.get("/users/", response_model=list[schemas.User])
 def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     users = db.query(models.User).offset(skip).limit(limit).all()
@@ -80,16 +84,37 @@ def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
 
 @app.post("/shops/find", response_model=list[schemas.Shop])
 def find_shops(request: schemas.ShopSearchRequest):
-    # 1. Determine the shop type using OpenAI
-    shop_tag = shops.get_shop_type(request.ingredients)
-    
-    # 2. Find nearby shops using Overpass API
-    found_shops = shops.find_nearby_shops(
-        shop_tag, 
-        request.lat, 
-        request.lon, 
-        request.radius
-    )
+    if request.mode == "restaurant":
+        # Search for restaurants
+        # We can search for amenity=restaurant, or cuisine=request.ingredients[0] if provided
+        # For simplicity, we search for amenity=restaurant (or fast_food)
+        # But if the user provides a term like "pizza", we might want cuisine=pizza
+        # Let's keep it simple: search for all restaurants for now, or use the first 'ingredient' as a keyword?
+        # The 'ingredients' field in the request might contain the search term if mode is restaurant.
+        
+        # If specific search term is passed in ingredients
+        search_val = "restaurant"
+        key = "amenity"
+        
+        found_shops = shops.find_nearby_shops(
+            search_val, 
+            request.lat, 
+            request.lon, 
+            request.radius,
+            key=key
+        )
+    else:
+        # 1. Determine the shop type using OpenAI
+        shop_tag = shops.get_shop_type(request.ingredients)
+        
+        # 2. Find nearby shops using Overpass API
+        found_shops = shops.find_nearby_shops(
+            shop_tag, 
+            request.lat, 
+            request.lon, 
+            request.radius,
+            key="shop"
+        )
     
     return found_shops
 
