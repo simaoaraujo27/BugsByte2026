@@ -336,6 +336,7 @@ const submitForm = async () => {
 }
 
 .form-actions {
+  grid-column: 1 / -1;
   margin-top: 24px;
   display: flex;
   flex-direction: column;
