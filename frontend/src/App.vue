@@ -1,65 +1,50 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import Home from './components/Home.vue'
+import UserInfo from './components/UserInfo.vue'
 
-const items = ref([]);
-
-onMounted(async () => {
-  try {
-    const response = await fetch('http://localhost:8000/items/');
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    items.value = await response.json();
-  } catch (error) {
-    console.error('Error fetching items:', error);
-  }
-});
+const isProfileRoute = window.location.pathname === '/profile'
 </script>
 
 <template>
-  <header>
-    <img alt="Vue logo" class="logo" src="./assets/logo.svg" width="125" height="125" />
-    <div class="wrapper">
-      <h1>Vue.js Frontend with FastAPI Backend</h1>
-    </div>
-  </header>
-
-  <main>
-    <h2>Items from Backend:</h2>
-    <p v-if="items.length === 0">No items found. Try adding some via the backend API.</p>
-    <ul>
-      <li v-for="item in items" :key="item.id">
-        <strong>{{ item.name }}</strong>: {{ item.description }} (ID: {{ item.id }})
-      </li>
-    </ul>
-  </main>
+  <div class="page-background">
+    <header class="topbar">
+      <img alt="Logo" class="logo" src="./assets/logo.png" />
+    </header>
+    <UserInfo v-if="isProfileRoute" />
+    <Home v-else />
+  </div>
 </template>
 
 <style scoped>
-header {
-  line-height: 1.5;
+.page-background {
+  --bg-main: #f4fbf8;
+  min-height: 100vh;
+  width: 100%;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 15% 10%, rgba(155, 228, 208, 0.25), transparent 30%),
+    radial-gradient(circle at 86% 18%, rgba(177, 214, 241, 0.22), transparent 26%),
+    linear-gradient(160deg, #f8fcff 0%, var(--bg-main) 100%);
+  font-family: Sora, 'Segoe UI', Tahoma, sans-serif;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding-bottom: 16px;
 }
 
 .logo {
   display: block;
-  margin: 0 auto 2rem;
+  width: 56px;
+  height: 56px;
 }
 
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
-
-  .logo {
-    margin: 0 2rem 0 0;
-  }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
+@media (max-width: 640px) {
+  .page-background {
+    padding: 16px;
   }
 }
 </style>
