@@ -93,6 +93,13 @@
           <label for="allergies">Alergias (separadas por vírgula)</label>
           <input type="text" id="allergies" v-model="allergiesInput" placeholder="Ex: glúten, lactose" />
         </div>
+
+        <div class="form-actions full-width">
+          <button type="submit" class="btn btn-primary">Sign Up</button>
+          <div class="login-link">
+              Already have an account? <router-link to="/login">Sign in</router-link>
+          </div>
+        </div>
       </form>
     </div>
   </div>
