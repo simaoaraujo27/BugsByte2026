@@ -78,6 +78,10 @@ const goToIngredients = () => {
           <button @click="goToIngredients" class="btn-primary">
             🛒 Comprar Ingredientes
           </button>
+          
+          <button @click="negotiate" class="btn-retry">
+            🔄 Gerar Outra Opção
+          </button>
         </div>
       </div>
       
@@ -206,6 +210,23 @@ input {
 .btn-primary {
   background: #07a374;
   color: white;
+}
+
+.btn-retry {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fff;
+  color: #666;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 12px;
+}
+
+.btn-retry:hover {
+  background: #f9f9f9;
+  border-color: #ccc;
 }
 
 .btn-back {
