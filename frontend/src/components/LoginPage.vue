@@ -1,7 +1,9 @@
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import logo from '@/assets/logo.png'
 
+const router = useRouter()
 const email = ref('')
 const password = ref('')
 const rememberMe = ref(false)
@@ -52,7 +54,8 @@ const handleLogin = async () => {
     
     setTimeout(() => { 
         successMessage.value = '' 
-        // Redirect logic would go here, e.g., router.push('/dashboard')
+        // Redirect to dashboard
+        router.push('/dashboard')
     }, 1500)
 
   } catch (error) {
