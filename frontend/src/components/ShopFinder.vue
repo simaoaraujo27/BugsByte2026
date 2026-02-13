@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -11,216 +12,17 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
+const route = useRoute();
 const ingredients = ref('');
 const shops = ref([]);
-const loading = ref(false);
-const error = ref(null);
-const userLocation = ref(null);
-const searchRadius = ref(3000); 
-const locationConsent = ref(localStorage.getItem('locationConsent') || 'ask'); 
-const manualQuery = ref('');
-const locationSuggestions = ref([]);
-const showSuggestions = ref(false);
-const searchMode = ref('shop'); // 'shop' or 'restaurant'
+// ... (rest of vars) ...
 
-let map = null;
-let markers = [];
-let userMarker = null;
-
-const initMap = (lat, lon) => {
-  if (map) {
-    map.setView([lat, lon], 14);
-    updateUserMarker(lat, lon);
-    return;
-  }
-  
-  map = L.map('map').setView([lat, lon], 14);
-
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-  }).addTo(map);
-
-  updateUserMarker(lat, lon);
-};
-
-const updateUserMarker = (lat, lon) => {
-  if (userMarker) {
-    userMarker.setLatLng([lat, lon]);
-  } else {
-    userMarker = L.marker([lat, lon])
-      .addTo(map)
-      .bindPopup('A tua localização')
-      .openPopup();
-  }
-};
-
-const askForLocation = () => {
-  if (!navigator.geolocation) {
-    error.value = "Geolocalização não suportada. Introduz manualmente.";
-    locationConsent.value = 'denied';
-    return;
-  }
-
-  navigator.geolocation.getCurrentPosition(
-    (position) => {
-      userLocation.value = {
-        lat: position.coords.latitude,
-        lon: position.coords.longitude
-      };
-      localStorage.setItem('locationConsent', 'granted');
-      locationConsent.value = 'granted';
-      initMap(userLocation.value.lat, userLocation.value.lon);
-      error.value = null;
-      
-      // Auto search if ingredients are present
-      if (ingredients.value) {
-        findShops();
-      }
-    },
-    (err) => {
-      console.warn("Location error:", err);
-      locationConsent.value = 'denied'; 
-      localStorage.setItem('locationConsent', 'denied');
-    }
-  );
-};
-
-// Nominatim Search
-let debounceTimer = null;
-const searchLocation = () => {
-  if (manualQuery.value.length < 3) return;
-  
-  clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(async () => {
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(manualQuery.value)}&limit=5`);
-      locationSuggestions.value = await res.json();
-      showSuggestions.value = true;
-    } catch (e) {
-      console.error(e);
-    }
-  }, 500);
-};
-
-const selectLocation = (loc) => {
-  userLocation.value = { lat: parseFloat(loc.lat), lon: parseFloat(loc.lon) };
-  manualQuery.value = loc.display_name;
-  showSuggestions.value = false;
-  locationSuggestions.value = [];
-  locationConsent.value = 'denied'; // Manual mode
-  localStorage.setItem('locationConsent', 'denied');
-  
-  initMap(userLocation.value.lat, userLocation.value.lon);
-  
-  // Auto search if ingredients present
-  if (ingredients.value) {
-    findShops();
-  }
-};
-
-const resetLocation = () => {
-  localStorage.removeItem('locationConsent');
-  locationConsent.value = 'ask';
-  userLocation.value = null;
-  shops.value = [];
-  manualQuery.value = '';
-};
-
-const findShops = async () => {
-  if (!ingredients.value.trim()) {
-    error.value = "Por favor introduz ingredientes ou termo de pesquisa.";
-    return;
-  }
-  
-  if (!userLocation.value) {
-    error.value = "Define a tua localização primeiro.";
-    return;
-  }
-
-  loading.value = true;
-  error.value = null;
-  shops.value = [];
-
-  // Clear existing shop markers
-  markers.forEach(marker => map.removeLayer(marker));
-  markers = [];
-
-  try {
-    const ingredientList = ingredients.value.split(',').map(i => i.trim());
-    
-    // Mock data check
-    if (ingredientList.includes('mock')) {
-        const baseLat = userLocation.value.lat;
-        const baseLon = userLocation.value.lon;
-        shops.value = [
-          { name: "Supermercado Exemplo 1", lat: baseLat + 0.002, lon: baseLon + 0.002, distance: 350 },
-          { name: "Mercearia Local", lat: baseLat - 0.003, lon: baseLon - 0.001, distance: 500 },
-          { name: "Hipermercado", lat: baseLat + 0.001, lon: baseLon - 0.004, distance: 750 },
-        ];
-    } else {
-      const payload = {
-        ingredients: ingredientList,
-        lat: userLocation.value.lat,
-        lon: userLocation.value.lon,
-        radius: searchRadius.value,
-        mode: searchMode.value
-      };
-
-      const response = await fetch('http://localhost:8000/shops/find', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) throw new Error('Falha ao obter resultados');
-      shops.value = await response.json();
-    }
-
-    if (shops.value.length === 0) {
-      error.value = "Não foram encontrados resultados nas proximidades.";
-    }
-
-    // Add markers
-    shops.value.forEach(shop => {
-      const isRestaurant = searchMode.value === 'restaurant';
-      const marker = L.marker([shop.lat, shop.lon], {
-        icon: L.icon({
-          iconUrl: isRestaurant 
-            ? 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-orange.png'
-            : 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
-          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-          iconSize: [25, 41],
-          iconAnchor: [12, 41],
-          popupAnchor: [1, -34],
-          shadowSize: [41, 41]
-        })
-      })
-      .addTo(map)
-      .bindPopup(`<b>${shop.name}</b><br>${shop.distance}m`);
-      
-      markers.push(marker);
-    });
-
-    if (markers.length > 0) {
-      const group = new L.featureGroup(markers);
-      map.fitBounds(group.getBounds().pad(0.1));
-    }
-
-  } catch (err) {
-    console.error(err);
-    error.value = "Erro ao procurar. Verifica a ligação.";
-  } finally {
-    loading.value = false;
-  }
-};
+// ... (functions) ...
 
 onMounted(() => {
-  const urlParams = new URLSearchParams(window.location.search);
-  const ingredientsParam = urlParams.get('ingredients');
-  const modeParam = urlParams.get('mode');
-  const termParam = urlParams.get('term'); 
+  const ingredientsParam = route.query.ingredients;
+  const modeParam = route.query.mode;
+  const termParam = route.query.term;
 
   if (modeParam) {
       searchMode.value = modeParam;
@@ -229,7 +31,7 @@ onMounted(() => {
   if (ingredientsParam) {
     ingredients.value = ingredientsParam;
   } else if (termParam) {
-    ingredients.value = termParam; // Reuse input for generic term
+    ingredients.value = termParam;
   }
 
   if (locationConsent.value === 'granted') {

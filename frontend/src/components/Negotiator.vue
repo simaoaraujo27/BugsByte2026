@@ -1,12 +1,15 @@
 <script setup>
 import { ref } from 'vue';
+import { useRouter } from 'vue-router';
 
+const router = useRouter();
 const craving = ref('');
 const result = ref(null);
 const loading = ref(false);
 const error = ref(null);
 
 const negotiate = async () => {
+  // ... (same as before) ...
   if (!craving.value.trim()) return;
 
   loading.value = true;
@@ -32,23 +35,11 @@ const negotiate = async () => {
 
 const goToIngredients = () => {
   const ingredients = result.value.recipe.ingredients.join(',');
-  window.location.href = `/shops?ingredients=${encodeURIComponent(ingredients)}`;
+  router.push({ path: '/shops', query: { ingredients } });
 };
 
 const goToRestaurants = () => {
-  // For now, we reuse the shop finder but maybe searching for 'restaurant' tag if we update backend,
-  // or just search for the term as a generic search if we had a generic map.
-  // Since the current ShopFinder searches for *shops* that sell *ingredients*, 
-  // we might want to adapt it or just say "Here are supermarkets, buy stuff!"
-  // But the prompt says "sugestões perto" (lazy option). 
-  // For the hackathon, reusing ShopFinder to find supermarkets is "DIY",
-  // Finding restaurants needs the Overpass API to query `amenity=restaurant`.
-  // Our backend `find_nearby_shops` uses `shop=[tag]`.
-  // We might need to update backend to support restaurants too.
-  // For now, let's just search for the dish name as an ingredient? No that's wrong.
-  // Let's assume Option B sends them to a map of restaurants.
-  // We can pass a special flag to ShopFinder?
-  window.location.href = `/shops?mode=restaurant&term=${encodeURIComponent(result.value.restaurant_search_term)}`;
+  router.push({ path: '/shops', query: { mode: 'restaurant', term: result.value.restaurant_search_term } });
 };
 </script>
 
