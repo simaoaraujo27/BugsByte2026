@@ -40,6 +40,10 @@ class User(UserBase):
     class ConfigDict:
         from_attributes = True
 
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
 class Shop(BaseModel):
     name: str
     lat: float

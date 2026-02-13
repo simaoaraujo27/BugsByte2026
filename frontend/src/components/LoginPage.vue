@@ -1,7 +1,9 @@
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import logo from '@/assets/logo.png'
 
+const router = useRouter()
 const email = ref('')
 const password = ref('')
 const rememberMe = ref(false)
@@ -16,7 +18,7 @@ const clearMessages = () => {
     successMessage.value = ''
 }
 
-const handleLogin = () => {
+const handleLogin = async () => {
   clearMessages()
   // Basic validation logic
   if (!email.value || !password.value) {
@@ -25,9 +27,41 @@ const handleLogin = () => {
   }
   
   console.log('Logging in with:', { email: email.value, rememberMe: rememberMe.value })
-  // Simulate API call
-  successMessage.value = 'Welcome back, Chef!'
-  setTimeout(() => { successMessage.value = '' }, 3000)
+  
+  try {
+    const response = await fetch('http://localhost:8000/login/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: email.value, // Using email as username for now based on backend schema
+        password: password.value,
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.detail || 'Login failed')
+    }
+
+    const data = await response.json()
+    console.log('Login successful:', data)
+    successMessage.value = 'Welcome back, Chef!'
+    
+    // Store user info (simplified for hackathon)
+    localStorage.setItem('user_id', data.user_id)
+    
+    setTimeout(() => { 
+        successMessage.value = '' 
+        // Redirect to dashboard
+        router.push('/dashboard')
+    }, 1500)
+
+  } catch (error) {
+    console.error('Login error:', error)
+    errorMessage.value = error.message
+  }
 }
 
 const triggerNegotiator = () => {
@@ -159,6 +193,13 @@ const handleFridgeKeydown = (event) => {
           >
             Sign In
           </button>
+          
+          <div class="text-center mt-4">
+            <span class="text-sm text-gray-600">Don't have an account? </span>
+            <router-link to="/signup" class="text-sm font-bold text-nutri-orange hover:text-red-700 hover:underline">
+              Sign up instead
+            </router-link>
+          </div>
         </form>
 
         <!-- Divider -->

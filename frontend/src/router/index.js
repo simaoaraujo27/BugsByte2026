@@ -1,23 +1,29 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Home from '../components/Home.vue'
-import UserInfo from '../components/UserInfo.vue'
+import LandingPage from '../components/LandingPage.vue'
 import LoginPage from '../components/LoginPage.vue'
+import UserInfo from '../components/UserInfo.vue'
+import SiteHomePage from '../components/SiteHomePage.vue'
 
 const routes = [
   {
     path: '/',
-    name: 'Home',
-    component: Home
+    name: 'Landing',
+    component: LandingPage
   },
   {
-    path: '/profile',
-    name: 'Profile',
+    path: '/signup',
+    name: 'SignUp',
     component: UserInfo
   },
   {
     path: '/login',
     name: 'Login',
     component: LoginPage
+  },
+  {
+    path: '/dashboard',
+    name: 'Dashboard',
+    component: SiteHomePage
   }
 ]
 
