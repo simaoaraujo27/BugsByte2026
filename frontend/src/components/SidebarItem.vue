@@ -49,6 +49,7 @@ defineEmits(['select'])
   align-items: center;
   gap: 8px;
   width: 100%;
+  min-width: 0;
 }
 
 .menu-item:hover {
@@ -83,6 +84,8 @@ defineEmits(['select'])
 }
 
 .item-label {
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
 }
 </style>
