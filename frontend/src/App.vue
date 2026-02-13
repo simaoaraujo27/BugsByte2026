@@ -1,9 +1,16 @@
 <script setup>
+import { ref } from 'vue';
 import LoginPage from './components/LoginPage.vue';
+import LandingPage from './components/LandingPage.vue';
+
+const currentView = ref('landing');
 </script>
 
 <template>
-  <LoginPage />
+  <component 
+    :is="currentView === 'login' ? LoginPage : LandingPage" 
+    @navigate="currentView = $event" 
+  />
 </template>
 
 <style>
