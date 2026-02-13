@@ -1,162 +1,163 @@
 <template>
-  <div class="page">
-    <main>
-      <section class="hero section">
-        <div class="hero-content fade-in-up">
-          <p class="eyebrow">O que vamos comer hoje?</p>
-          <h1>Come melhor sem deixar de comer o que gostas.</h1>
-          <p class="subtitle">
-            A nossa app adapta receitas às tuas calorias e mostra onde comprar ingredientes ou pedir takeaway perto de ti.
-          </p>
-          <div class="hero-actions">
-            <router-link to="/login" class="btn btn-primary">Começar Agora</router-link>
-            <button class="btn btn-secondary" type="button">Saber Mais</button>
-          </div>
+  <main class="page">
+    <section class="hero section">
+      <div class="hero-content">
+        <p class="eyebrow">O QUE VAMOS COMER HOJE?</p>
+        <h1>Come melhor sem deixar de comer o que gostas.</h1>
+        <p class="subtitle">
+          A nossa app adapta receitas as tuas calorias e mostra onde comprar ingredientes ou pedir takeaway perto de ti.
+        </p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="/profile">Comecar Agora</a>
+          <button class="btn btn-secondary" type="button">Saber Mais</button>
         </div>
+      </div>
 
-        <aside class="hero-card fade-in-up-delayed" aria-label="Pré-visualização da app">
-          <p class="card-label">Exemplo rápido</p>
-          <h2>“Quero francesinha.”</h2>
-          <p>Versão 600 kcal + supermercado mais próximo para comprar ingredientes.</p>
-          <span class="card-pill">2 opções sugeridas</span>
-        </aside>
-      </section>
+      <aside class="hero-card" aria-label="Pre-visualizacao da app">
+        <span class="shape" aria-hidden="true"></span>
+        <p class="card-label">EXEMPLO RAPIDO</p>
+        <h2>"Quero francesinha."</h2>
+        <p class="card-text">Versao 800 kcal + supermercado mais proximo para comprar ingredientes.</p>
+        <span class="card-pill">2 opcoes sugeridas</span>
+      </aside>
+    </section>
 
-      <section class="section split">
-        <article class="panel">
-          <h3>O Problema</h3>
-          <ul>
-            <li>É difícil comer saudável sem perder tempo.</li>
-            <li>Nem sempre sabes o que cozinhar com o que tens em casa.</li>
-            <li>Quando há pressa, acabas por escolher opções piores.</li>
-          </ul>
+    <section class="section split">
+      <article class="panel panel-problem">
+        <h3>O Problema</h3>
+        <ul>
+          <li>E dificil comer saudavel sem perder tempo.</li>
+          <li>Nem sempre sabes o que cozinhar com o que tens em casa.</li>
+          <li>Quando ha pressa, acabas por escolher opcoes piores.</li>
+        </ul>
+      </article>
+
+      <article class="panel panel-solution">
+        <h3>A Nossa Solucao</h3>
+        <ul>
+          <li>AI que transforma desejos em opcoes equilibradas.</li>
+          <li>Receitas personalizadas ao teu objetivo calorico.</li>
+          <li>Sugestoes locais para comprar ingredientes ou pedir comida.</li>
+        </ul>
+      </article>
+    </section>
+
+    <section class="section how">
+      <h3 class="section-title">Como funciona</h3>
+      <p class="section-subtitle">Comeca em menos de 2 minutos</p>
+      <div class="steps">
+        <article class="step-card">
+          <span class="step-index">1</span>
+          <h4>Criar conta</h4>
+          <p>Definir perfil, alergenios e objetivo.</p>
         </article>
-
-        <article class="panel">
-          <h3>A Nossa Solução</h3>
-          <ul>
-            <li>AI que transforma desejos em opções equilibradas.</li>
-            <li>Receitas personalizadas ao teu objetivo calórico.</li>
-            <li>Sugestões locais para comprar ingredientes ou pedir comida.</li>
-          </ul>
+        <article class="step-card">
+          <span class="step-index">2</span>
+          <h4>Dizer o que queres</h4>
+          <p>Exemplo: "quero uma francesinha".</p>
         </article>
-      </section>
+        <article class="step-card">
+          <span class="step-index">3</span>
+          <h4>Receber opcoes</h4>
+          <p>Receita ajustada + locais proximos.</p>
+        </article>
+      </div>
+    </section>
 
-      <section class="section">
-        <h3 class="section-title">Como funciona</h3>
-        <div class="steps">
-          <article class="step-card">
-            <span class="step-index">1</span>
-            <h4>Criar conta</h4>
-            <p>Definir perfil, alergénios e objetivo.</p>
-          </article>
-          <article class="step-card">
-            <span class="step-index">2</span>
-            <h4>Dizer o que queres</h4>
-            <p>Exemplo: “quero uma francesinha”.</p>
-          </article>
-          <article class="step-card">
-            <span class="step-index">3</span>
-            <h4>Receber opções</h4>
-            <p>Receita ajustada + locais próximos.</p>
-          </article>
-        </div>
-      </section>
+    <section class="section features-section">
+      <h3 class="section-title">Features principais</h3>
+      <p class="section-subtitle">Tudo o que precisas para comer melhor</p>
+      <div class="features">
+        <article class="feature-card">
+          <span class="tag tag-ai">AI</span>
+          <h4>Receitas adaptadas</h4>
+          <p>Versoes mais leves sem perder o sabor que procuras.</p>
+        </article>
+        <article class="feature-card">
+          <span class="tag tag-gps">GPS</span>
+          <h4>Geo Inteligente</h4>
+          <p>Supermercados e restaurantes adequados perto de ti.</p>
+        </article>
+        <article class="feature-card">
+          <span class="tag tag-home">HOME</span>
+          <h4>Com o que tens</h4>
+          <p>Sugestoes com ingredientes que ja tens em casa.</p>
+        </article>
+        <article class="feature-card">
+          <span class="tag tag-goal">GOAL</span>
+          <h4>Objetivo diario</h4>
+          <p>Calorias e escolhas alinhadas com a tua meta.</p>
+        </article>
+      </div>
+    </section>
 
-      <section class="section">
-        <h3 class="section-title">Features principais</h3>
-        <div class="features">
-          <article class="feature-card">
-            <p class="feature-icon" aria-hidden="true">AI</p>
-            <h4>Receitas adaptadas</h4>
-            <p>Versões mais leves sem perder o sabor que procuras.</p>
-          </article>
-          <article class="feature-card">
-            <p class="feature-icon" aria-hidden="true">GPS</p>
-            <h4>Geo inteligente</h4>
-            <p>Supermercados e restaurantes adequados perto de ti.</p>
-          </article>
-          <article class="feature-card">
-            <p class="feature-icon" aria-hidden="true">HOME</p>
-            <h4>Com o que tens</h4>
-            <p>Sugestões com ingredientes que já tens em casa.</p>
-          </article>
-          <article class="feature-card">
-            <p class="feature-icon" aria-hidden="true">GOAL</p>
-            <h4>Objetivo diário</h4>
-            <p>Calorias e escolhas alinhadas com a tua meta.</p>
-          </article>
-        </div>
-      </section>
+    <section class="cta-wrap">
+      <div class="cta-inner section">
+        <h3>Pronto para comecar?</h3>
+        <p>Comeca em menos de 2 minutos e recebe sugestoes a tua medida.</p>
+        <button class="btn btn-primary" type="button">Criar Conta Gratuitamente</button>
+      </div>
 
-      <section class="section cta-final">
-        <h3>Pronto para começar?</h3>
-        <p>Começa em menos de 2 minutos e recebe sugestões à tua medida.</p>
-        <router-link to="/login" class="btn btn-primary">Criar Conta Gratuitamente</router-link>
-      </section>
-    </main>
-  </div>
+      <footer class="footer section">
+        <p class="brand">VitaMeal</p>
+        <p class="copyright">© 2026 VitaMeal. Todos os direitos reservados.</p>
+      </footer>
+    </section>
+  </main>
 </template>
 
 <style scoped>
 .page {
-  --bg-main: #f4fbf8;
-  --bg-soft: #ffffff;
-  --text-main: #13293d;
-  --text-muted: #3b566d;
-  --accent: #0f766e;
-  --accent-hover: #0b5c56;
-  --line: #d7e7e0;
+  --surface: #ffffff;
+  --bg: #eef3f8;
+  --text: #0a1f47;
+  --muted: #4c6381;
+  --line: #dae4f0;
+  --primary: #07a374;
+  --primary-dark: #078661;
+  --navy: #05163c;
 
-  min-height: 100vh;
-  width: 100%;
-  padding: 24px;
-  background:
-    radial-gradient(circle at 15% 10%, rgba(155, 228, 208, 0.25), transparent 30%),
-    radial-gradient(circle at 86% 18%, rgba(177, 214, 241, 0.22), transparent 26%),
-    linear-gradient(160deg, #f8fcff 0%, var(--bg-main) 100%);
-  color: var(--text-main);
-  font-family: Sora, 'Segoe UI', Tahoma, sans-serif;
-}
-
-.eyebrow {
-  margin: 0 0 10px;
-  font-size: 0.84rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--accent);
+  color: var(--text);
 }
 
 .section {
-  max-width: 1120px;
+  width: min(1120px, calc(100% - 20px));
   margin: 0 auto;
 }
 
 .hero {
+  margin-top: 24px;
   display: grid;
-  grid-template-columns: 1.2fr 1fr;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 32px;
   align-items: center;
-  gap: 28px;
-  margin-top: 42px;
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  font-size: 0.9rem;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: var(--primary);
 }
 
 .hero-content h1 {
   margin: 0;
-  font-size: clamp(2.1rem, 5vw, 3.9rem);
-  line-height: 1.05;
-  letter-spacing: -0.02em;
+  max-width: 14ch;
+  font-size: clamp(2.4rem, 5.5vw, 4.6rem);
+  line-height: 1.04;
 }
 
 .subtitle {
-  margin: 16px 0 28px;
+  margin: 24px 0 0;
   max-width: 54ch;
-  font-size: 1.03rem;
-  line-height: 1.65;
-  color: var(--text-muted);
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--muted);
 }
 
 .hero-actions {
+  margin-top: 28px;
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
@@ -164,205 +165,294 @@
 
 .btn {
   border-radius: 999px;
-  padding: 12px 18px;
-  font-size: 0.95rem;
+  padding: 13px 28px;
+  font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
   text-decoration: none;
-  display: inline-block;
-  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .btn-primary {
   border: 0;
-  background: var(--accent);
+  background: var(--primary);
   color: #f2fffc;
-  box-shadow: 0 8px 20px rgba(15, 118, 110, 0.25);
+  box-shadow: 0 10px 22px rgba(7, 163, 116, 0.24);
 }
 
 .btn-primary:hover {
-  background: var(--accent-hover);
+  background: var(--primary-dark);
 }
 
 .btn-secondary {
-  border: 1px solid var(--line);
-  background: var(--bg-soft);
-  color: var(--text-main);
+  border: 1px solid #bccbdf;
+  background: #f6f9fd;
+  color: #254164;
 }
 
 .hero-card {
+  position: relative;
   border: 1px solid var(--line);
-  border-radius: 20px;
-  padding: 22px;
+  border-radius: 24px;
   background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(2px);
+  padding: 28px;
 }
 
-.hero-card h2 {
-  margin: 6px 0 10px;
-  font-size: 1.5rem;
-}
-
-.hero-card p {
-  margin: 0;
-  color: var(--text-muted);
-  line-height: 1.5;
+.shape {
+  position: absolute;
+  top: -18px;
+  right: -18px;
+  width: 92px;
+  height: 92px;
+  border-radius: 18px;
+  background: rgba(122, 215, 199, 0.42);
+  transform: rotate(12deg);
 }
 
 .card-label {
   margin: 0;
-  font-size: 0.8rem;
+  font-size: 0.84rem;
   font-weight: 700;
   letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #2f5668;
+  color: var(--primary);
+}
+
+.hero-card h2 {
+  margin: 12px 0 10px;
+  font-size: 2.1rem;
+}
+
+.card-text {
+  margin: 0;
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 1.5;
 }
 
 .card-pill {
   display: inline-block;
-  margin-top: 14px;
+  margin-top: 16px;
   border-radius: 999px;
-  padding: 7px 11px;
-  font-size: 0.8rem;
+  padding: 8px 14px;
+  font-size: 0.9rem;
   font-weight: 700;
-  color: #0f5258;
-  background: #ddf4ef;
+  color: #0c7858;
+  background: #ddf5ed;
 }
 
 .split {
+  margin-top: 72px;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  margin-top: 48px;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
 }
 
 .panel {
   border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 20px;
-  background: rgba(255, 255, 255, 0.78);
+  border-radius: 22px;
+  padding: 28px;
 }
 
 .panel h3 {
-  margin: 0 0 14px;
-  font-size: 1.25rem;
+  margin: 0 0 16px;
+  font-size: 2rem;
 }
 
 .panel ul {
   margin: 0;
-  padding-left: 20px;
-  color: var(--text-muted);
+  padding-left: 22px;
+}
+
+.panel li {
+  color: var(--muted);
+  font-size: 1.08rem;
+  line-height: 1.65;
 }
 
 .panel li + li {
   margin-top: 8px;
 }
 
+.panel-problem {
+  background: #eef3f9;
+}
+
+.panel-solution {
+  background: #e6f5f1;
+  border-color: #b7e8d8;
+}
+
+.how {
+  margin-top: 84px;
+}
+
 .section-title {
-  margin: 54px 0 18px;
-  font-size: 1.8rem;
+  margin: 0;
+  text-align: center;
+  font-size: 3rem;
+}
+
+.section-subtitle {
+  margin: 12px 0 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 1rem;
 }
 
 .steps {
+  margin-top: 38px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
+  gap: 22px;
 }
 
 .step-card {
+  position: relative;
   border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 18px;
-  background: var(--bg-soft);
+  border-radius: 20px;
+  background: var(--surface);
+  padding: 22px;
+}
+
+.step-card:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: -22px;
+  width: 20px;
+  height: 2px;
+  background: #8be6cd;
 }
 
 .step-index {
   display: inline-flex;
-  width: 30px;
-  height: 30px;
-  border-radius: 999px;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
   align-items: center;
   justify-content: center;
-  background: #ddf4ef;
-  color: #0c5f5d;
+  background: var(--primary);
+  color: #ffffff;
+  font-size: 1.1rem;
   font-weight: 700;
-  font-size: 0.9rem;
 }
 
-.step-card h4,
-.feature-card h4 {
-  margin: 12px 0 8px;
-  font-size: 1.06rem;
+.step-card h4 {
+  margin: 16px 0 8px;
+  font-size: 1.85rem;
 }
 
-.step-card p,
-.feature-card p {
+.step-card p {
   margin: 0;
-  color: var(--text-muted);
+  color: var(--muted);
+  font-size: 1rem;
   line-height: 1.5;
 }
 
+.features-section {
+  margin-top: 86px;
+}
+
 .features {
+  margin-top: 36px;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
+  gap: 18px;
 }
 
 .feature-card {
   border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 18px;
-  background: var(--bg-soft);
-}
-
-.feature-icon {
-  margin: 0;
-  font-size: 0.75rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  color: #0f6d65;
-}
-
-.cta-final {
-  margin-top: 54px;
-  margin-bottom: 22px;
-  border: 1px solid var(--line);
   border-radius: 18px;
-  padding: 28px;
-  text-align: center;
-  background: rgba(255, 255, 255, 0.86);
+  padding: 20px;
+  background: #f7f9fd;
 }
 
-.cta-final h3 {
-  margin: 0 0 8px;
+.tag {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.tag-ai {
+  color: #6f56e3;
+  background: #ece7ff;
+}
+
+.tag-gps {
+  color: #2b67ea;
+  background: #e8efff;
+}
+
+.tag-home {
+  color: #d47d00;
+  background: #fff2dc;
+}
+
+.tag-goal {
+  color: #0a8a67;
+  background: #dcf6ed;
+}
+
+.feature-card h4 {
+  margin: 12px 0 8px;
   font-size: 1.7rem;
 }
 
-.cta-final p {
-  margin: 0 0 20px;
-  color: var(--text-muted);
+.feature-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.5;
 }
 
-.fade-in-up {
-  animation: fadeInUp 700ms ease-out both;
+.cta-wrap {
+  margin-top: 84px;
+  background: var(--navy);
+  color: #eef3ff;
 }
 
-.fade-in-up-delayed {
-  animation: fadeInUp 850ms ease-out both;
+.cta-inner {
+  text-align: center;
+  padding: 84px 0 64px;
 }
 
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.cta-inner h3 {
+  margin: 0;
+  font-size: 3rem;
 }
 
-@media (max-width: 1000px) {
+.cta-inner p {
+  margin: 14px 0 30px;
+  font-size: 1rem;
+  color: #9eb1d0;
+}
+
+.footer {
+  border-top: 1px solid #14284f;
+  padding: 24px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.copyright {
+  margin: 0;
+  font-size: 0.92rem;
+  color: #7f92b4;
+}
+
+@media (max-width: 1024px) {
   .hero,
   .split,
   .steps,
@@ -370,23 +460,23 @@
     grid-template-columns: 1fr;
   }
 
-  .section-title {
-    margin-top: 40px;
+  .step-card:not(:last-child)::after {
+    display: none;
   }
 }
 
 @media (max-width: 640px) {
-  .page {
-    padding: 16px;
-  }
-
-  .hero {
-    margin-top: 28px;
-    gap: 18px;
-  }
-
   .hero-content h1 {
-    font-size: clamp(1.8rem, 9vw, 2.5rem);
+    font-size: clamp(2rem, 9vw, 3rem);
+  }
+
+  .btn {
+    width: 100%;
+  }
+
+  .footer {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 </style>

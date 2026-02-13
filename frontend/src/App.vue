@@ -1,25 +1,50 @@
 <script setup>
-import { RouterView } from 'vue-router'
+import Home from './components/Home.vue'
+import UserInfo from './components/UserInfo.vue'
+
+const isProfileRoute = window.location.pathname === '/profile'
 </script>
 
 <template>
-  <RouterView />
+  <div class="page-background">
+    <header class="topbar">
+      <img alt="Logo" class="logo" src="./assets/logo.png" />
+    </header>
+    <UserInfo v-if="isProfileRoute" />
+    <Home v-else />
+  </div>
 </template>
 
-<style>
-/* Reset some default styles to let Tailwind take over */
-body {
-  margin: 0;
-  padding: 0;
-  width: 100vw;
-  height: 100vh;
-}
-#app {
+<style scoped>
+.page-background {
+  --bg-main: #f4fbf8;
+  min-height: 100vh;
   width: 100%;
-  height: 100%;
-  max-width: none;
-  padding: 0;
-  margin: 0;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 15% 10%, rgba(155, 228, 208, 0.25), transparent 30%),
+    radial-gradient(circle at 86% 18%, rgba(177, 214, 241, 0.22), transparent 26%),
+    linear-gradient(160deg, #f8fcff 0%, var(--bg-main) 100%);
+  font-family: Sora, 'Segoe UI', Tahoma, sans-serif;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding-bottom: 16px;
+}
+
+.logo {
   display: block;
+  width: 56px;
+  height: 56px;
+}
+
+@media (max-width: 640px) {
+  .page-background {
+    padding: 16px;
+  }
 }
 </style>
