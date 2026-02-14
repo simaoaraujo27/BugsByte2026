@@ -6,11 +6,9 @@ import Negotiator from './Negotiator.vue'
 import ShopFinder from './ShopFinder.vue'
 import ProfilePanel from './ProfilePanel.vue'
 import DiaryTracking from './DiaryTracking.vue'
-import VisionRecipe from './VisionRecipe.vue'
 
 const sections = [
   { id: 'inicio', label: 'Início', icon: '🏠' },
-  { id: 'gerar-receita', label: 'Gerar Receita', icon: '🍽️' },
   { id: 'tenho-fome', label: 'Tenho Fome', icon: '🍔' },
   { id: 'supermercados', label: 'Supermercados & Compras', icon: '🛒' },
   { id: 'diario', label: 'Diário / Tracking', icon: '📊' },
@@ -55,13 +53,9 @@ const sectionContent = {
     title: 'Painel Inicial',
     subtitle: 'Calorias do dia, streak e o atalho para "Tenho Fome".'
   },
-  'gerar-receita': {
-    title: 'Gerar Receita',
-    subtitle: 'Receitas saudáveis, por ingredientes ou por upload de foto.'
-  },
   'tenho-fome': {
-    title: 'Tenho Fome (Modo Asneira)',
-    subtitle: 'Escolhe um prato e recebe uma versão DIY saudável.'
+    title: 'Tenho Fome (Intelligent Assistant)',
+    subtitle: 'Escolhe como queres decidir a tua próxima refeição saudável.'
   },
   supermercados: {
     title: 'Supermercados & Compras',
@@ -113,10 +107,6 @@ watch(isDarkMode, (value) => {
         <Negotiator @choice="handleNegotiationChoice" />
       </div>
       
-      <div v-else-if="activeSection === 'gerar-receita'">
-        <VisionRecipe />
-      </div>
-
       <div v-else-if="activeSection === 'supermercados'">
         <ShopFinder 
           :initial-ingredients="shopParams.ingredients" 
