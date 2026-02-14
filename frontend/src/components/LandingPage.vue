@@ -12,16 +12,16 @@ const goToLogin = () => {
   <div class="page">
     <header class="topbar">
       <img alt="Logo" class="logo" src="../assets/logo.png" />
-      <p class="hackathon-badge">Built for Hackathon 2026</p>
+      <p class="hackathon-badge">Desenvolvido para o Hackathon 2026</p>
     </header>
 
     <main>
       <section class="hero section">
         <div class="hero-content fade-in-up">
           <p class="eyebrow">O que vamos comer hoje?</p>
-          <h1>Come melhor sem deixar de comer o que gostas.</h1>
+          <h1>Coma melhor sem deixar de comer o que gosta.</h1>
           <p class="subtitle">
-            A nossa app adapta receitas às tuas calorias e mostra onde comprar ingredientes ou pedir takeaway perto de ti.
+            A nossa app adapta receitas às suas calorias e mostra onde comprar ingredientes ou pedir takeaway perto de si.
           </p>
           <div class="hero-actions">
             <button class="btn btn-primary" type="button" @click="goToLogin">Começar Agora</button>
@@ -41,17 +41,17 @@ const goToLogin = () => {
         <article class="panel">
           <h3>O Problema</h3>
           <ul>
-            <li>É difícil comer saudável sem perder tempo.</li>
-            <li>Nem sempre sabes o que cozinhar com o que tens em casa.</li>
-            <li>Quando há pressa, acabas por escolher opções piores.</li>
+            <li>É difícil comer de forma saudável sem perder tempo.</li>
+            <li>Nem sempre sabe o que cozinhar com o que tem em casa.</li>
+            <li>Quando tem pressa, acaba por escolher as piores opções.</li>
           </ul>
         </article>
 
         <article class="panel">
           <h3>A Nossa Solução</h3>
           <ul>
-            <li>AI que transforma desejos em opções equilibradas.</li>
-            <li>Receitas personalizadas ao teu objetivo calórico.</li>
+            <li>IA que transforma desejos em opções equilibradas.</li>
+            <li>Receitas personalizadas para o seu objetivo calórico.</li>
             <li>Sugestões locais para comprar ingredientes ou pedir comida.</li>
           </ul>
         </article>
@@ -63,50 +63,50 @@ const goToLogin = () => {
           <article class="step-card">
             <span class="step-index">1</span>
             <h4>Criar conta</h4>
-            <p>Definir perfil, alergénios e objetivo.</p>
+            <p>Defina o seu perfil, alergénios e objetivos.</p>
           </article>
           <article class="step-card">
             <span class="step-index">2</span>
-            <h4>Dizer o que queres</h4>
+            <h4>Diga o que quer</h4>
             <p>Exemplo: “quero uma francesinha”.</p>
           </article>
           <article class="step-card">
             <span class="step-index">3</span>
-            <h4>Receber opções</h4>
+            <h4>Receba opções</h4>
             <p>Receita ajustada + locais próximos.</p>
           </article>
         </div>
       </section>
 
       <section class="section">
-        <h3 class="section-title">Features principais</h3>
+        <h3 class="section-title">Principais funcionalidades</h3>
         <div class="features">
           <article class="feature-card">
-            <p class="feature-icon" aria-hidden="true">AI</p>
+            <p class="feature-icon" aria-hidden="true">IA</p>
             <h4>Receitas adaptadas</h4>
-            <p>Versões mais leves sem perder o sabor que procuras.</p>
+            <p>Versões mais leves sem perder o sabor que procura.</p>
           </article>
           <article class="feature-card">
             <p class="feature-icon" aria-hidden="true">GPS</p>
             <h4>Geo inteligente</h4>
-            <p>Supermercados e restaurantes adequados perto de ti.</p>
+            <p>Supermercados e restaurantes adequados perto de si.</p>
           </article>
           <article class="feature-card">
-            <p class="feature-icon" aria-hidden="true">HOME</p>
-            <h4>Com o que tens</h4>
-            <p>Sugestões com ingredientes que já tens em casa.</p>
+            <p class="feature-icon" aria-hidden="true">CASA</p>
+            <h4>Com o que tem</h4>
+            <p>Sugestões com ingredientes que já tem em casa.</p>
           </article>
           <article class="feature-card">
-            <p class="feature-icon" aria-hidden="true">GOAL</p>
+            <p class="feature-icon" aria-hidden="true">META</p>
             <h4>Objetivo diário</h4>
-            <p>Calorias e escolhas alinhadas com a tua meta.</p>
+            <p>Calorias e escolhas alinhadas com a sua meta.</p>
           </article>
         </div>
       </section>
 
       <section class="section cta-final">
         <h3>Pronto para começar?</h3>
-        <p>Começa em menos de 2 minutos e recebe sugestões à tua medida.</p>
+        <p>Comece em menos de 2 minutos e receba sugestões à sua medida.</p>
         <button class="btn btn-primary" type="button" @click="goToLogin">Criar Conta Gratuitamente</button>
       </section>
     </main>

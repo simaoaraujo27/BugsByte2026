@@ -63,8 +63,8 @@ const reset = () => {
   <div class="vision-container">
     <div v-if="!previewImage" class="upload-zone" @click="triggerFileSelect">
       <div class="upload-icon">📸</div>
-      <h3>Fotografa os teus ingredientes</h3>
-      <p>O nosso Chef IA vai detetar o que tens e criar uma receita saudável personalizada.</p>
+      <h3>Fotografe os seus ingredientes</h3>
+      <p>O nosso Chef IA vai detetar o que tem e criar uma receita saudável personalizada.</p>
       <button class="btn-upload">Escolher Foto ou Tirar agora</button>
       <input 
         type="file" 

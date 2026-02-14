@@ -9,14 +9,14 @@ import DiaryTracking from './DiaryTracking.vue'
 import VisionRecipe from './VisionRecipe.vue'
 
 const sections = [
-  { id: 'inicio', label: 'Inicio', icon: '🏠' },
+  { id: 'inicio', label: 'Início', icon: '🏠' },
   { id: 'gerar-receita', label: 'Gerar Receita', icon: '🍽️' },
   { id: 'tenho-fome', label: 'Tenho Fome', icon: '🍔' },
   { id: 'supermercados', label: 'Supermercados & Compras', icon: '🛒' },
-  { id: 'diario', label: 'Diario / Tracking', icon: '📊' },
+  { id: 'diario', label: 'Diário / Tracking', icon: '📊' },
   { id: 'favoritos', label: 'Favoritos', icon: '❤️' },
   { id: 'perfil', label: 'Perfil', icon: '👤' },
-  { id: 'definicoes', label: 'Definicoes', icon: '⚙️' }
+  { id: 'definicoes', label: 'Definições', icon: '⚙️' }
 ]
 
 const activeSection = ref('inicio')
@@ -52,24 +52,24 @@ const toggleTheme = () => {
 
 const sectionContent = {
   inicio: {
-    title: 'Dashboard Inicial',
+    title: 'Painel Inicial',
     subtitle: 'Calorias do dia, streak e o atalho para "Tenho Fome".'
   },
   'gerar-receita': {
     title: 'Gerar Receita',
-    subtitle: 'Receitas saudaveis, por ingredientes ou por upload de foto.'
+    subtitle: 'Receitas saudáveis, por ingredientes ou por upload de foto.'
   },
   'tenho-fome': {
-    title: 'Tenho Fome (Asneira Mode)',
-    subtitle: 'Escolhe um prato e recebe versao DIY saudavel.'
+    title: 'Tenho Fome (Modo Asneira)',
+    subtitle: 'Escolhe um prato e recebe uma versão DIY saudável.'
   },
   supermercados: {
     title: 'Supermercados & Compras',
-    subtitle: 'Lista automatica de compras e ingredientes necessarios.'
+    subtitle: 'Lista automática de compras e ingredientes necessários.'
   },
   diario: {
-    title: 'Diario / Tracking',
-    subtitle: 'Acompanha calorias, historico semanal e progresso.'
+    title: 'Diário / Tracking',
+    subtitle: 'Acompanha as tuas calorias, o histórico semanal e o teu progresso.'
   },
   favoritos: {
     title: 'Favoritos',
@@ -77,11 +77,11 @@ const sectionContent = {
   },
   perfil: {
     title: 'Perfil',
-    subtitle: 'Dados fisicos, objetivo, dieta, alergenios e localizacao.'
+    subtitle: 'Dados físicos, objetivo, dieta, alergénios e localização.'
   },
   definicoes: {
-    title: 'Definicoes',
-    subtitle: 'Preferencias da conta, notificacoes e opcoes da aplicacao.'
+    title: 'Definições',
+    subtitle: 'Preferências da conta, notificações e opções da aplicação.'
   }
 }
 
@@ -169,6 +169,7 @@ watch(isDarkMode, (value) => {
   --text-muted: #54667e;
   --line: #dbe3eb;
   --sidebar-bg: #ffffff;
+  --sidebar-text: #54667e;
   --menu-hover-bg: #f3f7fb;
   --menu-active-bg: #e3f7f2;
   --menu-active-text: #0a705d;
@@ -193,6 +194,7 @@ watch(isDarkMode, (value) => {
   --text-muted: #94a3b8;
   --line: #1e293b;
   --sidebar-bg: #020617;
+  --sidebar-text: #ffffff;
   --menu-hover-bg: #1e293b;
   --menu-active-bg: #064e3b;
   --menu-active-text: #34d399;

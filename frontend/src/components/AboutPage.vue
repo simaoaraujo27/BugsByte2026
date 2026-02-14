@@ -12,7 +12,7 @@ const goHome = () => {
   <div class="about-page">
     <header class="topbar">
       <img alt="Logo" class="logo" src="../assets/logo.png" />
-      <p class="hackathon-badge">Built for Hackathon 2026</p>
+      <p class="hackathon-badge">Desenvolvido para o Hackathon 2026</p>
     </header>
     <main class="content">
       <h1 class="page-title">Sobre o NutriVentures</h1>

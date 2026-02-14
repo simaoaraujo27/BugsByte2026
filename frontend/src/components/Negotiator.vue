@@ -47,18 +47,18 @@ const goToIngredients = () => {
   <div class="negotiator-container">
     <div v-if="!result" class="hero-section">
       <h1 class="glow-title">TENHO FOME!</h1>
-      <p class="subtitle">Diz-nos o teu desejo e o nosso Chef Nutricionista vai negociar uma alternativa irresistível.</p>
+      <p class="subtitle">Diz-nos o que te apetece e o nosso Chef Nutricionista vai negociar uma alternativa irresistível.</p>
       
       <div class="search-box-large">
         <input 
           v-model="craving" 
           type="text" 
-          placeholder="O que te apetece comer? (Apenas comida real)" 
+          placeholder="O que te apetece comer? (Ex: Lasanha, Pizza...)" 
           @keyup.enter="negotiate"
           :disabled="loading"
         />
         <button @click="negotiate" :disabled="loading" class="btn-glow">
-          {{ loading ? 'A Analisar...' : 'Negociar Agora' }}
+          {{ loading ? 'A analisar...' : 'Negociar Agora' }}
         </button>
       </div>
       

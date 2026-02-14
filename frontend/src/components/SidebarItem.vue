@@ -41,7 +41,7 @@ defineEmits(['select'])
   text-align: left;
   font-size: 0.95rem;
   font-weight: 600;
-  color: var(--text-muted);
+  color: var(--sidebar-text);
   background: transparent;
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);

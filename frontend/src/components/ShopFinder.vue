@@ -248,8 +248,8 @@ onMounted(() => {
     <!-- Location Selection -->
     <div v-if="!userLocation" class="location-card">
       <div class="card-icon">📍</div>
-      <h3>Onde estás?</h3>
-      <p>Precisamos da tua localização para encontrar as melhores opções perto de ti.</p>
+      <h3>Onde se encontra?</h3>
+      <p>Precisamos da sua localização para encontrar as melhores opções perto de si.</p>
       
       <div class="location-actions">
         <button @click="askForLocation" class="btn-gps">Usar GPS Atual</button>
@@ -277,7 +277,7 @@ onMounted(() => {
           <input 
             v-model="ingredients" 
             type="text" 
-            :placeholder="searchMode === 'restaurant' ? 'Prato ou tipo de comida...' : 'O que precisas comprar?'"
+            :placeholder="searchMode === 'restaurant' ? 'Prato ou tipo de comida...' : 'O que precisa de comprar?'"
             @keyup.enter="findShops"
           />
           <button @click="findShops" :disabled="loading" class="btn-search">
@@ -311,7 +311,7 @@ onMounted(() => {
           </div>
           <div v-else-if="!loading" class="empty-state">
             <img src="https://cdn-icons-png.flaticon.com/512/6108/6108830.png" width="60" />
-            <p>Faz uma pesquisa para ver resultados</p>
+            <p>Faça uma pesquisa para ver resultados</p>
           </div>
         </div>
       </div>

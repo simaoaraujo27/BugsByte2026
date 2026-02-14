@@ -37,8 +37,8 @@ const formatGoal = (value) => {
 
 const formatActivityLevel = (value) => {
   const normalized = (value || '').toLowerCase()
-  if (normalized === 'sedentary') return 'Sedentario'
-  if (normalized === 'light') return 'Leve'
+  if (normalized === 'sedentary') return 'Sedentário'
+  if (normalized === 'light') return 'Ligeiro'
   if (normalized === 'moderate') return 'Moderado'
   if (normalized === 'high') return 'Elevado'
   return value || 'N/A'
@@ -98,7 +98,7 @@ const fetchProfile = async () => {
 
   try {
     const response = await fetch('http://localhost:8000/users/')
-    if (!response.ok) throw new Error('Falha ao carregar perfil.')
+    if (!response.ok) throw new Error('Falha ao carregar o perfil.')
 
     const users = await response.json()
     const localUserId = Number(localStorage.getItem('user_id'))
@@ -107,11 +107,11 @@ const fetchProfile = async () => {
     userProfile.value = matchedUser || users[0] || null
 
     if (!userProfile.value) {
-      errorMessage.value = 'Nao existe nenhum perfil disponivel.'
+      errorMessage.value = 'Não existe nenhum perfil disponível.'
     }
   } catch (error) {
     if (error instanceof TypeError) {
-      errorMessage.value = 'Nao foi possivel ligar ao backend. Verifica se o servidor esta ativo.'
+      errorMessage.value = 'Não foi possível ligar ao servidor. Verifique se o backend está ativo.'
     } else {
       errorMessage.value = error.message || 'Erro ao obter o perfil.'
     }
@@ -133,14 +133,14 @@ const requestPasswordChange = async () => {
       body: JSON.stringify({ username: userProfile.value.username })
     })
 
-    if (!response.ok) throw new Error('Nao foi possivel iniciar a alteracao de palavra-passe.')
+    if (!response.ok) throw new Error('Não foi possível iniciar a alteração da palavra-passe.')
 
     const data = await response.json()
     passwordMessage.value = data.message || 'Pedido enviado.'
   } catch (error) {
     passwordMessage.value = error instanceof TypeError
-      ? 'Backend indisponivel para alterar a palavra-passe.'
-      : (error.message || 'Erro ao iniciar alteracao de palavra-passe.')
+      ? 'Backend indisponível para alterar a palavra-passe.'
+      : (error.message || 'Erro ao iniciar a alteração da palavra-passe.')
   } finally {
     passwordLoading.value = false
   }
@@ -153,7 +153,7 @@ onMounted(fetchProfile)
   <section class="profile-panel">
     <header class="panel-header">
       <h1>Perfil</h1>
-      <p>Informacao da conta e metricas de saude</p>
+      <p>Informação da conta e métricas de saúde</p>
     </header>
 
     <div v-if="loading" class="status-card">A carregar perfil...</div>
@@ -175,7 +175,7 @@ onMounted(fetchProfile)
           <h3><span class="badge green">●</span> Dados Pessoais</h3>
           <ul class="detail-list">
             <li>
-              <span>Genero</span>
+              <span>Género</span>
               <strong>{{ formatGender(userProfile.sexo) }}</strong>
             </li>
             <li>
@@ -195,39 +195,39 @@ onMounted(fetchProfile)
               <strong>{{ formatGoal(userProfile.goal) }}</strong>
             </li>
             <li>
-              <span>Nivel de Atividade</span>
+              <span>Nível de Atividade</span>
               <strong>{{ formatActivityLevel(userProfile.activity_level) }}</strong>
             </li>
             <li>
-              <span>Alergenios</span>
+              <span>Alergénios</span>
               <strong>{{ allergiesText }}</strong>
             </li>
           </ul>
         </article>
 
         <article class="card metrics-card">
-          <h3><span class="badge rose">●</span> Metricas de Saude</h3>
+          <h3><span class="badge rose">●</span> Métricas de Saúde</h3>
           <div class="metric-box">
-            <p>Indice de Massa Corporal</p>
+            <p>Índice de Massa Corporal</p>
             <strong>{{ bmi ? bmi.toFixed(1) : '-' }} kg/m²</strong>
             <small>{{ bmiCategory }}</small>
           </div>
           <div class="metric-box">
-            <p>Taxa Metabolica Basal</p>
+            <p>Taxa Metabólica Basal</p>
             <strong>{{ bmr ? Math.round(bmr) : '-' }} kcal/dia</strong>
           </div>
           <div class="metric-box">
             <p>Kcal normais (TDEE)</p>
             <strong>{{ tdee ? Math.round(tdee) : '-' }} kcal/dia</strong>
-            <small>Manutencao diaria com base no nivel de atividade.</small>
+            <small>Manutenção diária com base no nível de atividade.</small>
           </div>
         </article>
 
         <article class="card full">
-          <h3>Alterar Palavra-Passe</h3>
-          <p class="muted">Envia um pedido de recuperacao de password para o teu email.</p>
+          <h3>Alterar Palavra-passe</h3>
+          <p class="muted">Envie um pedido de recuperação de palavra-passe para o seu e-mail.</p>
           <button type="button" class="btn" :disabled="passwordLoading" @click="requestPasswordChange">
-            {{ passwordLoading ? 'A enviar...' : 'Alterar Palavra-Passe' }}
+            {{ passwordLoading ? 'A enviar...' : 'Alterar Palavra-passe' }}
           </button>
           <p v-if="passwordMessage" class="password-message">{{ passwordMessage }}</p>
         </article>
