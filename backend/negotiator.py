@@ -3,6 +3,7 @@ import json
 from typing import List, Dict, Optional
 from openai import OpenAI
 import schemas
+import food_data
 from fastapi import HTTPException
 from llm_client import get_client_config
 
@@ -42,34 +43,34 @@ def negotiate_craving(craving: str, target_calories: int = 600, mood: Optional[s
         "\nINSTRUÇÕES: "
         "1. Se o utilizador descreveu um desejo específico, cria uma versão saudável. "
         "2. Se forneceu ingredientes, cria uma receita criativa com eles. "
-        "3. Usa a lista de 'estilo' acima APENAS como base para o perfil de sabor, mas foca-te em ser VARIADO e ORIGINAL. Não sugiras sempre o mesmo tipo de prato. "
+        "3. Usa a lista de 'estilo' APENAS como base para o perfil de sabor, mas sê VARIADO e ORIGINAL. "
         "4. Se o pedido for inválido, define 'recipe' como null. "
-        "\nRetorna RIGOROSAMENTE este JSON em PT-PT (define SEMPRE 'calories' como 0, pois eu vou calcular o valor real): "
-        "{ 'message': '...', 'recipe': { 'title': '...', 'calories': 0, 'time_minutes': 30, 'ingredients': ['Lista em PT-PT'], 'ingredients_en': ['Lista em Inglês apenas para pesquisa técnica'], 'steps': [] }, 'restaurant_search_term': '...' }"
+        "5. IMPORTANTE: Responde sempre em PORTUGUÊS DE PORTUGAL (PT-PT). "
+        "\nRetorna RIGOROSAMENTE este JSON (define 'calories' como 0, pois será calculado externamente): "
+        "{ 'message': '...', 'recipe': { 'title': '...', 'calories': 0, 'time_minutes': 30, 'ingredients': ['200g arroz', '100g frango'], 'steps': [] }, 'restaurant_search_term': '...' }"
     )
 
     try:
         response = client.chat.completions.create(
             model=model,
             messages=[
-                {"role": "system", "content": "És um Chef Michelin e Nutricionista que adora variedade. Cria receitas novas e surpreendentes, usando as preferências do utilizador apenas como guia de estilo."},
+                {"role": "system", "content": "És um Chef Michelin e Nutricionista PT-PT que adora variedade."},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.85,
+            temperature=0.9,
+            presence_penalty=0.6,
+            frequency_penalty=0.5,
             response_format={"type": "json_object"},
             max_tokens=1000
         )
         data = json.loads(response.choices[0].message.content)
         
-        # Integrar FatSecret para calorias mais precisas se possível
+        # Calcular calorias reais via "food_data" (que usa a IA como DB)
         raw_recipe = data.get('recipe')
-        if raw_recipe and raw_recipe.get('ingredients'):
-            fs_nutrition = food_data.get_nutrition_for_recipe(
-                raw_recipe['ingredients'], 
-                ingredients_en=raw_recipe.get('ingredients_en')
-            )
-            if fs_nutrition['calories'] > 0:
-                raw_recipe['calories'] = int(fs_nutrition['calories'])
+        if raw_recipe:
+            real_calories = food_data.calculate_recipe_calories(raw_recipe.get('ingredients', []))
+            if real_calories > 0:
+                raw_recipe['calories'] = real_calories
 
         return schemas.NegotiatorResponse(
             original_craving=craving,

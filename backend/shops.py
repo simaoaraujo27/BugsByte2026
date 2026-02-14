@@ -85,52 +85,60 @@ def find_nearby_shops(tag_value: str, lat: float, lon: float, radius: int = 3000
     tag_value = tag_value.lower().strip()
     key = key.lower().strip()
 
-    # Use official endpoint
-    overpass_url = "https://overpass-api.de/api/interpreter"
+    # Use official endpoint and a fallback
+    overpass_urls = [
+        "https://overpass-api.de/api/interpreter",
+        "https://overpass.kumi.systems/api/interpreter"
+    ]
     
     # We fetch ALL nearby establishments of the category. 
     # Removing the name filter from the query makes it MUCH faster and reliable.
-    query = f'[out:json][timeout:25];nwr["{key}"="{tag_value}"](around:{radius},{lat},{lon});out center;'
+    # Increased timeout to 90s to avoid 504 errors on busy instances
+    query = f'[out:json][timeout:90];nwr["{key}"="{tag_value}"](around:{radius},{lat},{lon});out center;'
 
-    try:
-        response = requests.get(overpass_url, params={'data': query}, timeout=30)
-        response.raise_for_status()
-        data = response.json()
-        
-        shops = []
-        # Pre-compile regex for faster filtering if term is present
-        pattern = None
-        if search_term and search_term.strip():
-            # Case-insensitive search anywhere in the name
-            pattern = re.compile(re.escape(search_term.strip()), re.IGNORECASE)
-
-        for element in data.get('elements', []):
-            shop_lat = element.get('lat') or element.get('center', {}).get('lat')
-            shop_lon = element.get('lon') or element.get('center', {}).get('lon')
+    for url in overpass_urls:
+        try:
+            response = requests.get(url, params={'data': query}, timeout=95)
+            response.raise_for_status()
+            data = response.json()
             
-            if shop_lat is None or shop_lon is None:
-                continue
+            shops = []
+            # ... (rest of the processing)
+            # Pre-compile regex for faster filtering if term is present
+            pattern = None
+            if search_term and search_term.strip():
+                # Case-insensitive search anywhere in the name
+                pattern = re.compile(re.escape(search_term.strip()), re.IGNORECASE)
 
-            name = element.get('tags', {}).get('name', 'Desconhecido')
-            
-            # If we have a search term (like "Pizza" for restaurants), we filter here
-            if pattern:
-                if not pattern.search(name):
+            for element in data.get('elements', []):
+                shop_lat = element.get('lat') or element.get('center', {}).get('lat')
+                shop_lon = element.get('lon') or element.get('center', {}).get('lon')
+                
+                if shop_lat is None or shop_lon is None:
                     continue
 
-            distance = haversine_distance(lat, lon, shop_lat, shop_lon)
-            
-            shops.append({
-                'name': name,
-                'lat': shop_lat,
-                'lon': shop_lon,
-                'distance': round(distance, 2)
-            })
-            
-        shops.sort(key=lambda x: x['distance'])
-        # Return top 50 results to keep frontend snappy
-        return shops[:50]
+                name = element.get('tags', {}).get('name', 'Desconhecido')
+                
+                # If we have a search term (like "Pizza" for restaurants), we filter here
+                if pattern:
+                    if not pattern.search(name):
+                        continue
 
-    except Exception as e:
-        print(f"Error in find_nearby_shops: {e}")
-        return []
+                distance = haversine_distance(lat, lon, shop_lat, shop_lon)
+                
+                shops.append({
+                    'name': name,
+                    'lat': shop_lat,
+                    'lon': shop_lon,
+                    'distance': round(distance, 2)
+                })
+                
+            shops.sort(key=lambda x: x['distance'])
+            # Return top 50 results to keep frontend snappy
+            return shops[:50]
+
+        except Exception as e:
+            print(f"Error in find_nearby_shops with {url}: {e}")
+            continue # Try next server
+            
+    return []

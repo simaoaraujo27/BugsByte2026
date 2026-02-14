@@ -4,6 +4,7 @@ import base64
 from typing import List, Optional
 from openai import OpenAI
 import schemas
+import food_data
 from fastapi import HTTPException
 from llm_client import get_client_config
 
@@ -33,9 +34,8 @@ def analyze_image_ingredients(image_bytes: bytes, mode: str = "ingredients", api
             "2. Cria uma RECRIAÇÃO SAUDÁVEL desse exato prato. Não inventes uma receita aleatória; foca-te em tornar o prato da imagem mais nutritivo. "
             "3. Usa a lista de 'REFERÊNCIA DE ESTILO' apenas como inspiração. "
             "4. Responde sempre em PORTUGUÊS DE PORTUGAL (PT-PT). "
-            "IMPORTANTE: Responde APENAS com um objeto JSON válido. "
-            "ESTIMA AS CALORIAS TOTAIS da receita com base nos ingredientes. Não uses 0. "
-            "\nEstrutura JSON esperada: { \"detected_ingredients\": [\"nome do prato\"], \"message\": \"...\", \"recipe\": { \"title\": \"Versão Saudável de...\", \"calories\": 550, \"time_minutes\": 25, \"ingredients\": [\"200g massa\", \"100g carne\"], \"steps\": [] } }"
+            "IMPORTANTE: Responde APENAS com um objeto JSON válido. Define 'calories' como 0. "
+            "\nEstrutura JSON esperada: { \"detected_ingredients\": [\"nome do prato\"], \"message\": \"...\", \"recipe\": { \"title\": \"Versão Saudável de...\", \"calories\": 0, \"time_minutes\": 25, \"ingredients\": [\"200g massa\", \"100g carne\"], \"steps\": [] } }"
         )
     else:
         prompt = (
@@ -45,9 +45,8 @@ def analyze_image_ingredients(image_bytes: bytes, mode: str = "ingredients", api
             "2. Cria uma receita saudável que combine estes ingredientes. "
             "3. Usa a lista de 'REFERÊNCIA DE ESTILO' APENAS como base para o perfil de sabor, mas foca-te em ser VARIADO e ORIGINAL. "
             "4. Responde em PT-PT. "
-            "IMPORTANTE: Responde APENAS com um objeto JSON válido. "
-            "ESTIMA AS CALORIAS TOTAIS da receita com base nos ingredientes. Não uses 0. "
-            "\nEstrutura JSON esperada: { \"detected_ingredients\": [], \"message\": \"...\", \"recipe\": { \"title\": \"...\", \"calories\": 450, \"time_minutes\": 25, \"ingredients\": [\"200g de arroz\", \"1 tomate\"], \"steps\": [] } }"
+            "IMPORTANTE: Responde APENAS com um objeto JSON válido. Define 'calories' como 0. "
+            "\nEstrutura JSON esperada: { \"detected_ingredients\": [], \"message\": \"...\", \"recipe\": { \"title\": \"...\", \"calories\": 0, \"time_minutes\": 25, \"ingredients\": [\"200g de arroz\", \"1 tomate\"], \"steps\": [] } }"
         )
 
     try:
@@ -81,8 +80,12 @@ def analyze_image_ingredients(image_bytes: bytes, mode: str = "ingredients", api
             
         data = json.loads(content)
         
-        # Use calories directly from AI
+        # Calcular calorias reais via "food_data" (que usa a IA como DB)
         raw_recipe = data.get('recipe', {})
+        if raw_recipe:
+            real_calories = food_data.calculate_recipe_calories(raw_recipe.get('ingredients', []))
+            if real_calories > 0:
+                raw_recipe['calories'] = real_calories
 
         return schemas.VisionResponse(
             detected_ingredients=data.get('detected_ingredients', []),

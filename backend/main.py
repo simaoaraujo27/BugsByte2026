@@ -399,7 +399,7 @@ async def analyze_ingredients_photo(mode: str = "ingredients", file: UploadFile 
     contents = await file.read()
     return vision.analyze_image_ingredients(contents, mode=mode, favorite_recipes=current_user.favorite_recipes)
 
-@app.get("/shops/find", response_model=list[schemas.Shop])
+@app.post("/shops/find", response_model=list[schemas.Shop])
 def find_shops(request: schemas.ShopSearchRequest, current_user: models.User = Depends(auth.get_current_user)):
     if request.mode == "restaurant":
         search_val = "restaurant"
@@ -423,15 +423,7 @@ def find_shops(request: schemas.ShopSearchRequest, current_user: models.User = D
 
 @app.get("/foods/search", response_model=list[schemas.FoodSearchItem])
 def search_foods(q: str, page_size: int = 10, current_user: models.User = Depends(auth.get_current_user)):
-    results = food_data.search_foods(q, page_size=page_size)
-    # Ensure we return a flat list, handling cases where AI wraps it in a dict
-    if isinstance(results, dict):
-        for key in ["foods", "items", "results", "alimentos"]:
-            if key in results and isinstance(results[key], list):
-                return results[key]
-        # Fallback if no known key matches
-        return []
-    return results
+    return food_data.search_foods(q, page_size=page_size)
 
 @app.post("/users/me/food-history", response_model=schemas.FoodHistoryResponse)
 def add_food_history(
