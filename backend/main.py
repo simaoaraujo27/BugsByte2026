@@ -415,7 +415,15 @@ def find_shops(request: schemas.ShopSearchRequest, current_user: models.User = D
 
 @app.get("/foods/search", response_model=list[schemas.FoodSearchItem])
 def search_foods(q: str, page_size: int = 10, current_user: models.User = Depends(auth.get_current_user)):
-    return food_data.search_foods(q, page_size=page_size)
+    results = food_data.search_foods(q, page_size=page_size)
+    # Ensure we return a flat list, handling cases where AI wraps it in a dict
+    if isinstance(results, dict):
+        for key in ["foods", "items", "results", "alimentos"]:
+            if key in results and isinstance(results[key], list):
+                return results[key]
+        # Fallback if no known key matches
+        return []
+    return results
 
 @app.post("/users/me/food-history", response_model=schemas.FoodHistoryResponse)
 def add_food_history(

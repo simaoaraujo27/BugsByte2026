@@ -3,22 +3,8 @@ import json
 from typing import List, Dict, Optional
 from openai import OpenAI
 import schemas
-import food_data
 from fastapi import HTTPException
-
-def get_client_config():
-    api_key = os.getenv("OPENAI_API_KEY")
-    if api_key:
-        api_key = api_key.strip()
-        
-    base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
-    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-
-    if api_key.startswith("gsk_"):
-        base_url = "https://api.groq.com/openai/v1"
-        model = "llama-3.3-70b-versatile"
-            
-    return OpenAI(api_key=api_key, base_url=base_url), model
+from llm_client import get_client_config
 
 def analyze_mood(craving: str, mood: str) -> schemas.MoodAnalysisResponse:
     client, model = get_client_config()
