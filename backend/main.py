@@ -24,11 +24,9 @@ from fastapi.middleware.cors import CORSMiddleware
 models.Base.metadata.create_all(bind=engine)
 
 
-def sync_sqlite_schema() -> None:
-    if engine.dialect.name != "sqlite":
-        return
-
-    sqlite_migrations = {
+def sync_database_schema() -> None:
+    # Supported columns to auto-migrate
+    migrations = {
         "users": {
             "full_name": "ALTER TABLE users ADD COLUMN full_name VARCHAR",
             "profile_image": "ALTER TABLE users ADD COLUMN profile_image TEXT",
@@ -38,7 +36,7 @@ def sync_sqlite_schema() -> None:
         },
         "food_history": {
             "source": "ALTER TABLE food_history ADD COLUMN source VARCHAR DEFAULT 'search'",
-            "created_at": "ALTER TABLE food_history ADD COLUMN created_at DATETIME",
+            "created_at": "ALTER TABLE food_history ADD COLUMN created_at TIMESTAMP",
         },
         "diary_meals": {
             "grams": "ALTER TABLE diary_meals ADD COLUMN grams FLOAT",
@@ -46,25 +44,52 @@ def sync_sqlite_schema() -> None:
     }
 
     with engine.begin() as conn:
-        for table_name, columns in sqlite_migrations.items():
-            table_exists = conn.execute(
-                text("SELECT name FROM sqlite_master WHERE type='table' AND name=:name"),
-                {"name": table_name},
-            ).first()
+        for table_name, columns in migrations.items():
+            # Check if table exists
+            if engine.dialect.name == "sqlite":
+                table_exists = conn.execute(
+                    text("SELECT name FROM sqlite_master WHERE type='table' AND name=:name"),
+                    {"name": table_name},
+                ).first()
+            else:
+                table_exists = conn.execute(
+                    text("SELECT tablename FROM pg_catalog.pg_tables WHERE tablename=:name"),
+                    {"name": table_name},
+                ).first()
+
             if not table_exists:
                 continue
 
-            existing = {
-                row[1] for row in conn.execute(text(f"PRAGMA table_info({table_name})")).fetchall()
-            }
+            # Get existing columns
+            if engine.dialect.name == "sqlite":
+                existing = {
+                    row[1] for row in conn.execute(text(f"PRAGMA table_info({table_name})")).fetchall()
+                }
+            else:
+                existing = {
+                    row[0] for row in conn.execute(
+                        text("SELECT column_name FROM information_schema.columns WHERE table_name=:name"),
+                        {"name": table_name},
+                    ).fetchall()
+                }
+
             for column_name, alter_sql in columns.items():
                 if column_name in existing:
                     continue
-                conn.execute(text(alter_sql))
-                print(f"DB MIGRATION: added {table_name}.{column_name}")
+                
+                # Fix TIMESTAMP for PostgreSQL vs DATETIME for SQLite if needed
+                sql = alter_sql
+                if engine.dialect.name == "sqlite" and "TIMESTAMP" in sql:
+                    sql = sql.replace("TIMESTAMP", "DATETIME")
+                
+                try:
+                    conn.execute(text(sql))
+                    print(f"DB MIGRATION: added {table_name}.{column_name}")
+                except Exception as e:
+                    print(f"DB MIGRATION ERROR on {table_name}.{column_name}: {e}")
 
 
-sync_sqlite_schema()
+sync_database_schema()
 
 app = FastAPI(redirect_slashes=False)
 
