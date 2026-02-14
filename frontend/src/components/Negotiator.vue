@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, watch, onMounted, onUnmounted } from 'vue';
 import { auth } from '@/auth';
 import { addRecipeToHistory } from '@/utils/recipeHistory';
 
@@ -18,6 +18,7 @@ const loading = ref(false);
 const saving = ref(false);
 const error = ref(null);
 const feedbackDialog = ref(null);
+const isDragging = ref(false);
 
 const craving = ref('');
 const selectedMood = ref('');
@@ -27,13 +28,66 @@ const detectedIngredients = ref([]);
 
 // Vision
 const fileInput = ref(null);
+const cameraInput = ref(null);
 const videoRef = ref(null);
 const canvasRef = ref(null);
 const previewImage = ref(null);
 const isCameraActive = ref(false);
 const stream = ref(null);
 
+const onDragOver = (e) => {
+  e.preventDefault();
+  isDragging.value = true;
+};
+
+const onDragLeave = () => {
+  isDragging.value = false;
+};
+
+const onDrop = (e) => {
+  e.preventDefault();
+  isDragging.value = false;
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) {
+    processSelectedFile(file);
+  }
+};
+
+const onPaste = (e) => {
+  if (activeView.value !== 'vision_input') return;
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      const file = item.getAsFile();
+      processSelectedFile(file);
+      break;
+    }
+  }
+};
+
+const processSelectedFile = (file) => {
+  const reader = new FileReader();
+  reader.onload = (e) => previewImage.value = e.target.result;
+  reader.readAsDataURL(file);
+  uploadAndAnalyze(file);
+};
+
+onMounted(() => {
+  window.addEventListener('paste', onPaste);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('paste', onPaste);
+});
+
 const startCamera = async () => {
+  // On mobile, try to use native camera interface first for better reliability
+  if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+    cameraInput.value.click();
+    return;
+  }
+
   isCameraActive.value = true;
   error.value = null;
   try {
@@ -74,13 +128,10 @@ const capturePhoto = () => {
         if (blob) {
           console.log("Blob created successfully, size:", blob.size);
           const file = new File([blob], "captured_ingredients.jpg", { type: "image/jpeg" });
-          previewImage.value = URL.createObjectURL(blob);
+          processSelectedFile(file);
           
           // Stop camera before starting upload to free resources
           stopCamera();
-          
-          console.log("Starting upload and analyze...");
-          uploadAndAnalyze(file);
         } else {
           console.error("Failed to create blob from canvas");
           error.value = "Erro ao processar a imagem capturada.";
@@ -147,7 +198,7 @@ const generateTextRecipe = async () => {
   error.value = null;
 
   try {
-    const response = await fetch('' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/negotiator/negotiate', {
+    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/negotiator/negotiate`, {
       method: 'POST',
       headers: auth.getAuthHeaders(),
       body: JSON.stringify({ craving: craving.value, target_calories: 600 })
@@ -177,7 +228,7 @@ const selectMood = async (moodId) => {
   error.value = null;
 
   try {
-    const response = await fetch('' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/negotiator/analyze-mood', {
+    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/negotiator/analyze-mood`, {
       method: 'POST',
       headers: auth.getAuthHeaders(),
       body: JSON.stringify({ mood: moodId, craving: 'geral' })
@@ -198,7 +249,7 @@ const generateMoodRecipe = async () => {
   error.value = null;
 
   try {
-    const response = await fetch('' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/negotiator/negotiate', {
+    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/negotiator/negotiate`, {
       method: 'POST',
       headers: auth.getAuthHeaders(),
       body: JSON.stringify({ craving: 'Menu Saudável', mood: selectedMood.value })
@@ -222,10 +273,7 @@ const generateMoodRecipe = async () => {
 const handleFileChange = (event) => {
   const file = event.target.files[0];
   if (file) {
-    const reader = new FileReader();
-    reader.onload = (e) => previewImage.value = e.target.result;
-    reader.readAsDataURL(file);
-    uploadAndAnalyze(file);
+    processSelectedFile(file);
   }
 };
 
@@ -255,6 +303,11 @@ const uploadAndAnalyze = async (file) => {
     
     const data = await response.json();
     console.log("Analysis successful, received data:", data);
+
+    if (!data.detected_ingredients || data.detected_ingredients.length === 0) {
+      throw new Error('O Chef não conseguiu identificar alimentos nesta foto. Tenta novamente com um ângulo diferente.');
+    }
+
     detectedIngredients.value = data.detected_ingredients;
     recipeResult.value = { recipe: data.recipe, message: data.message };
     storeInHistory({ recipe: data.recipe, message: data.message }, 'vision');
@@ -286,7 +339,7 @@ const saveRecipe = async () => {
       instructions: recipeResult.value.recipe.steps.join('\n')
     };
 
-    const createResponse = await fetch('' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/recipes/', {
+    const createResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/recipes/`, {
       method: 'POST',
       headers: auth.getAuthHeaders(),
       body: JSON.stringify(recipeData)
@@ -295,7 +348,7 @@ const saveRecipe = async () => {
     if (!createResponse.ok) throw new Error('Falha ao criar receita');
     const createdRecipe = await createResponse.json();
 
-    const favResponse = await fetch(`' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/users/me/favorites/recipes/${createdRecipe.id}`, {
+    const favResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/users/me/favorites/recipes/${createdRecipe.id}`, {
       method: 'POST',
       headers: auth.getAuthHeaders()
     });
@@ -428,26 +481,41 @@ watch(
     <!-- SUBMENU: Vision Input -->
     <div v-if="activeView === 'vision_input'" class="view-wrapper centered-view fade-in">
       <div class="hero-header-small">
-        <div class="v-icon-top">🖼️</div>
+        <div class="v-icon-top">📸</div>
         <h2 class="title-bold">VISÃO DO FRIGORÍFICO</h2>
         <p class="subtitle-muted">O reconhecimento visual irá ditar a ementa de hoje.</p>
       </div>
 
-      <div v-if="!isCameraActive" class="premium-upload-zone">
+      <div 
+        v-if="!isCameraActive" 
+        class="premium-upload-zone"
+        :class="{ 'is-dragging': isDragging }"
+        @dragover="onDragOver"
+        @dragleave="onDragLeave"
+        @drop="onDrop"
+      >
         <div v-if="!loading" class="u-content-box">
           <div class="u-icon-pulse">📸</div>
           <h3>Digitaliza os teus ingredientes</h3>
-          <p>Tira uma foto agora ou escolhe da tua galeria</p>
+          <p>Arraste uma foto, cole (Ctrl+V) ou use a câmara</p>
           <div class="u-actions" style="display: flex; gap: 12px; justify-content: center; margin-top: 20px;">
-            <button @click="triggerFileSelect" class="btn-primary-action" style="padding: 12px 24px;">Galeria</button>
-            <button @click="startCamera" class="btn-primary-action" style="padding: 12px 24px; background: #11263f;">Câmara</button>
+            <button @click="triggerFileSelect" class="btn-primary-action" style="padding: 12px 24px;">📁 Galeria</button>
+            <button @click="startCamera" class="btn-primary-action" style="padding: 12px 24px; background: #11263f;">📷 Câmara</button>
           </div>
         </div>
         <div v-else class="u-loading-box">
           <div class="spinner-dot"></div>
-          <p>A olhar para os ingredientes...</p>
+          <p>A analisar ingredientes...</p>
         </div>
         <input type="file" ref="fileInput" style="display: none" accept="image/*" @change="handleFileChange" />
+        <input type="file" ref="cameraInput" style="display: none" accept="image/*" capture="environment" @change="handleFileChange" />
+      </div>
+
+      <!-- Error Message -->
+      <div v-if="error" class="error-toast-mini fade-in">
+        <span class="error-icon">⚠️</span>
+        <p>{{ error }}</p>
+        <button @click="error = null" class="btn-close-error">✕</button>
       </div>
 
       <!-- Camera View -->
@@ -635,7 +703,52 @@ watch(
 .m-pill-label { font-weight: 800; color: var(--text-main); font-size: 1rem; }
 
 /* 5. Vision Upload View */
-.premium-upload-zone { background: var(--bg-elevated); border: 3px dashed var(--line); border-radius: 40px; padding: 100px 60px; text-align: center; width: 100%; max-width: 700px; transition: 0.3s; }
+.premium-upload-zone { 
+  background: var(--bg-elevated); 
+  border: 2px dashed var(--line); 
+  border-radius: 40px; 
+  padding: 80px 40px; 
+  text-align: center; 
+  width: 100%; 
+  max-width: 700px; 
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.premium-upload-zone.is-dragging {
+  border-color: #07a374;
+  background: var(--menu-active-bg);
+  transform: scale(1.02);
+}
+
+.error-toast-mini {
+  margin-top: 24px;
+  background: #fff5f5;
+  border: 1px solid #feb2b2;
+  padding: 12px 20px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 500px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.error-toast-mini p {
+  color: #c53030;
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  flex: 1;
+}
+
+.btn-close-error {
+  background: transparent;
+  border: none;
+  color: #c53030;
+  cursor: pointer;
+  font-weight: 800;
+  padding: 4px;
+}
 
 .camera-view-negotiator {
   width: 100%;

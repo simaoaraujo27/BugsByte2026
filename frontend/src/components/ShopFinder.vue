@@ -249,7 +249,7 @@ const saveRestaurant = async (shop) => {
     const createdRestaurant = await createRes.json();
     
     // 2. Add to Favorites
-    const favRes = await fetch(`' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/users/me/favorites/restaurants/${createdRestaurant.id}`, {
+    const favRes = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/users/me/favorites/restaurants/${createdRestaurant.id}`, {
       method: 'POST',
       headers: auth.getAuthHeaders()
     });
