@@ -17,7 +17,6 @@ const isLoading = ref(false)
 const composerFor = ref('')
 const composerMode = ref('manual') // 'manual' or 'auto'
 const autoLoading = ref(false)
-const isListening = ref(false)
 
 const foodSearch = ref({
   query: '',
