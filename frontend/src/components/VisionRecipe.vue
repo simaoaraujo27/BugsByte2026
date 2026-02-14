@@ -14,6 +14,7 @@ const loading = ref(false);
 const saving = ref(false);
 const result = ref(null);
 const error = ref(null);
+const visionMode = ref('ingredients'); // 'ingredients' or 'plate'
 
 const isDragging = ref(false);
 
@@ -119,7 +120,7 @@ const handleFileChange = (event) => {
 };
 
 const processSelectedFile = (file) => {
-  console.log("VisionRecipe: Processing file:", file.name);
+  console.log("VisionRecipe: Processing file:", file.name, "Mode:", visionMode.value);
   const reader = new FileReader();
   reader.onload = (e) => {
     previewImage.value = e.target.result;
@@ -137,7 +138,7 @@ onUnmounted(() => {
 });
 
 const uploadAndAnalyze = async (file) => {
-  console.log("VisionRecipe: Starting uploadAndAnalyze...");
+  console.log("VisionRecipe: Starting uploadAndAnalyze... Mode:", visionMode.value);
   loading.value = true;
   error.value = null;
   result.value = null;
@@ -147,7 +148,7 @@ const uploadAndAnalyze = async (file) => {
 
   try {
     // For file uploads, we must NOT set Content-Type manually so the browser can set the boundary.
-    const response = await fetch(`${API_URL}/vision/analyze`, {
+    const response = await fetch(`${API_URL}/vision/analyze?mode=${visionMode.value}`, {
       method: 'POST',
       headers: auth.getAuthHeaders(false),
       body: formData,
@@ -235,49 +236,70 @@ const reset = () => {
 
 <template>
   <div class="vision-container">
-    <div 
-      v-if="!previewImage && !isCameraActive" 
-      class="upload-zone"
-      :class="{ 'is-dragging': isDragging }"
-      @dragover="onDragOver"
-      @dragleave="onDragLeave"
-      @drop="onDrop"
-    >
-      <div class="upload-icon-wrapper">
-        <div class="upload-icon">📸</div>
-        <div class="upload-pulse"></div>
-      </div>
-      <h3>Digitalize os seus ingredientes</h3>
-      <p>Arraste uma foto, cole do clipboard ou use a câmara para criar uma receita saudável personalizada.</p>
-      
-      <div class="upload-actions">
-        <button class="btn-upload" @click="triggerFileSelect">
-          <span class="btn-icon">📁</span> Escolher Ficheiro
-        </button>
-        <button class="btn-camera" @click="startCamera">
-          <span class="btn-icon">📷</span> Abrir Câmara
-        </button>
+    <div v-if="!previewImage && !isCameraActive" class="vision-setup fade-in">
+      <!-- Mode Selector -->
+      <div class="mode-selector-container">
+        <div class="mode-selector">
+          <button 
+            :class="{ active: visionMode === 'ingredients' }" 
+            @click="visionMode = 'ingredients'"
+          >
+            🥗 Ingredientes
+          </button>
+          <button 
+            :class="{ active: visionMode === 'plate' }" 
+            @click="visionMode = 'plate'"
+          >
+            🍽️ Prato Feito
+          </button>
+          <div class="mode-slider" :class="visionMode"></div>
+        </div>
       </div>
 
-      <div class="keyboard-hint">
-        <kbd>Ctrl</kbd> + <kbd>V</kbd> para colar imagem
-      </div>
+      <div 
+        class="upload-zone"
+        :class="{ 'is-dragging': isDragging }"
+        @dragover="onDragOver"
+        @dragleave="onDragLeave"
+        @drop="onDrop"
+      >
+        <div class="upload-icon-wrapper">
+          <div class="upload-icon">{{ visionMode === 'ingredients' ? '📸' : '🥘' }}</div>
+          <div class="upload-pulse"></div>
+        </div>
+        <h3>{{ visionMode === 'ingredients' ? 'Digitalize os seus ingredientes' : 'Identifique um prato feito' }}</h3>
+        <p v-if="visionMode === 'ingredients'">Arraste uma foto dos ingredientes que tem em casa e o Chef cria uma receita para si.</p>
+        <p v-else>Tirou foto a um prato num restaurante? O Chef descobre o que é e dá-lhe a receita saudável.</p>
+        
+        <div class="upload-actions">
+          <button class="btn-upload" @click="triggerFileSelect">
+            <span class="btn-icon">📁</span> Escolher Ficheiro
+          </button>
+          <button class="btn-camera" @click="startCamera">
+            <span class="btn-icon">📷</span> Abrir Câmara
+          </button>
+        </div>
 
-      <input 
-        type="file" 
-        ref="fileInput" 
-        style="display: none" 
-        accept="image/*" 
-        @change="handleFileChange"
-      />
-      <input 
-        type="file" 
-        ref="cameraInput" 
-        style="display: none" 
-        accept="image/*" 
-        capture="environment"
-        @change="handleFileChange"
-      />
+        <div class="keyboard-hint">
+          <kbd>Ctrl</kbd> + <kbd>V</kbd> para colar imagem
+        </div>
+
+        <input 
+          type="file" 
+          ref="fileInput" 
+          style="display: none" 
+          accept="image/*" 
+          @change="handleFileChange"
+        />
+        <input 
+          type="file" 
+          ref="cameraInput" 
+          style="display: none" 
+          accept="image/*" 
+          capture="environment"
+          @change="handleFileChange"
+        />
+      </div>
     </div>
 
     <!-- Camera View -->
@@ -300,7 +322,7 @@ const reset = () => {
         <img :src="previewImage" class="image-preview" />
         <div v-if="loading" class="loading-overlay">
           <div class="spinner"></div>
-          <p>O Chef está a analisar os ingredientes...</p>
+          <p>{{ visionMode === 'ingredients' ? 'O Chef está a analisar os ingredientes...' : 'O Chef está a identificar o prato...' }}</p>
         </div>
         <button v-if="!loading" @click="reset" class="btn-reset-top">Alterar Foto</button>
       </div>
@@ -363,6 +385,61 @@ const reset = () => {
   max-width: 900px;
   margin: 0 auto;
   font-family: 'Sora', sans-serif;
+}
+
+.mode-selector-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.mode-selector {
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  padding: 6px;
+  border-radius: 20px;
+  display: flex;
+  position: relative;
+  gap: 4px;
+  width: 360px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+}
+
+.mode-selector button {
+  flex: 1;
+  padding: 10px 20px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  z-index: 2;
+  transition: color 0.3s;
+  border-radius: 14px;
+}
+
+.mode-selector button.active {
+  color: white;
+}
+
+.mode-slider {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  width: calc(50% - 8px);
+  background: #07a374;
+  border-radius: 14px;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1;
+}
+
+.mode-slider.ingredients {
+  transform: translateX(0);
+}
+
+.mode-slider.plate {
+  transform: translateX(calc(100% + 4px));
 }
 
 .upload-zone {

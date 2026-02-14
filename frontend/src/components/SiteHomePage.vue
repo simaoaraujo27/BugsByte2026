@@ -264,6 +264,7 @@ watch(
           :route-mode="negotiatorRouteMode"
           @choice="handleNegotiationChoice"
           @route-mode-change="handleNegotiatorModeChange"
+          @navigate="selectSection"
         />
       </div>
       

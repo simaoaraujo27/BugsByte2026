@@ -3,6 +3,7 @@ import json
 from typing import List, Dict, Optional
 from openai import OpenAI
 import schemas
+import food_data
 from fastapi import HTTPException
 
 def get_client_config():
@@ -58,7 +59,7 @@ def negotiate_craving(craving: str, target_calories: int = 600, mood: Optional[s
         "3. Analisa as receitas favoritas acima para alinhar o sabor ao paladar do utilizador. "
         "4. Se o pedido for inválido (não relacionado com comida), define 'recipe' como null. "
         "\nRetorna RIGOROSAMENTE este JSON em PT-PT: "
-        "{ 'message': '...', 'recipe': { 'title': '...', 'calories': 500, 'time_minutes': 30, 'ingredients': [], 'steps': [] }, 'restaurant_search_term': '...' }"
+        "{ 'message': '...', 'recipe': { 'title': '...', 'calories': 0, 'time_minutes': 30, 'ingredients': [], 'steps': [] }, 'restaurant_search_term': '...' }"
     )
 
     try:
@@ -73,10 +74,18 @@ def negotiate_craving(craving: str, target_calories: int = 600, mood: Optional[s
             max_tokens=1000
         )
         data = json.loads(response.choices[0].message.content)
+        
+        # Integrar FatSecret para calorias mais precisas se possível
+        raw_recipe = data.get('recipe')
+        if raw_recipe and raw_recipe.get('ingredients'):
+            fs_nutrition = food_data.get_nutrition_for_recipe(raw_recipe['ingredients'])
+            if fs_nutrition['calories'] > 0:
+                raw_recipe['calories'] = int(fs_nutrition['calories'])
+
         return schemas.NegotiatorResponse(
             original_craving=craving,
             message=data.get('message', ''),
-            recipe=schemas.NegotiatorRecipe(**data.get('recipe')) if data.get('recipe') else None,
+            recipe=schemas.NegotiatorRecipe(**raw_recipe) if raw_recipe else None,
             restaurant_search_term=data.get('restaurant_search_term', craving)
         )
     except Exception as e:

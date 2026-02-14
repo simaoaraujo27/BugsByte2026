@@ -387,9 +387,9 @@ def analyze_nutrition_endpoint(request: schemas.NutritionAnalysisRequest, curren
     return negotiator.analyze_nutrition(request.food_text)
 
 @app.post("/vision/analyze", response_model=schemas.VisionResponse)
-async def analyze_ingredients_photo(file: UploadFile = File(...), current_user: models.User = Depends(auth.get_current_user)):
+async def analyze_ingredients_photo(mode: str = "ingredients", file: UploadFile = File(...), current_user: models.User = Depends(auth.get_current_user)):
     contents = await file.read()
-    return vision.analyze_image_ingredients(contents, favorite_recipes=current_user.favorite_recipes)
+    return vision.analyze_image_ingredients(contents, mode=mode, favorite_recipes=current_user.favorite_recipes)
 
 @app.get("/shops/find", response_model=list[schemas.Shop])
 def find_shops(request: schemas.ShopSearchRequest, current_user: models.User = Depends(auth.get_current_user)):

@@ -4,20 +4,21 @@ import base64
 from typing import List, Optional
 from openai import OpenAI
 import schemas
+import food_data
 from fastapi import HTTPException
 
-def analyze_image_ingredients(image_bytes: bytes, api_key: Optional[str] = None, favorite_recipes: List[schemas.Recipe] = []) -> schemas.VisionResponse:
+def analyze_image_ingredients(image_bytes: bytes, mode: str = "ingredients", api_key: Optional[str] = None, favorite_recipes: List[schemas.Recipe] = []) -> schemas.VisionResponse:
     final_api_key = api_key or os.getenv("OPENAI_API_KEY")
     if final_api_key:
         final_api_key = final_api_key.strip()
         
-    base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+    base_url = os.getenv("OPENAI_BASE_URL")
     
     # Se for Groq, precisamos de usar um modelo que suporte Visão
     is_groq = final_api_key and final_api_key.startswith("gsk_")
     if is_groq:
         model = "meta-llama/llama-4-scout-17b-16e-instruct"
-        if "openai.com" in base_url:
+        if not base_url or "openai.com" in base_url:
             base_url = "https://api.groq.com/openai/v1"
     else:
         # Para OpenAI, o gpt-4o-mini já suporta visão
@@ -34,15 +35,27 @@ def analyze_image_ingredients(image_bytes: bytes, api_key: Optional[str] = None,
         fav_list = "\n".join([f"- {r.name}" for r in favorite_recipes])
         fav_header = f"CONTEXTO DE PREFERÊNCIAS DO UTILIZADOR (RECEITAS QUE ELE ADORA):\n{fav_list}\n\n"
 
-    prompt = (
-        f"{fav_header}"
-        "Analisa esta imagem de ingredientes. "
-        "1. Identifica os ingredientes. "
-        "2. Cria uma receita saudável que combine com o estilo das receitas favoritas listadas acima. "
-        "3. Responde em PT-PT. "
-        "IMPORTANTE: Responde APENAS com um objeto JSON válido. "
-        "\nEstrutura JSON esperada: { \"detected_ingredients\": [], \"message\": \"...\", \"recipe\": { \"title\": \"...\", \"calories\": 450, \"time_minutes\": 25, \"ingredients\": [], \"steps\": [] } }"
-    )
+    if mode == "plate":
+        prompt = (
+            f"{fav_header}"
+            "Analisa esta imagem de um prato já cozinhado. "
+            "1. Identifica o nome do prato (ex: Lasanha, Sushi, Hambúrguer). "
+            "2. Cria uma RECRIAÇÃO SAUDÁVEL desse exato prato. Não inventes uma receita aleatória; foca-te em tornar o prato da imagem mais nutritivo (ex: trocar massa normal por integral, reduzir gorduras saturadas, aumentar vegetais), mantendo a essência do prato original. "
+            "3. Se não conseguires identificar o prato com certeza, analisa os ingredientes visíveis e sugere algo baseado neles como alternativa. "
+            "4. Responde em PT-PT. "
+            "IMPORTANTE: Responde APENAS com um objeto JSON válido. "
+            "\nEstrutura JSON esperada: { \"detected_ingredients\": [\"nome do prato detetado\"], \"message\": \"Explicação de como tornaste este prato mais saudável...\", \"recipe\": { \"title\": \"Versão Saudável de [Nome do Prato]\", \"calories\": 0, \"time_minutes\": 25, \"ingredients\": [], \"steps\": [] } }"
+        )
+    else:
+        prompt = (
+            f"{fav_header}"
+            "Analisa esta imagem de ingredientes. "
+            "1. Identifica os ingredientes presentes. "
+            "2. Cria uma receita saudável que combine estes ingredientes, inspirada no estilo das receitas favoritas do utilizador. "
+            "3. Responde em PT-PT. "
+            "IMPORTANTE: Responde APENAS com um objeto JSON válido. "
+            "\nEstrutura JSON esperada: { \"detected_ingredients\": [], \"message\": \"...\", \"recipe\": { \"title\": \"...\", \"calories\": 0, \"time_minutes\": 25, \"ingredients\": [], \"steps\": [] } }"
+        )
 
     try:
         # Groq might have issues with response_format={"type": "json_object"} for some vision models
@@ -72,10 +85,18 @@ def analyze_image_ingredients(image_bytes: bytes, api_key: Optional[str] = None,
             content = content.replace("```", "", 1).replace("```", "", 1).strip()
             
         data = json.loads(content)
+        
+        # Integrar FatSecret para calorias mais precisas se possível
+        raw_recipe = data.get('recipe', {})
+        if raw_recipe and raw_recipe.get('ingredients'):
+            fs_nutrition = food_data.get_nutrition_for_recipe(raw_recipe['ingredients'])
+            if fs_nutrition['calories'] > 0:
+                raw_recipe['calories'] = int(fs_nutrition['calories'])
+
         return schemas.VisionResponse(
             detected_ingredients=data.get('detected_ingredients', []),
             message=data.get('message', ''),
-            recipe=schemas.NegotiatorRecipe(**data.get('recipe', {}))
+            recipe=schemas.NegotiatorRecipe(**raw_recipe)
         )
     except Exception as e:
         print(f"Erro Vision ({model}): {e}")

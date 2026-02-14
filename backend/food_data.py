@@ -192,3 +192,65 @@ def search_foods(query: str, page_size: int = 10) -> List[Dict]:
         return _search_open_food_facts(query, page_size)
     except requests.RequestException:
         return []
+
+
+def get_nutrition_for_recipe(ingredients: List[str]) -> Dict:
+    """
+    Estimates total nutrition for a list of ingredients using FatSecret.
+    Returns a dict with 'calories', 'protein', 'carbs', 'fat'.
+    """
+    fs_id = os.getenv("FATSECRET_CLIENT_ID") or os.getenv("Client ID")
+    fs_secret = os.getenv("FATSECRET_CLIENT_SECRET") or os.getenv("Client Secret")
+    
+    total_nutrients = {"calories": 0, "protein": 0.0, "carbs": 0.0, "fat": 0.0}
+    
+    if not fs_id or not fs_secret or not ingredients:
+        return total_nutrients
+
+    try:
+        token = _get_fatsecret_token(fs_id, fs_secret)
+        
+        for ing in ingredients:
+            try:
+                # Search for each ingredient
+                response = requests.get(
+                    FATSECRET_SEARCH_URL,
+                    headers={"Authorization": f"Bearer {token}"},
+                    params={
+                        "method": "foods.search",
+                        "search_expression": ing,
+                        "format": "json",
+                        "max_results": 1,
+                    },
+                    timeout=5,
+                )
+                if not response.ok:
+                    continue
+                    
+                payload = response.json()
+                results = payload.get("foods", {}).get("food", [])
+                if isinstance(results, dict):
+                    results = [results]
+                
+                if results:
+                    desc = results[0].get("food_description", "")
+                    # Extract per 100g or use default portion if not found
+                    # This is an approximation as we don't know the weight of '1 tomato' exactly here
+                    # But we follow the search_foods extraction logic
+                    parts = desc.split("|")
+                    for p in parts:
+                        if "Calories:" in p:
+                            total_nutrients["calories"] += _safe_float(p.replace("Calories:", "").replace("kcal", "").strip())
+                        elif "Fat:" in p:
+                            total_nutrients["fat"] += _safe_float(p.replace("Fat:", "").replace("g", "").strip())
+                        elif "Carbs:" in p:
+                            total_nutrients["carbs"] += _safe_float(p.replace("Carbs:", "").replace("g", "").strip())
+                        elif "Protein:" in p:
+                            total_nutrients["protein"] += _safe_float(p.replace("Protein:", "").replace("g", "").strip())
+            except Exception:
+                continue
+                
+    except Exception as e:
+        print(f"Error in get_nutrition_for_recipe: {e}")
+        
+    return total_nutrients

@@ -10,7 +10,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['choice', 'route-mode-change']);
+const emit = defineEmits(['choice', 'route-mode-change', 'navigate']);
 
 // Views: 'landing', 'text_input', 'vision_input', 'mood_select', 'mood_analysis', 'recipe', 'rejection'
 const activeView = ref('landing');
@@ -387,6 +387,10 @@ const reset = () => {
 watch(
   () => props.routeMode,
   (mode) => {
+    if (mode === 'visaochef') {
+      emit('navigate', 'gerar-receita');
+      return;
+    }
     const targetView = routeModeToView[mode] || 'landing';
     if (targetView !== activeView.value) {
       activeView.value = targetView;
@@ -421,7 +425,7 @@ watch(
           <button class="p-card-btn">Check-in</button>
         </div>
 
-        <div class="p-card" @click="setActiveView('vision_input')">
+        <div class="p-card" @click="emit('navigate', 'gerar-receita')">
           <div class="p-card-icon">📸</div>
           <h3>Visão do Chef</h3>
           <p>Cria magia culinária a partir dos teus ingredientes atuais.</p>
