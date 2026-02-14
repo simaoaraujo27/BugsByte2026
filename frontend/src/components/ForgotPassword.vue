@@ -83,11 +83,6 @@ onMounted(async () => {
     errorMessage.value = 'Não foi possível detetar o email. Volta ao login e preenche o email da conta.';
     return;
   }
-
-  if (!hasAutoSent.value) {
-    hasAutoSent.value = true;
-    await submitForm();
-  }
 });
 </script>
 

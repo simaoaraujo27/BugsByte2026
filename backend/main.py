@@ -106,16 +106,14 @@ def send_password_reset_email(recipient_email: str, reset_token: str) -> None:
     app_name = os.getenv("APP_NAME", "NutriVida")
     reset_expire_minutes = os.getenv("PASSWORD_RESET_EXPIRE_MINUTES", "30")
 
+    reset_url = f"{frontend_base.rstrip('/')}/reset-password?token={reset_token}"
+
     if not smtp_host or not smtp_user or not smtp_password:
-        # Fallback to simulation if SMTP is not configured
         print("="*50)
-        print(f"EMAIL SIMULATION (SMTP NOT CONFIGURED) FOR: {recipient_email}")
-        print(f"Subject: {app_name} - Recuperação de palavra-passe")
-        print(f"Body: Click here to reset your password: {frontend_base.rstrip('/')}/reset-password?token={reset_token}")
+        print(f"SMTP NOT CONFIGURED. Link for {recipient_email}:")
+        print(f"URL: {reset_url}")
         print("="*50)
         return
-
-    reset_url = f"{frontend_base.rstrip('/')}/reset-password?token={reset_token}"
 
     message = EmailMessage()
     message["Subject"] = f"{app_name} - Recuperação de palavra-passe"
@@ -213,9 +211,7 @@ def get_or_create_diary_day(db: Session, user_id: int, date_key: str) -> models.
     return day
 
 
-# Configure CORS to allow frontend to access the backend
-origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
-
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -358,7 +354,7 @@ def get_dashboard_summary(db: Session = Depends(get_db), current_user: models.Us
 def forgot_password(request: schemas.ForgotPasswordRequest, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter(models.User.username == request.username).first()
     if not db_user:
-        return {"message": "If the email exists, a reset link has been sent."}
+        return {"message": "Se o email existir, um link de recuperação foi enviado."}
 
     token = auth.create_password_reset_token(db_user.username)
     db_user.reset_token = token
@@ -369,7 +365,7 @@ def forgot_password(request: schemas.ForgotPasswordRequest, db: Session = Depend
     except Exception as exc:
         print(f"Password reset email failed: {exc}")
     
-    return {"message": "If the email exists, a reset link has been sent."}
+    return {"message": "Se o email existir, um link de recuperação foi enviado."}
 
 @app.post("/reset-password/")
 def reset_password(request: schemas.ResetPasswordConfirm, db: Session = Depends(get_db)):
@@ -382,6 +378,7 @@ def reset_password(request: schemas.ResetPasswordConfirm, db: Session = Depends(
         raise HTTPException(status_code=400, detail="Token inválido ou expirado.")
 
     db_user.hashed_password = auth.get_password_hash(request.new_password)
+    db_user.reset_token = None
     db.commit()
     return {"message": "Palavra-passe alterada com sucesso."}
 
