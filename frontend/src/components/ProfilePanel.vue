@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { auth } from '@/auth'
 
 const loading = ref(true)
 const errorMessage = ref('')
@@ -97,24 +98,12 @@ const fetchProfile = async () => {
   errorMessage.value = ''
 
   try {
-    const response = await fetch('http://localhost:8000/users/')
-    if (!response.ok) throw new Error('Falha ao carregar perfil.')
-
-    const users = await response.json()
-    const localUserId = Number(localStorage.getItem('user_id'))
-    const matchedUser = users.find((user) => user.id === localUserId)
-
-    userProfile.value = matchedUser || users[0] || null
-
+    userProfile.value = await auth.getMe()
     if (!userProfile.value) {
       errorMessage.value = 'Nao existe nenhum perfil disponivel.'
     }
   } catch (error) {
-    if (error instanceof TypeError) {
-      errorMessage.value = 'Nao foi possivel ligar ao backend. Verifica se o servidor esta ativo.'
-    } else {
-      errorMessage.value = error.message || 'Erro ao obter o perfil.'
-    }
+    errorMessage.value = error.message || 'Erro ao obter o perfil.'
   } finally {
     loading.value = false
   }
@@ -129,7 +118,7 @@ const requestPasswordChange = async () => {
   try {
     const response = await fetch('http://localhost:8000/forgot-password/', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: auth.getAuthHeaders(),
       body: JSON.stringify({ username: userProfile.value.username })
     })
 
@@ -138,9 +127,7 @@ const requestPasswordChange = async () => {
     const data = await response.json()
     passwordMessage.value = data.message || 'Pedido enviado.'
   } catch (error) {
-    passwordMessage.value = error instanceof TypeError
-      ? 'Backend indisponivel para alterar a palavra-passe.'
-      : (error.message || 'Erro ao iniciar alteracao de palavra-passe.')
+    passwordMessage.value = error.message || 'Erro ao iniciar alteracao de palavra-passe.'
   } finally {
     passwordLoading.value = false
   }

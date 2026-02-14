@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, watch, nextTick } from 'vue';
+import { auth } from '@/auth';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -175,7 +176,7 @@ const findShops = async () => {
 
     const response = await fetch('http://localhost:8000/shops/find', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: auth.getAuthHeaders(),
       body: JSON.stringify(payload),
     });
 

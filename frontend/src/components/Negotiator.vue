@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from 'vue';
+import { auth } from '@/auth';
 
 const emit = defineEmits(['choice']);
 
@@ -18,7 +19,7 @@ const negotiate = async () => {
   try {
     const response = await fetch('http://localhost:8000/negotiator/negotiate', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: auth.getAuthHeaders(),
       body: JSON.stringify({ craving: craving.value, target_calories: 600 })
     });
 

@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 import hashlib
 import uuid
 from datetime import datetime
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 
@@ -21,7 +21,7 @@ print(f"Model: {os.getenv('OPENAI_MODEL', 'Default')}")
 print("="*30)
 
 # Use absolute imports (as per local requirement and working state)
-import models, schemas, shops, negotiator, food_data
+import models, schemas, shops, negotiator, food_data, auth, vision
 from database import SessionLocal, engine, get_db
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import timedelta
@@ -31,9 +31,6 @@ models.Base.metadata.create_all(bind=engine)
 app = FastAPI()
 
 VALID_MEAL_SECTIONS = {"breakfast", "lunch", "snack", "dinner", "extras"}
-
-def get_password_hash(password: str) -> str:
-    return hashlib.sha256(password.encode()).hexdigest()
 
 
 def validate_date_key(date_key: str) -> str:
@@ -160,7 +157,7 @@ def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), c
 
 
 @app.get("/diary/{user_id}/{date_key}", response_model=schemas.DiaryDay)
-def get_diary_day(user_id: int, date_key: str, db: Session = Depends(get_db)):
+def get_diary_day(user_id: int, date_key: str, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     validate_date_key(date_key)
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
@@ -171,7 +168,7 @@ def get_diary_day(user_id: int, date_key: str, db: Session = Depends(get_db)):
 
 
 @app.get("/diary/{user_id}", response_model=list[schemas.DiaryDay])
-def get_diary_days_range(user_id: int, start: str, end: str, db: Session = Depends(get_db)):
+def get_diary_days_range(user_id: int, start: str, end: str, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     start_key = validate_date_key(start)
     end_key = validate_date_key(end)
     if start_key > end_key:
@@ -195,7 +192,7 @@ def get_diary_days_range(user_id: int, start: str, end: str, db: Session = Depen
 
 
 @app.put("/diary/{user_id}/{date_key}/goal", response_model=schemas.DiaryDay)
-def update_diary_goal(user_id: int, date_key: str, payload: schemas.DiaryGoalUpdate, db: Session = Depends(get_db)):
+def update_diary_goal(user_id: int, date_key: str, payload: schemas.DiaryGoalUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     validate_date_key(date_key)
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
@@ -209,7 +206,7 @@ def update_diary_goal(user_id: int, date_key: str, payload: schemas.DiaryGoalUpd
 
 
 @app.post("/diary/{user_id}/{date_key}/meals", response_model=schemas.DiaryDay)
-def add_diary_meal(user_id: int, date_key: str, payload: schemas.DiaryMealCreate, db: Session = Depends(get_db)):
+def add_diary_meal(user_id: int, date_key: str, payload: schemas.DiaryMealCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     validate_date_key(date_key)
     if payload.section not in VALID_MEAL_SECTIONS:
         raise HTTPException(status_code=400, detail="Invalid meal section")
@@ -235,7 +232,7 @@ def add_diary_meal(user_id: int, date_key: str, payload: schemas.DiaryMealCreate
 
 
 @app.delete("/diary/meals/{meal_id}", response_model=schemas.DiaryDay)
-def delete_diary_meal(meal_id: int, db: Session = Depends(get_db)):
+def delete_diary_meal(meal_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     meal = db.query(models.DiaryMeal).filter(models.DiaryMeal.id == meal_id).first()
     if not meal:
         raise HTTPException(status_code=404, detail="Meal not found")
@@ -287,7 +284,7 @@ def find_shops(request: schemas.ShopSearchRequest, current_user: models.User = D
 
 
 @app.get("/foods/search", response_model=list[schemas.FoodSearchItem])
-def search_foods(q: str, page_size: int = 10):
+def search_foods(q: str, page_size: int = 10, current_user: models.User = Depends(auth.get_current_user)):
     return food_data.search_foods(q, page_size=page_size)
 
 @app.post("/items/", response_model=schemas.Item)

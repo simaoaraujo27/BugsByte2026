@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
+import { auth } from '@/auth'
 
 const STORAGE_KEY = 'nutri_diary_tracking_v1'
 const DEFAULT_GOAL = 1800
@@ -391,7 +392,9 @@ const searchFoodApi = async () => {
   foodSearch.value.results = []
 
   try {
-    const res = await fetch(`http://localhost:8000/foods/search?q=${encodeURIComponent(query)}&page_size=8`)
+    const res = await fetch(`http://localhost:8000/foods/search?q=${encodeURIComponent(query)}&page_size=8`, {
+      headers: auth.getAuthHeaders()
+    })
     if (!res.ok) throw new Error('Falha na pesquisa de alimentos')
     const data = await res.json()
     foodSearch.value.results = Array.isArray(data) ? data : []

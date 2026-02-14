@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from 'vue';
+import { auth } from '@/auth';
 
 const fileInput = ref(null);
 const previewImage = ref(null);
@@ -34,6 +35,7 @@ const uploadAndAnalyze = async (file) => {
   try {
     const response = await fetch('http://localhost:8000/vision/analyze', {
       method: 'POST',
+      headers: auth.getAuthHeaders(),
       body: formData,
     });
 
