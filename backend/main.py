@@ -148,12 +148,12 @@ def analyze_mood(request: schemas.NegotiatorRequest, current_user: models.User =
 
 @app.post("/negotiator/negotiate", response_model=schemas.NegotiatorResponse)
 def negotiate_craving(request: schemas.NegotiatorRequest, current_user: models.User = Depends(auth.get_current_user)):
-    return negotiator.negotiate_craving(request.craving, request.target_calories, request.mood)
+    return negotiator.negotiate_craving(request.craving, request.target_calories, request.mood, favorite_recipes=current_user.favorite_recipes)
 
 @app.post("/vision/analyze", response_model=schemas.VisionResponse)
 async def analyze_ingredients_photo(file: UploadFile = File(...), current_user: models.User = Depends(auth.get_current_user)):
     contents = await file.read()
-    return vision.analyze_image_ingredients(contents)
+    return vision.analyze_image_ingredients(contents, favorite_recipes=current_user.favorite_recipes)
 
 @app.get("/users/", response_model=list[schemas.User])
 def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
