@@ -182,21 +182,21 @@ watch(isDarkMode, (value) => {
 }
 
 .site-layout.theme-dark {
-  --bg-main: #0f1728;
-  --bg-elevated: #162034;
-  --text-main: #e6edf7;
-  --text-muted: #a6b6cc;
-  --line: #24334d;
-  --sidebar-bg: #111a2b;
-  --menu-hover-bg: #1d2a42;
-  --menu-active-bg: #123d36;
-  --menu-active-text: #92f2da;
-  --menu-highlight-bg: #4a2f13;
-  --menu-highlight-hover-bg: #5e3a16;
-  --menu-highlight-active-bg: #704417;
-  --menu-highlight-text: #ffd39f;
-  --menu-highlight-active-text: #ffe3c2;
-  background: radial-gradient(circle at 20% 0%, #1a2740 0%, #0f1728 45%, #0b1220 100%);
+  --bg-main: #06090f;
+  --bg-elevated: #0f172a;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --line: #1e293b;
+  --sidebar-bg: #020617;
+  --menu-hover-bg: #1e293b;
+  --menu-active-bg: #064e3b;
+  --menu-active-text: #34d399;
+  --menu-highlight-bg: #451a03;
+  --menu-highlight-hover-bg: #78350f;
+  --menu-highlight-active-bg: #92400e;
+  --menu-highlight-text: #fed7aa;
+  --menu-highlight-active-text: #ffedd5;
+  background: radial-gradient(circle at 0% 0%, #0f172a 0%, #06090f 50%, #020617 100%);
 }
 
 .content {

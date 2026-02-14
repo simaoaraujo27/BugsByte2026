@@ -143,8 +143,8 @@ const reset = () => {
 }
 
 .upload-zone {
-  background: white;
-  border: 3px dashed #edf2f7;
+  background: var(--bg-elevated);
+  border: 3px dashed var(--line);
   border-radius: 32px;
   padding: 80px 40px;
   text-align: center;
@@ -154,12 +154,12 @@ const reset = () => {
 
 .upload-zone:hover {
   border-color: #07a374;
-  background: #fdfdfd;
+  background: var(--bg-main);
 }
 
 .upload-icon { font-size: 4rem; margin-bottom: 24px; }
-.upload-zone h3 { font-size: 1.8rem; margin-bottom: 12px; color: #11263f; }
-.upload-zone p { color: #54667e; margin-bottom: 32px; max-width: 500px; margin-left: auto; margin-right: auto; }
+.upload-zone h3 { font-size: 1.8rem; margin-bottom: 12px; color: var(--text-main); }
+.upload-zone p { color: var(--text-muted); margin-bottom: 32px; max-width: 500px; margin-left: auto; margin-right: auto; }
 
 .btn-upload {
   background: #07a374;
@@ -183,6 +183,7 @@ const reset = () => {
   overflow: hidden;
   max-height: 400px;
   box-shadow: 0 15px 40px rgba(0,0,0,0.1);
+  border: 1px solid var(--line);
 }
 
 .image-preview {
@@ -194,7 +195,7 @@ const reset = () => {
 .loading-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(17, 38, 63, 0.8);
+  background: rgba(17, 38, 63, 0.85);
   color: white;
   display: flex;
   flex-direction: column;
@@ -217,8 +218,9 @@ const reset = () => {
 .btn-reset-top {
   position: absolute;
   bottom: 20px; right: 20px;
-  background: white;
-  border: none;
+  background: var(--bg-elevated);
+  color: var(--text-main);
+  border: 1px solid var(--line);
   padding: 8px 16px;
   border-radius: 10px;
   font-weight: 700;
@@ -244,8 +246,8 @@ const reset = () => {
 }
 
 .chip {
-  background: #e3f7f2;
-  color: #07a374;
+  background: var(--menu-active-bg);
+  color: var(--menu-active-text);
   padding: 6px 12px;
   border-radius: 20px;
   font-size: 0.85rem;
@@ -256,20 +258,21 @@ const reset = () => {
   margin-top: 20px;
   font-style: italic;
   font-size: 1.1rem;
-  color: #54667e;
+  color: var(--text-muted);
 }
 
 .recipe-card {
-  background: white;
+  background: var(--bg-elevated);
   border-radius: 24px;
   padding: 40px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+  border: 1px solid var(--line);
 }
 
 .recipe-head {
   text-align: center;
   margin-bottom: 40px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--line);
   padding-bottom: 24px;
 }
 
@@ -282,12 +285,17 @@ const reset = () => {
   font-size: 0.9rem;
 }
 
-.time-meta { color: #718096; font-size: 0.9rem; font-weight: 600; }
+.time-meta { color: var(--text-muted); font-size: 0.9rem; font-weight: 600; }
 
 .recipe-grid {
   display: grid;
   grid-template-columns: 300px 1fr;
   gap: 40px;
+}
+
+.ingredients-list h5, .steps-list h5 {
+  color: var(--text-main);
+  margin-top: 0;
 }
 
 .ingredients-list ul {
@@ -297,9 +305,9 @@ const reset = () => {
 
 .ingredients-list li {
   padding: 8px 0;
-  border-bottom: 1px solid #f8fafc;
+  border-bottom: 1px solid var(--line);
   font-size: 0.95rem;
-  color: #4a5568;
+  color: var(--text-main);
 }
 
 .steps-list ol {
@@ -316,8 +324,8 @@ const reset = () => {
 }
 
 .step-num {
-  background: #11263f;
-  color: white;
+  background: var(--text-main);
+  color: var(--bg-main);
   width: 28px;
   height: 28px;
   border-radius: 50%;
@@ -329,9 +337,14 @@ const reset = () => {
   font-weight: 800;
 }
 
+.steps-list p {
+  color: var(--text-main);
+  margin: 0;
+}
+
 .btn-finish {
-  background: #11263f;
-  color: white;
+  background: var(--text-main);
+  color: var(--bg-main);
   padding: 16px 32px;
   border-radius: 16px;
   border: none;
