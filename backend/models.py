@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Table
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Table, UniqueConstraint
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -33,6 +33,7 @@ class User(Base):
     activity_level = Column(String, nullable=True)
 
     allergens = relationship("Allergen", secondary=user_allergens, back_populates="users")
+    diary_days = relationship("DiaryDay", back_populates="user", cascade="all, delete-orphan")
 
 class Allergen(Base):
     __tablename__ = "allergens"
@@ -41,3 +42,31 @@ class Allergen(Base):
     name = Column(String, unique=True, index=True)
 
     users = relationship("User", secondary=user_allergens, back_populates="allergens")
+
+
+class DiaryDay(Base):
+    __tablename__ = "diary_days"
+    __table_args__ = (UniqueConstraint("user_id", "date_key", name="uq_diary_user_date"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    date_key = Column(String, nullable=False, index=True)  # YYYY-MM-DD
+    goal = Column(Integer, nullable=False, default=1800)
+
+    user = relationship("User", back_populates="diary_days")
+    meals = relationship("DiaryMeal", back_populates="day", cascade="all, delete-orphan")
+
+
+class DiaryMeal(Base):
+    __tablename__ = "diary_meals"
+
+    id = Column(Integer, primary_key=True, index=True)
+    day_id = Column(Integer, ForeignKey("diary_days.id"), nullable=False, index=True)
+    section = Column(String, nullable=False, index=True)  # breakfast/lunch/snack/dinner/extras
+    name = Column(String, nullable=False)
+    calories = Column(Integer, nullable=False, default=0)
+    protein = Column(Float, nullable=False, default=0)
+    carbs = Column(Float, nullable=False, default=0)
+    fat = Column(Float, nullable=False, default=0)
+
+    day = relationship("DiaryDay", back_populates="meals")

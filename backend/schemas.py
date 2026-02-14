@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 class ItemBase(BaseModel):
     name: str
@@ -62,6 +62,15 @@ class ShopSearchRequest(BaseModel):
     radius: int = 3000
     mode: str = "shop" # 'shop' or 'restaurant'
 
+
+class FoodSearchItem(BaseModel):
+    name: str
+    calories_per_100g: float
+    protein_per_100g: float
+    carbs_per_100g: float
+    fat_per_100g: float
+    source: str
+
 class Recipe(BaseModel):
     title: str
     calories: int
@@ -78,3 +87,56 @@ class NegotiatorResponse(BaseModel):
     message: str
     recipe: Recipe
     restaurant_search_term: str
+
+
+class DiaryGoalUpdate(BaseModel):
+    goal: int = Field(..., ge=1000, le=6000)
+
+
+class DiaryMealCreate(BaseModel):
+    section: str
+    name: str
+    calories: int = Field(..., ge=0, le=10000)
+    protein: float = Field(0, ge=0, le=1000)
+    carbs: float = Field(0, ge=0, le=1000)
+    fat: float = Field(0, ge=0, le=1000)
+
+    @field_validator("section")
+    @classmethod
+    def validate_section(cls, value: str) -> str:
+        allowed = {"breakfast", "lunch", "snack", "dinner", "extras"}
+        if value not in allowed:
+            raise ValueError("Invalid section")
+        return value
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        name = value.strip()
+        if not name:
+            raise ValueError("Meal name is required")
+        return name
+
+
+class DiaryMeal(BaseModel):
+    id: int
+    section: str
+    name: str
+    calories: int
+    protein: float
+    carbs: float
+    fat: float
+
+    class ConfigDict:
+        from_attributes = True
+
+
+class DiaryDay(BaseModel):
+    id: int
+    user_id: int
+    date_key: str
+    goal: int
+    meals: list[DiaryMeal] = []
+
+    class ConfigDict:
+        from_attributes = True
