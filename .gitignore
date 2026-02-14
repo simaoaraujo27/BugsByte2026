@@ -4,3 +4,4 @@
 __pycache__/
 *.pyc
 backend/sql_app.db
+node_modules

@@ -5,6 +5,7 @@ import DashboardHome from './DashboardHome.vue'
 import Negotiator from './Negotiator.vue'
 import ShopFinder from './ShopFinder.vue'
 import ProfilePanel from './ProfilePanel.vue'
+import DiaryTracking from './DiaryTracking.vue'
 import VisionRecipe from './VisionRecipe.vue'
 
 const sections = [
@@ -121,6 +122,10 @@ watch(isDarkMode, (value) => {
           :initial-ingredients="shopParams.ingredients" 
           mode="shop" 
         />
+      </div>
+
+      <div v-else-if="activeSection === 'diario'">
+        <DiaryTracking />
       </div>
 
       <div v-else-if="activeSection === 'definicoes'" class="settings-panel">
