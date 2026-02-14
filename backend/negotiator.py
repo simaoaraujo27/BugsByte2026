@@ -29,17 +29,19 @@ def analyze_mood(craving: str, mood: str) -> schemas.MoodAnalysisResponse:
 
     prompt = (
         f"O utilizador está com desejo de '{craving}' e sente-se '{mood}'. "
-        "Atua como um assistente de decisão alimentar inteligente, empático e acolhedor (PT-PT). "
-        "1. Classifica o tipo de fome/impulso (emocional ou física). "
-        "2. Responde com empatia e sem julgamento. "
-        "3. Explica brevemente o que o corpo ou a mente está a procurar nesse estado emocional. "
-        "4. Sugere uma estratégia alimentar apropriada (ex: beber água, esperar 10 min, comer conscientemente). "
+        "Atua como um assistente de decisão alimentar inteligente, empático e ALTAMENTE criativo (PT-PT). "
+        "REGRAS IMPORTANTES: "
+        "1. EVITA conselhos genéricos e repetitivos (como apenas 'beber água' ou 'esperar 10 minutos'). "
+        "2. Fornece uma estratégia ÚNICA baseada especificamente na combinação do desejo e da emoção atual. "
+        "3. Classifica o tipo de fome/impulso. "
+        "4. Explica a raíz neurobiológica ou psicológica (ex: busca de magnésio, conforto familiar, regulação de cortisol). "
+        "5. O tom deve ser de um especialista sofisticado. "
         "Retorna um objeto JSON com esta estrutura: "
         "{ "
         "  'mood_type': 'impulso emocional / fome física / recompensa', "
-        "  'empathy_message': 'mensagem calorosa de apoio', "
-        "  'explanation': 'o que a mente procura (ex: dopamina, conforto)', "
-        "  'eating_strategy': 'estratégia personalizada' "
+        "  'empathy_message': 'mensagem calorosa e profunda de apoio', "
+        "  'explanation': 'explicação científica ou psicológica detalhada', "
+        "  'eating_strategy': 'estratégia personalizada, inovadora e prática' "
         "}"
     )
 
@@ -47,10 +49,10 @@ def analyze_mood(craving: str, mood: str) -> schemas.MoodAnalysisResponse:
         response = client.chat.completions.create(
             model=model,
             messages=[
-                {"role": "system", "content": "És um assistente nutricional caloroso e não julgador. Responde sempre em Português de Portugal."},
+                {"role": "system", "content": "És um assistente nutricional sofisticado. Nunca dês a mesma resposta duas vezes. Sê variado e criativo. Responde sempre em Português de Portugal."},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.7,
+            temperature=0.9,
             response_format={"type": "json_object"}
         )
         data = json.loads(response.choices[0].message.content)
@@ -70,7 +72,8 @@ def negotiate_craving(craving: str, target_calories: int = 600, mood: Optional[s
         "1. Se o pedido NÃO for comida real, ou se for ofensivo, sexual, perigoso, gíria inapropriada ou sem sentido, DEVES RECUSAR terminantemente. "
         "2. Se recusares, define 'recipe' como null e escreve uma mensagem educada em PT-PT explicando que apenas aceitas pedidos de alimentação saudável. "
         "3. Se for comida, atua como um Chef e Nutricionista de elite em Portugal (PT-PT). "
-        "4. A resposta deve seguir RIGOROSAMENTE esta estrutura JSON (NUNCA traduzas as chaves/keys): "
+        "4. A receita deve ser GOURMET, única e nunca antes vista. Evita receitas padrão. "
+        "5. A resposta deve seguir RIGOROSAMENTE esta estrutura JSON (NUNCA traduzas as chaves/keys): "
         "{ "
         "  'message': 'Mensagem carismática em PT-PT', "
         "  'recipe': { "
@@ -88,10 +91,10 @@ def negotiate_craving(craving: str, target_calories: int = 600, mood: Optional[s
         response = client.chat.completions.create(
             model=model,
             messages=[
-                {"role": "system", "content": "You are a helpful nutritionist assistant. Always answer in Portuguese (Portugal). Return only valid JSON."},
+                {"role": "system", "content": "You are a world-class creative Chef. Every recipe you provide must be unique, gourmet, and healthy. Never repeat yourself. Always answer in Portuguese (Portugal). Return only valid JSON."},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.7,
+            temperature=0.9,
             response_format={"type": "json_object"}
         )
         content = response.choices[0].message.content
