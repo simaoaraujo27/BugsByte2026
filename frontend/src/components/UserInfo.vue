@@ -20,6 +20,11 @@
         </div>
 
         <div class="form-group full-width">
+          <label for="full_name">Nome de perfil</label>
+          <input type="text" id="full_name" v-model.trim="form.full_name" placeholder="Ex: Francisco" required />
+        </div>
+
+        <div class="form-group full-width">
           <label for="password">Palavra-passe</label>
           <input type="password" id="password" v-model="form.password" placeholder="••••••••" required />
         </div>
@@ -145,6 +150,7 @@ const syncTheme = () => {
 
 const form = reactive({
   username: '',
+  full_name: '',
   password: '',
   sexo: 'male',
   idade: null,
