@@ -1,5 +1,7 @@
 #!/bin/bash
 
-# Run the FastAPI application using poetry, adding current directory to PYTHONPATH
+# Adicionar o diretório atual ao PYTHONPATH para garantir que os módulos são encontrados
 export PYTHONPATH=$PYTHONPATH:.
-poetry run uvicorn main:app --reload --host 0.0.0.0 --port 8000
+
+# Correr a aplicação FastAPI usando poetry, aceitando ligações IPv6 (::)
+poetry run uvicorn main:app --reload --host :: --port 8000
