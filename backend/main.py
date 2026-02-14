@@ -366,6 +366,6 @@ def remove_favorite_restaurant(restaurant_id: int, db: Session = Depends(get_db)
         pass # Restaurant not in favorites
     return current_user
 
-@app.get("/", methods=["GET", "HEAD"])
+@app.api_route("/", methods=["GET", "HEAD"])
 async def root():
     return {"message": "Welcome to the FastAPI Backend!"}
