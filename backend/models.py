@@ -37,8 +37,6 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
-    full_name = Column(String, nullable=True)
-    profile_image = Column(Text, nullable=True) # Store as base64 for simplicity in this project
     hashed_password = Column(String)
     peso = Column(Float)
     altura = Column(Float)

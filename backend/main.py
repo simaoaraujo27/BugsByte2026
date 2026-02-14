@@ -208,12 +208,6 @@ def update_user_me(update_data: schemas.UserUpdate, db: Session = Depends(get_db
             raise HTTPException(status_code=400, detail="Username already taken")
         current_user.username = update_data.username
     
-    if update_data.full_name is not None:
-        current_user.full_name = update_data.full_name
-    
-    if update_data.profile_image is not None:
-        current_user.profile_image = update_data.profile_image
-    
     if update_data.password:
         current_user.hashed_password = auth.get_password_hash(update_data.password)
     
@@ -429,10 +423,6 @@ def add_food_history(
     db: Session = Depends(get_db), 
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    # Check if exists to update timestamp or duplicates
-    # For simplicity, we can just add a new entry. Or, if we want "Recent" unique list, we can update.
-    # Let's delete old one if exists with same name to keep list clean and update timestamp (via new insert)
-    
     existing = db.query(models.FoodHistory).filter(
         models.FoodHistory.user_id == current_user.id,
         models.FoodHistory.name == item.name
@@ -455,7 +445,6 @@ def add_food_history(
     db.commit()
     db.refresh(new_entry)
     
-    # Optional: Limit history size (e.g., keep last 50)
     count = db.query(models.FoodHistory).filter(models.FoodHistory.user_id == current_user.id).count()
     if count > 50:
         oldest = db.query(models.FoodHistory).filter(models.FoodHistory.user_id == current_user.id).order_by(models.FoodHistory.created_at.asc()).first()

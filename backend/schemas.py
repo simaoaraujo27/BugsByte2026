@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional
+from datetime import datetime
 
 class ItemBase(BaseModel):
     name: str
@@ -53,8 +54,6 @@ class Restaurant(RestaurantBase):
 
 class UserBase(BaseModel):
     username: str
-    full_name: Optional[str] = None
-    profile_image: Optional[str] = None
     peso: float
     altura: float
     sexo: str
@@ -68,8 +67,6 @@ class UserCreate(UserBase):
 
 class UserUpdate(BaseModel):
     username: Optional[str] = None
-    full_name: Optional[str] = None
-    profile_image: Optional[str] = None
     password: Optional[str] = None
     peso: Optional[float] = None
     altura: Optional[float] = None
@@ -130,31 +127,6 @@ class FoodSearchItem(BaseModel):
     fat_per_100g: float
     source: str
 
-class FoodHistoryBase(BaseModel):
-    name: str
-    calories_per_100g: float
-    protein_per_100g: float
-    carbs_per_100g: float
-    fat_per_100g: float
-    source: str = "search"
-
-class FoodHistoryCreate(FoodHistoryBase):
-    pass
-
-class FoodHistoryResponse(FoodHistoryBase):
-    id: int
-    user_id: int
-    created_at: str
-
-    class ConfigDict:
-        from_attributes = True
-
-    @field_validator("created_at", mode="before")
-    def serialize_datetime(cls, v):
-        if v:
-            return v.isoformat()
-        return v
-
 class NegotiatorRecipe(BaseModel):
     title: str
     calories: int
@@ -184,8 +156,6 @@ class NutritionAnalysisRequest(BaseModel):
 
 class NutritionAnalysisResponse(BaseModel):
     food_text: str
-    is_food: bool = True
-    error_message: Optional[str] = None
     name: str
     calories: int
     protein: float
@@ -244,6 +214,22 @@ class DiaryDay(BaseModel):
 
     class ConfigDict:
         from_attributes = True
+
+class FoodHistoryCreate(BaseModel):
+    name: str
+    calories_per_100g: float
+    protein_per_100g: float
+    carbs_per_100g: float
+    fat_per_100g: float
+    source: str = "search"
+
+class FoodHistoryResponse(FoodHistoryCreate):
+    id: int
+    created_at: datetime
+
+    class ConfigDict:
+        from_attributes = True
+
 class VisionResponse(BaseModel):
     detected_ingredients: list[str]
     message: str
