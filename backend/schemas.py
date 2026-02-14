@@ -76,5 +76,5 @@ class NegotiatorRequest(BaseModel):
 class NegotiatorResponse(BaseModel):
     original_craving: str
     message: str
-    recipe: Recipe
+    recipe: Recipe | None = None
     restaurant_search_term: str

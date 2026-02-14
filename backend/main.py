@@ -120,22 +120,29 @@ def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
 @app.post("/shops/find", response_model=list[schemas.Shop])
 def find_shops(request: schemas.ShopSearchRequest):
     if request.mode == "restaurant":
-        # Search for restaurants
+        # Search for restaurants matching the ingredients (which acts as term here)
         search_val = "restaurant"
         key = "amenity"
+        # Use the first item as a search term (e.g. "Pizza", "Italiano")
+        search_term = request.ingredients[0] if request.ingredients else None
         
         found_shops = shops.find_nearby_shops(
             search_val, 
             request.lat, 
             request.lon, 
             request.radius,
-            key=key
+            key=key,
+            search_term=search_term
         )
     else:
         # 1. Determine the shop type using OpenAI
         shop_tag = shops.get_shop_type(request.ingredients)
         
+        if shop_tag == "invalid":
+            raise HTTPException(status_code=400, detail="A pesquisa contém termos inválidos ou não relacionados com alimentação.")
+
         # 2. Find nearby shops using Overpass API
+        # We don't filter by name here because we want any shop that sells the ingredients
         found_shops = shops.find_nearby_shops(
             shop_tag, 
             request.lat, 
