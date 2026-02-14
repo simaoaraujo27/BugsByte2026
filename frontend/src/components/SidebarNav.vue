@@ -85,6 +85,8 @@ const handleSelect = (id) => {
   position: sticky;
   top: 0;
   transition: all 0.3s ease;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 .header-mobile {
@@ -166,6 +168,7 @@ const handleSelect = (id) => {
   gap: 10px;
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .sidebar-footer {
