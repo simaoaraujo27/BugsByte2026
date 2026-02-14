@@ -52,37 +52,10 @@ const handleLogin = async () => {
   
   isLoading.value = true
   try {
-    const response = await fetch('http://localhost:8000/login/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        username: email.value, 
-        password: password.value,
-      }),
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.detail || 'Falha no início de sessão')
-    }
-
-    const data = await response.json()
+    const data = await auth.login(email.value, password.value)
     console.log('Login successful:', data)
-    
-    // Store user info and token using auth utility
-    // The backend now returns {access_token, token_type}
-    // We also need the user_id, but the login endpoint currently doesn't return it.
-    // Let's first save the token.
-    localStorage.setItem('token', data.access_token)
-    
-    // Fetch user info to get the ID
-    const userMe = await auth.getMe()
-    localStorage.setItem('user_id', userMe.id)
-    
     successMessage.value = 'Bem-vindo de volta, Chef!'
-    
+
     // Handle remember me functionality
     localStorage.setItem('rememberMe', rememberMe.value.toString())
     if (rememberMe.value) {
@@ -103,7 +76,7 @@ const handleLogin = async () => {
 
   } catch (error) {
     console.error('Login error:', error)
-    errorMessage.value = error.message
+    errorMessage.value = error.message || 'Falha no início de sessão'
   } finally {
     isLoading.value = false
   }

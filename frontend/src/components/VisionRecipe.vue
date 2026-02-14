@@ -35,7 +35,7 @@ const uploadAndAnalyze = async (file) => {
   try {
     const response = await fetch('http://localhost:8000/vision/analyze', {
       method: 'POST',
-      headers: auth.getAuthHeaders(),
+      headers: auth.getAuthHeaders(false),
       body: formData,
     });
 
