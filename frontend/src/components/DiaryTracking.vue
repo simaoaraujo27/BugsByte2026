@@ -5,8 +5,8 @@ import { auth } from '@/auth'
 const STORAGE_KEY = 'nutri_diary_tracking_v1'
 const DEFAULT_GOAL = 1800
 const mealSections = [
-  { id: 'breakfast', label: 'Pequeno-almoco', icon: '🥣' },
-  { id: 'lunch', label: 'Almoco', icon: '🍛' },
+  { id: 'breakfast', label: 'Pequeno-almoço', icon: '🥣' },
+  { id: 'lunch', label: 'Almoço', icon: '🍛' },
   { id: 'snack', label: 'Lanche', icon: '🍎' },
   { id: 'dinner', label: 'Jantar', icon: '🍽️' },
   { id: 'extras', label: 'Extras', icon: '🍫' }
@@ -270,32 +270,32 @@ const insights = computed(() => {
   const list = []
 
   if (mealCount.value === 0) {
-    list.push('Comeca por adicionar a primeira refeicao de hoje para acompanhar o progresso.')
+    list.push('Comece por adicionar a primeira refeição de hoje para acompanhar o progresso.')
     return list
   }
 
   if (deltaCalories.value >= 0) {
     if (deltaCalories.value <= 200) {
-      list.push('Estas muito perto do objetivo diario. Falta um ajuste pequeno.')
+      list.push('Está muito perto do objetivo diário. Falta um ajuste pequeno.')
     } else {
-      list.push(`Ainda tens ${deltaCalories.value} kcal disponiveis hoje.`)
+      list.push(`Ainda tem ${deltaCalories.value} kcal disponíveis hoje.`)
     }
   } else {
-    list.push(`Hoje ja excedeste ${Math.abs(deltaCalories.value)} kcal. Amanhã podes compensar de forma leve.`)
+    list.push(`Hoje já excedeu ${Math.abs(deltaCalories.value)} kcal. Amanhã pode compensar de forma ligeira.`)
   }
 
   if (macroPercentages.value.protein > 0 && macroPercentages.value.protein < 18) {
-    list.push('A tua percentagem de proteina esta baixa. Considera incluir uma fonte proteica no proximo prato.')
+    list.push('A sua percentagem de proteína está baixa. Considere incluir uma fonte proteica no próximo prato.')
   }
 
   if (weeklyStats.value.daysWithData >= 4) {
-    list.push(`Boa consistencia: ${weeklyStats.value.onTarget} de ${weeklyStats.value.daysWithData} dias esta semana ficaram dentro do objetivo.`)
+    list.push(`Boa consistência: ${weeklyStats.value.onTarget} de ${weeklyStats.value.daysWithData} dias esta semana ficaram dentro do objetivo.`)
   }
 
   if (weeklyStats.value.deficit > 0) {
     const weeklyKg = weeklyStats.value.deficit / 7700
     const projection = (weeklyKg * 6).toFixed(1)
-    list.push(`Se mantiveres este ritmo, poderas variar cerca de ${projection} kg em 6 semanas.`)
+    list.push(`Se mantiver este ritmo, poderá variar cerca de ${projection} kg em 6 semanas.`)
   }
 
   return list.slice(0, 3)
@@ -403,7 +403,7 @@ const searchFoodApi = async () => {
     }
   } catch (error) {
     foodSearch.value.error = error instanceof TypeError
-      ? 'Backend indisponivel para pesquisa.'
+      ? 'Servidor indisponível para pesquisa.'
       : (error.message || 'Erro ao pesquisar alimentos.')
   } finally {
     foodSearch.value.loading = false
@@ -516,8 +516,8 @@ watch(
   <section class="diary-page">
     <header class="diary-header">
       <div>
-        <h1>Diario / Tracking</h1>
-        <p class="sub">Acompanha calorias, refeicoes e consistencia diaria.</p>
+        <h1>Diário / Tracking</h1>
+        <p class="sub">Acompanhe as suas calorias, refeições e consistência diária.</p>
       </div>
 
       <div class="date-nav">
@@ -535,11 +535,11 @@ watch(
       </div>
 
       <label class="goal-control">
-        Objetivo diario
+        Objetivo diário
         <input type="number" :value="calorieGoal" min="1000" max="6000" step="50" @change="updateGoal" />
       </label>
 
-      <div class="progress-wrap" aria-label="Progresso calorico">
+      <div class="progress-wrap" aria-label="Progresso calórico">
         <div class="progress-fill" :style="{ width: `${progressPercent}%` }"></div>
         <div v-if="exceededPercent > 0" class="progress-over" :style="{ width: `${exceededPercent}%` }"></div>
       </div>
@@ -568,7 +568,7 @@ watch(
           </header>
 
           <div v-if="composerFor === section.id" class="composer">
-            <input v-model="mealDraft.name" type="text" placeholder="Nome da refeicao" />
+            <input v-model="mealDraft.name" type="text" placeholder="Nome da refeição" />
             <button type="button" class="search-food-btn" @click="openFoodSearchModal">
               Pesquisar alimento
             </button>
@@ -610,7 +610,7 @@ watch(
         <article class="side-card">
           <h3>Macros</h3>
           <div class="macro-row">
-            <span>Proteinas</span>
+            <span>Proteínas</span>
             <strong>{{ consumedProtein }}g ({{ macroPercentages.protein }}%)</strong>
           </div>
           <div class="bar"><div class="fill protein" :style="{ width: `${macroPercentages.protein}%` }"></div></div>
@@ -632,7 +632,7 @@ watch(
         </article>
 
         <article class="side-card">
-          <h3>Insights</h3>
+          <h3>Sugestões</h3>
           <ul class="insights">
             <li v-for="tip in insights" :key="tip">{{ tip }}</li>
           </ul>
@@ -669,14 +669,14 @@ watch(
             <option value="relevance">Mais relevantes</option>
             <option value="kcal_asc">Menos kcal/100g</option>
             <option value="kcal_desc">Mais kcal/100g</option>
-            <option value="protein_desc">Mais proteina</option>
+            <option value="protein_desc">Mais proteína</option>
           </select>
-          <input v-model="foodFilters.maxCalories" type="number" min="0" placeholder="Max kcal/100g" />
-          <input v-model="foodFilters.minProtein" type="number" min="0" placeholder="Min Prot. g" />
+          <input v-model="foodFilters.maxCalories" type="number" min="0" placeholder="Máx kcal/100g" />
+          <input v-model="foodFilters.minProtein" type="number" min="0" placeholder="Mín Prot. g" />
         </div>
 
         <p v-if="foodSearch.error" class="search-error">{{ foodSearch.error }}</p>
-        <p v-if="!foodSearch.query.trim()" class="search-empty">Sugestoes rapidas (clica para usar):</p>
+        <p v-if="!foodSearch.query.trim()" class="search-empty">Sugestões rápidas (clique para usar):</p>
         <ul v-if="displayedFoodResults.length" class="food-suggestions">
           <li v-for="food in displayedFoodResults" :key="`${food.source}-${food.name}`">
             <button type="button" @click="chooseFoodSuggestion(food)">
@@ -688,7 +688,7 @@ watch(
             </button>
           </li>
         </ul>
-        <p v-else-if="foodSearch.results.length" class="search-empty">Sem resultados com esses filtros.</p>
+        <p v-else-if="foodSearch.results.length" class="search-empty">Sem resultados com estes filtros.</p>
         </div>
     </div>
   </section>

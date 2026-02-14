@@ -25,29 +25,29 @@ const calorieProgress = computed(() => {
 
 const calorieMessage = computed(() => {
   if (dailyCalories.consumed === 0) {
-    return 'Regista a tua primeira refeição do dia.'
+    return 'Registe a sua primeira refeição do dia.'
   }
   if (calorieProgress.value > 100) {
-    return 'Excedeste o teu objetivo diário.'
+    return 'Excedeu o seu objetivo diário.'
   }
-  return 'Estás no caminho certo para o teu objetivo.'
+  return 'Está no caminho certo para o seu objetivo.'
 })
 
 const streak = 0
 
 const streakMessage = computed(() => {
   if (streak === 0) {
-    return 'Regista uma refeição para começar a tua streak!'
+    return 'Registe uma refeição para começar a sua streak!'
   }
-  return 'Continua o bom trabalho!'
+  return 'Continue o bom trabalho!'
 })
 </script>
 
 <template>
   <div class="dashboard-home">
     <header class="panel-header">
-      <h1>Dashboard</h1>
-      <p>Bem-vindo de volta! Aqui está um resumo da tua atividade.</p>
+      <h1>Painel Principal</h1>
+      <p>Bem-vindo de volta! Aqui está um resumo da sua atividade.</p>
     </header>
 
     <div class="dashboard-grid">
@@ -67,7 +67,7 @@ const streakMessage = computed(() => {
 
       <!-- Streak Card -->
       <article class="card streak-card">
-        <h3>Streak de Registo</h3>
+        <h3>Dias Consecutivos</h3>
         <div class="streak-display">
           <span class="streak-icon" aria-hidden="true">🔥</span>
           <strong class="streak-count">{{ streak }}</strong>
@@ -84,7 +84,7 @@ const streakMessage = computed(() => {
         <div class="hungry-card-content">
           <span class="hungry-icon" aria-hidden="true">🍔</span>
           <h2>Tenho Fome?</h2>
-          <p>Diz-nos o que te apetece e nós damos-te uma versão saudável.</p>
+          <p>Diga-nos o que lhe apetece e nós damos-lhe uma versão saudável.</p>
           <span class="hungry-cta">Começar &rarr;</span>
         </div>
       </article>
@@ -94,7 +94,7 @@ const streakMessage = computed(() => {
         <div class="fridge-card-content">
           <span class="fridge-icon" aria-hidden="true">🧊</span>
           <h2>Assalto ao Frigorífico</h2>
-          <p>Diz-nos o que tens em casa e nós criamos uma receita para ti.</p>
+          <p>Diga-nos o que tem em casa e nós criamos uma receita para si.</p>
           <span class="fridge-cta">Ver Sugestões &rarr;</span>
         </div>
       </article>

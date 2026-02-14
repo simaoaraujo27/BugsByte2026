@@ -45,7 +45,7 @@ const handleLogin = async () => {
   clearMessages()
   // Basic validation logic
   if (!email.value || !password.value) {
-    errorMessage.value = 'Please fill in all fields before signing in.'
+    errorMessage.value = 'Por favor, preencha todos os campos antes de entrar.'
     return
   }
   
@@ -64,12 +64,12 @@ const handleLogin = async () => {
 
     if (!response.ok) {
       const errorData = await response.json()
-      throw new Error(errorData.detail || 'Login failed')
+      throw new Error(errorData.detail || 'Falha no início de sessão')
     }
 
     const data = await response.json()
     console.log('Login successful:', data)
-    successMessage.value = 'Welcome back, Chef!'
+    successMessage.value = 'Bem-vindo de volta, Chef!'
     
     // Store user info
     localStorage.setItem('user_id', data.user_id)
@@ -108,7 +108,7 @@ const handleLogin = async () => {
       <!-- Header / Logo Area -->
       <div class="header-section">
         <div class="logo-container">
-            <img :src="logo" alt="NutriVentures Logo" />
+            <img :src="logo" alt="Logótipo NutriVentures" />
         </div>
         <h1 class="auth-title">NutriVentures</h1>
         <p class="auth-subtitle">Smart Food Negotiator</p>
@@ -127,7 +127,7 @@ const handleLogin = async () => {
       <!-- Login Form -->
       <form @submit.prevent="handleLogin" class="auth-form" novalidate>
         <div class="form-group">
-          <label for="email">Email Address</label>
+          <label for="email">Endereço de E-mail</label>
           <input 
             v-model="email"
             @input="clearMessages"
@@ -140,7 +140,7 @@ const handleLogin = async () => {
         </div>
         
         <div class="form-group">
-          <label for="password">Password</label>
+          <label for="password">Palavra-passe</label>
           <div class="password-input-wrapper">
             <input 
               v-model="password"
@@ -155,7 +155,7 @@ const handleLogin = async () => {
               type="button"
               @click="togglePasswordVisibility"
               class="password-toggle"
-              :aria-label="showPassword ? 'Hide password' : 'Show password'"
+              :aria-label="showPassword ? 'Ocultar palavra-passe' : 'Mostrar palavra-passe'"
             >
               <svg v-if="showPassword" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -176,21 +176,21 @@ const handleLogin = async () => {
                 type="checkbox"
                 id="remember-me"
               />
-              <span class="checkbox-text">Remember me</span>
+              <span class="checkbox-text">Lembrar-me</span>
             </label>
           </div>
-          <router-link to="/forgot-password" class="forgot-link">Forgot password?</router-link>
+          <router-link to="/forgot-password" class="forgot-link">Esqueceu-se da palavra-passe?</router-link>
         </div>
 
         <button type="submit" class="btn btn-primary" :disabled="isLoading">
-          <span v-if="isLoading">Signing in...</span>
-          <span v-else>Sign In</span>
+          <span v-if="isLoading">A entrar...</span>
+          <span v-else>Entrar</span>
         </button>
         
         <div class="signup-text">
-          <span class="signup-text-muted">Don't have an account? </span>
+          <span class="signup-text-muted">Não tem uma conta? </span>
           <router-link to="/signup" class="signup-link">
-            Sign up instead
+            Registe-se aqui
           </router-link>
         </div>
       </form>
@@ -198,7 +198,7 @@ const handleLogin = async () => {
       <!-- Footer -->
       <div class="footer">
         <router-link to="/" class="back-link">
-          &larr; Back to Home
+          &larr; Voltar ao Início
         </router-link>
       </div>
     </div>

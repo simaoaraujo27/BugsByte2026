@@ -1,8 +1,8 @@
 <template>
   <div class="signup-page">
     <div class="user-info-form">
-      <h2 class="form-title">Create Account</h2>
-      <p class="form-subtitle">We need a few details to create your profile.</p>
+      <h2 class="form-title">Criar Conta</h2>
+      <p class="form-subtitle">Precisamos de alguns detalhes para criar o seu perfil.</p>
 
       <!-- Error/Success Messages -->
       <div v-if="errorMessage" class="message error">
@@ -15,32 +15,32 @@
       <form @submit.prevent="submitForm" class="form-grid">
         <!-- Account Info -->
         <div class="form-group full-width">
-          <label for="username">Email (Username)</label>
+          <label for="username">E-mail (Nome de utilizador)</label>
           <input type="email" id="username" v-model="form.username" placeholder="chef@nutriventures.com" required />
         </div>
 
         <div class="form-group full-width">
-          <label for="password">Password</label>
+          <label for="password">Palavra-passe</label>
           <input type="password" id="password" v-model="form.password" placeholder="••••••••" required />
         </div>
 
         <!-- Personal Info -->
         <div class="form-group">
-          <label for="gender">Gender</label>
+          <label for="gender">Género</label>
           <select id="gender" v-model="form.sexo">
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-            <option value="other">Other</option>
+            <option value="male">Masculino</option>
+            <option value="female">Feminino</option>
+            <option value="other">Outro</option>
           </select>
         </div>
 
         <div class="form-group">
-          <label for="age">Age</label>
+          <label for="age">Idade</label>
           <input type="number" id="age" v-model.number="form.idade" placeholder="25" required />
         </div>
 
         <div class="form-group">
-          <label for="height">Height (cm)</label>
+          <label for="height">Altura (cm)</label>
           <input type="number" id="height" v-model.number="form.altura" placeholder="175" required />
         </div>
 
@@ -76,7 +76,7 @@
             </label>
             <label class="radio-label">
               <input type="radio" name="activity" value="light" v-model="form.activity_level" />
-              Leve
+              Ligeiro
             </label>
             <label class="radio-label">
               <input type="radio" name="activity" value="moderate" v-model="form.activity_level" />
@@ -95,15 +95,15 @@
         </div>
 
         <div class="form-actions full-width">
-          <button type="submit" class="btn btn-primary max-w-xs mx-auto">Sign Up</button>
+          <button type="submit" class="btn btn-primary max-w-xs mx-auto">Registar</button>
           
           <div class="login-link">
-              Already have an account? <router-link to="/login">Sign in</router-link>
+              Já tem uma conta? <router-link to="/login">Entrar</router-link>
           </div>
 
           <div class="footer-actions">
             <router-link to="/" class="back-link">
-              &larr; Go Back to Home
+              &larr; Voltar ao Início
             </router-link>
           </div>
         </div>
@@ -158,12 +158,12 @@ const submitForm = async () => {
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.detail || 'Registration failed');
+      throw new Error(errorData.detail || 'Falha no registo');
     }
 
     const data = await response.json();
     console.log('User created:', data);
-    successMessage.value = 'Profile created successfully! Redirecting to login...';
+    successMessage.value = 'Perfil criado com sucesso! A redirecionar para o início de sessão...';
     
     setTimeout(() => {
         router.push('/login');
