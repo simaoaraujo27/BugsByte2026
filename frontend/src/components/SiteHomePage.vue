@@ -9,6 +9,7 @@ import DiaryTracking from './DiaryTracking.vue'
 import VisionRecipe from './VisionRecipe.vue'
 import VolumeComparison from './VolumeComparison.vue'
 import FavoritesPage from './FavoritesPage.vue'
+import HistoryPage from './HistoryPage.vue'
 import SettingsPage from './SettingsPage.vue'
 
 const sections = [
@@ -18,6 +19,7 @@ const sections = [
   { id: 'supermercados', label: 'Supermercados & Compras', icon: '🛒' },
   { id: 'diario', label: 'Diário / Tracking', icon: '📊' },
   { id: 'favoritos', label: 'Favoritos', icon: '❤️' },
+  { id: 'historico', label: 'Histórico', icon: '🕘' },
   { id: 'perfil', label: 'Perfil', icon: '👤' },
   { id: 'definicoes', label: 'Definições', icon: '⚙️' }
 ]
@@ -79,6 +81,10 @@ const sectionContent = {
   favoritos: {
     title: 'Favoritos',
     subtitle: 'Receitas e restaurantes guardados.'
+  },
+  historico: {
+    title: 'Histórico',
+    subtitle: 'Receitas recomendadas automaticamente pelo assistente.'
   },
   perfil: {
     title: 'Perfil',
@@ -165,7 +171,11 @@ watch(isDarkMode, (value) => {
       </div>
       
       <div v-else-if="activeSection === 'favoritos'">
-        <FavoritesPage />
+        <FavoritesPage @navigate="selectSection" />
+      </div>
+
+      <div v-else-if="activeSection === 'historico'">
+        <HistoryPage @navigate="selectSection" />
       </div>
 
       <div v-else-if="activeSection === 'definicoes'">

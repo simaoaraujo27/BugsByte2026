@@ -1,13 +1,8 @@
 <script setup>
-import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import logo from '@/assets/logo.png'
 
 const router = useRouter()
-const isDark = ref(true)
-
-const toggleDarkMode = () => {
-  isDark.value = !isDark.value
-}
 
 const goToLogin = () => {
   router.push('/login')
@@ -15,505 +10,661 @@ const goToLogin = () => {
 </script>
 
 <template>
-  <div :class="['page', { 'dark-mode': isDark }]">
+  <div class="landing">
     <header class="topbar">
-      <div class="logo-group">
-        <img alt="Logo" class="logo" src="../assets/logo.png" />
-        <p class="hackathon-badge">Desenvolvido para o Hackathon Bugsbyte 2026</p>
+      <div class="container nav-inner">
+        <div class="brand">
+          <img :src="logo" alt="NutriVentures" class="brand-logo" />
+          <span class="brand-name">NutriVida</span>
+        </div>
+
+        <nav class="menu-links" aria-label="Navegação principal">
+          <a href="#servicos">Serviços</a>
+          <a href="#beneficios">Benefícios</a>
+          <a href="#testemunhos">Testemunhos</a>
+        </nav>
+
+        <button class="btn btn-main" type="button" @click="goToLogin">Agendar Consulta</button>
       </div>
-      <button class="theme-toggle" @click="toggleDarkMode" :title="isDark ? 'Ativar modo claro' : 'Ativar modo escuro'">
-        <svg v-if="isDark" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
-        <svg v-else xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-      </button>
     </header>
 
     <main>
-      <section class="hero section">
-        <div class="hero-content fade-in-up">
-          <p class="eyebrow">O que vamos comer hoje?</p>
-          <h1>Coma melhor sem deixar de comer o que gosta.</h1>
-          <p class="subtitle">
-            A nossa app adapta receitas às suas calorias e mostra onde comprar ingredientes ou pedir takeaway perto de si.
-          </p>
-          <div class="hero-actions">
-            <button class="btn btn-primary" type="button" @click="goToLogin">Começar Agora</button>
-            <router-link to="/about" class="btn btn-secondary">Saber Mais</router-link>
+      <section class="hero">
+        <div class="container hero-grid">
+          <div class="hero-copy">
+            <p class="tag">Nutrição Personalizada</p>
+            <h1>Transforme a sua saúde com alimentação consciente</h1>
+            <p>
+              Planos alimentares ajustados aos seus objetivos, rotina e preferências,
+              com acompanhamento contínuo para resultados reais e sustentáveis.
+            </p>
+
+            <div class="hero-actions">
+              <button class="btn btn-main" type="button" @click="goToLogin">Começar Agora</button>
+              <a class="btn btn-ghost" href="#servicos">Saber Mais</a>
+            </div>
+
+            <div class="social-proof">
+              <div class="avatars" aria-hidden="true">
+                <span></span><span></span><span></span><span></span>
+              </div>
+              <p>+500 clientes satisfeitos</p>
+            </div>
+          </div>
+
+          <div class="hero-visual" aria-label="Prato saudável">
+            <div class="hero-shape"></div>
+            <img src="https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=1200&q=80" alt="Prato saudável" />
+            <div class="floating-card top">98% satisfação</div>
+            <div class="floating-card bottom">30+ consultas/semana</div>
           </div>
         </div>
-
-        <aside class="hero-card fade-in-up-delayed" aria-label="Pré-visualização da app">
-          <p class="card-label">Exemplo rápido</p>
-          <h2>“Quero francesinha.”</h2>
-          <p>Versão 600 kcal + supermercado mais próximo para comprar ingredientes.</p>
-          <span class="card-pill">2 opções sugeridas</span>
-        </aside>
       </section>
 
-      <section class="section split">
-        <article class="panel">
-          <h3>O Problema</h3>
-          <ul>
-            <li>É difícil comer de forma saudável sem perder tempo.</li>
-            <li>Nem sempre sabe o que cozinhar com o que tem em casa.</li>
-            <li>Quando tem pressa, acaba por escolher as piores opções.</li>
-          </ul>
-        </article>
+      <section id="servicos" class="section-light">
+        <div class="container">
+          <p class="section-tag">O que oferecemos</p>
+          <h2>Serviços Personalizados</h2>
+          <p class="section-subtitle">Cada plano alimentar é adaptado à sua realidade e objetivos.</p>
 
-        <article class="panel">
-          <h3>A Nossa Solução</h3>
-          <ul>
-            <li>IA que transforma desejos em opções equilibradas.</li>
-            <li>Receitas personalizadas para o seu objetivo calórico.</li>
-            <li>Sugestões locais para comprar ingredientes ou pedir comida.</li>
-          </ul>
-        </article>
-      </section>
-
-      <section class="section">
-        <h3 class="section-title">Como funciona</h3>
-        <div class="steps">
-          <article class="step-card">
-            <span class="step-index">1</span>
-            <h4>Criar conta</h4>
-            <p>Defina o seu perfil, alergénios e objetivos.</p>
-          </article>
-          <article class="step-card">
-            <span class="step-index">2</span>
-            <h4>Diga o que quer</h4>
-            <p>Exemplo: “quero uma francesinha”.</p>
-          </article>
-          <article class="step-card">
-            <span class="step-index">3</span>
-            <h4>Receba opções</h4>
-            <p>Receita ajustada + locais próximos.</p>
-          </article>
+          <div class="cards-grid">
+            <article class="service-card">
+              <h3>Planos Alimentares</h3>
+              <p>Estratégias nutricionais personalizadas para o seu estilo de vida.</p>
+              <a href="#" @click.prevent>Saiba mais</a>
+            </article>
+            <article class="service-card">
+              <h3>Acompanhamento</h3>
+              <p>Consultas regulares para monitorizar progresso e ajustar o plano.</p>
+              <a href="#" @click.prevent>Saiba mais</a>
+            </article>
+            <article class="service-card">
+              <h3>Suporte Contínuo</h3>
+              <p>Orientação prática para manter consistência no dia a dia.</p>
+              <a href="#" @click.prevent>Saiba mais</a>
+            </article>
+          </div>
         </div>
       </section>
 
-      <section class="section">
-        <h3 class="section-title">Principais funcionalidades</h3>
-        <div class="features">
-          <article class="feature-card">
-            <p class="feature-icon" aria-hidden="true">IA</p>
-            <h4>Receitas adaptadas</h4>
-            <p>Versões mais leves sem perder o sabor que procura.</p>
-          </article>
-          <article class="feature-card">
-            <p class="feature-icon" aria-hidden="true">GPS</p>
-            <h4>Geo inteligente</h4>
-            <p>Supermercados e restaurantes adequados perto de si.</p>
-          </article>
-          <article class="feature-card">
-            <p class="feature-icon" aria-hidden="true">CASA</p>
-            <h4>Com o que tem</h4>
-            <p>Sugestões com ingredientes que já tem em casa.</p>
-          </article>
-          <article class="feature-card">
-            <p class="feature-icon" aria-hidden="true">META</p>
-            <h4>Objetivo diário</h4>
-            <p>Calorias e escolhas alinhadas com a sua meta.</p>
-          </article>
+      <section id="beneficios" class="benefits">
+        <div class="container benefits-grid">
+          <div>
+            <p class="section-tag">Porque escolher-nos</p>
+            <h2>Benefícios que vão além da balança</h2>
+            <p class="section-subtitle">
+              Alimentação equilibrada com foco em energia, saúde e hábitos sustentáveis.
+            </p>
+
+            <ul class="check-list">
+              <li>Mais energia no dia a dia</li>
+              <li>Melhoria da disposição e do foco</li>
+              <li>Hábitos saudáveis duradouros</li>
+              <li>Resultados consistentes e sustentáveis</li>
+            </ul>
+          </div>
+
+          <div class="mosaic" aria-label="Imagens de alimentação saudável">
+            <img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=900&q=80" alt="Ingredientes frescos" />
+            <img src="https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=900&q=80" alt="Comida saudável" />
+            <img src="https://images.unsplash.com/photo-1482049016688-2d3e1b311543?auto=format&fit=crop&w=900&q=80" alt="Refeição equilibrada" />
+            <img src="https://images.unsplash.com/photo-1511690743698-d9d85f2fbf38?auto=format&fit=crop&w=900&q=80" alt="Salada colorida" />
+          </div>
         </div>
       </section>
 
-      <section class="section cta-final">
-        <h3>Pronto para começar?</h3>
-        <p>Comece em menos de 2 minutos e receba sugestões à sua medida.</p>
-        <button class="btn btn-primary" type="button" @click="goToLogin">Criar Conta Gratuitamente</button>
+      <section id="testemunhos" class="testimonials">
+        <div class="container">
+          <p class="section-tag section-tag-light">Testemunhos</p>
+          <h2>O que dizem os nossos clientes</h2>
+
+          <div class="cards-grid">
+            <article class="testimonial-card">
+              <p>“Melhorei a minha relação com a comida e perdi peso sem dietas extremas.”</p>
+              <strong>Ana Silva</strong>
+              <span>Empresária</span>
+            </article>
+            <article class="testimonial-card">
+              <p>“O plano ajustado à minha rotina fez toda a diferença no meu rendimento.”</p>
+              <strong>Miguel Costa</strong>
+              <span>Atleta amador</span>
+            </article>
+            <article class="testimonial-card">
+              <p>“Finalmente encontrei uma estratégia que consigo manter no dia a dia.”</p>
+              <strong>Carla Mendes</strong>
+              <span>Mãe de 3</span>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="final-cta">
+        <div class="container final-cta-inner">
+          <h2>Pronto para começar a sua transformação?</h2>
+          <p>Agende a sua primeira consulta e receba um plano adequado às suas metas.</p>
+          <button class="btn btn-main" type="button" @click="goToLogin">Agendar Consulta Gratuita</button>
+        </div>
       </section>
     </main>
+
+    <footer class="footer">
+      <div class="container footer-grid">
+        <div>
+          <div class="brand">
+            <img :src="logo" alt="NutriVentures" class="brand-logo" />
+            <span class="brand-name light">NutriVida</span>
+          </div>
+          <p>Transformamos hábitos em resultados com acompanhamento personalizado.</p>
+        </div>
+
+        <div>
+          <h4>Serviços</h4>
+          <ul>
+            <li>Consultas Online</li>
+            <li>Planos Alimentares</li>
+            <li>Acompanhamento</li>
+          </ul>
+        </div>
+
+        <div>
+          <h4>Empresa</h4>
+          <ul>
+            <li>Sobre Nós</li>
+            <li>Equipa</li>
+            <li>Contactos</li>
+          </ul>
+        </div>
+
+        <div>
+          <h4>Contacto</h4>
+          <ul>
+            <li>info@nutrivida.pt</li>
+            <li>+351 900 000 000</li>
+            <li>Lisboa, Portugal</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="container footer-bottom">
+        © 2026 NutriVida. Todos os direitos reservados.
+      </div>
+    </footer>
   </div>
 </template>
 
 <style scoped>
-.page {
-  --bg-main: #f4fbf8;
+.landing {
+  --bg: #f3f8f5;
   --bg-soft: #ffffff;
-  --text-main: #13293d;
-  --text-muted: #3b566d;
-  --accent: #0f766e;
-  --accent-hover: #0b5c56;
-  --line: #d7e7e0;
-  --card-bg: rgba(255, 255, 255, 0.8);
-  --badge-bg: rgba(255, 255, 255, 0.75);
-  --pill-bg: #ddf4ef;
-  --pill-text: #0f5258;
+  --text: #10243c;
+  --muted: #4d6278;
+  --line: #d8e7e0;
+  --green: #0a9a6c;
+  --green-dark: #087b57;
+  --green-soft: #dff4ec;
+  --nav-h: 74px;
 
-  min-height: 100vh;
-  width: 100%;
-  padding: 24px;
-  background:
-    radial-gradient(circle at 15% 10%, rgba(155, 228, 208, 0.25), transparent 30%),
-    radial-gradient(circle at 86% 18%, rgba(177, 214, 241, 0.22), transparent 26%),
-    linear-gradient(160deg, #f8fcff 0%, var(--bg-main) 100%);
-  color: var(--text-main);
+  color: var(--text);
+  background: var(--bg);
   font-family: Sora, 'Segoe UI', Tahoma, sans-serif;
-  transition: background 0.3s ease, color 0.3s ease;
 }
 
-.page.dark-mode {
-  --bg-main: #0f172a;
-  --bg-soft: #1e293b;
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --accent: #2dd4bf;
-  --accent-hover: #14b8a6;
-  --line: #334155;
-  --card-bg: rgba(30, 41, 59, 0.7);
-  --badge-bg: rgba(30, 41, 59, 0.8);
-  --pill-bg: #134e4a;
-  --pill-text: #2dd4bf;
-
-  background:
-    radial-gradient(circle at 15% 10%, rgba(45, 212, 191, 0.15), transparent 30%),
-    radial-gradient(circle at 86% 18%, rgba(56, 189, 248, 0.1), transparent 26%),
-    linear-gradient(160deg, #020617 0%, var(--bg-main) 100%);
-}
-
-.topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.logo-group {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.theme-toggle {
-  background: var(--bg-soft);
-  border: 1px solid var(--line);
-  color: var(--text-main);
-  padding: 8px;
-  border-radius: 12px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-
-.theme-toggle:hover {
-  background: var(--line);
-  transform: translateY(-1px);
-}
-
-.logo {
-  width: 64px;
-  height: 64px;
-}
-
-.hackathon-badge {
-  margin: 0;
-  padding: 6px 12px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  background: var(--badge-bg);
-}
-
-.eyebrow {
-  margin: 0 0 10px;
-  font-size: 0.84rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--accent);
-}
-
-.section {
-  max-width: 1120px;
+.container {
+  width: min(1240px, calc(100% - 48px));
   margin: 0 auto;
 }
 
-.hero {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr;
-  align-items: center;
-  gap: 28px;
-  margin-top: 42px;
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  height: var(--nav-h);
+  background: rgba(255, 255, 255, 0.92);
+  border-bottom: 1px solid #c9e7da;
+  backdrop-filter: blur(8px);
 }
 
-.hero-content h1 {
+.nav-inner {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #fff;
+  padding: 6px;
+}
+
+.brand-name {
+  font-size: 1.95rem;
+  font-weight: 700;
+}
+
+.menu-links {
+  display: flex;
+  gap: 28px;
+}
+
+.menu-links a {
+  color: var(--muted);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.menu-links a:hover {
+  color: var(--text);
+}
+
+.btn {
+  border: 0;
+  border-radius: 999px;
+  min-height: 44px;
+  padding: 0 24px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-main {
+  background: var(--green);
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(10, 154, 108, 0.26);
+}
+
+.btn-main:hover {
+  background: var(--green-dark);
+}
+
+.btn-ghost {
+  background: #fff;
+  border: 1px solid #9fddc7;
+  color: var(--green-dark);
+}
+
+.hero {
+  padding: 50px 0 70px;
+}
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: 30px;
+  align-items: center;
+}
+
+.tag,
+.section-tag {
+  display: inline-block;
+  margin: 0 0 14px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--green-soft);
+  color: var(--green-dark);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.hero-copy h1,
+h2 {
   margin: 0;
-  font-size: clamp(2.1rem, 5vw, 3.9rem);
+  font-size: clamp(2rem, 4.5vw, 4rem);
   line-height: 1.05;
   letter-spacing: -0.02em;
 }
 
-.subtitle {
-  margin: 16px 0 28px;
-  max-width: 54ch;
-  font-size: 1.03rem;
-  line-height: 1.65;
-  color: var(--text-muted);
+.hero-copy p,
+.section-subtitle {
+  margin: 16px 0 0;
+  color: var(--muted);
+  font-size: 1.04rem;
+  line-height: 1.7;
 }
 
 .hero-actions {
+  margin-top: 28px;
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
 }
 
-.btn {
-  border-radius: 999px;
-  padding: 12px 18px;
-  font-size: 0.95rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s ease;
+.social-proof {
+  margin-top: 26px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
-.btn-primary {
-  border: 0;
-  background: var(--accent);
-  color: #f2fffc;
-  box-shadow: 0 8px 20px rgba(15, 118, 110, 0.25);
-}
-
-.btn-primary:hover {
-  background: var(--accent-hover);
-  transform: translateY(-2px);
-}
-
-.btn-secondary {
-  border: 1px solid var(--line);
-  background: var(--bg-soft);
-  color: var(--text-main);
-}
-
-.btn-secondary:hover {
-  background: var(--line);
-}
-
-.hero-card {
-  border: 1px solid var(--line);
-  border-radius: 20px;
-  padding: 22px;
-  background: var(--card-bg);
-  backdrop-filter: blur(8px);
-}
-
-.hero-card h2 {
-  margin: 6px 0 10px;
-  font-size: 1.5rem;
-}
-
-.hero-card p {
+.social-proof p {
   margin: 0;
-  color: var(--text-muted);
-  line-height: 1.5;
+  color: var(--muted);
 }
 
-.card-label {
-  margin: 0;
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--accent);
+.avatars {
+  display: flex;
 }
 
-.card-pill {
-  display: inline-block;
-  margin-top: 14px;
-  border-radius: 999px;
-  padding: 7px 11px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--pill-text);
-  background: var(--pill-bg);
+.avatars span {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #2ac082;
+  border: 2px solid #f4fbf8;
+  margin-left: -6px;
 }
 
-.split {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  margin-top: 48px;
+.avatars span:first-child {
+  margin-left: 0;
 }
 
-.panel {
-  border: 1px solid var(--line);
+.hero-visual {
+  position: relative;
+  min-height: 430px;
+}
+
+.hero-shape {
+  position: absolute;
+  inset: 24px -8px -18px 20px;
+  background: #b3ebd2;
+  border-radius: 58px;
+  transform: rotate(4deg);
+}
+
+.hero-visual img {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 430px;
+  object-fit: cover;
+  border-radius: 56px;
+  box-shadow: 0 18px 46px rgba(9, 26, 48, 0.2);
+}
+
+.floating-card {
+  position: absolute;
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.96);
   border-radius: 16px;
-  padding: 20px;
-  background: var(--card-bg);
-  backdrop-filter: blur(4px);
+  padding: 12px 16px;
+  font-weight: 700;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
 }
 
-.panel h3 {
-  margin: 0 0 14px;
-  font-size: 1.25rem;
+.floating-card.top {
+  left: -20px;
+  top: 150px;
 }
 
-.panel ul {
-  margin: 0;
-  padding-left: 20px;
-  color: var(--text-muted);
+.floating-card.bottom {
+  right: -16px;
+  bottom: 68px;
 }
 
-.panel li + li {
-  margin-top: 8px;
+.section-light,
+.benefits,
+.final-cta {
+  padding: 80px 0;
 }
 
-.section-title {
-  margin: 54px 0 18px;
-  font-size: 1.8rem;
+.section-light {
+  background: #fff;
 }
 
-.steps {
+.section-light h2,
+.benefits h2,
+.testimonials h2,
+.final-cta h2 {
+  font-size: clamp(1.8rem, 3.4vw, 3.1rem);
+  text-align: center;
+}
+
+.section-light .section-subtitle,
+.final-cta p {
+  text-align: center;
+  max-width: 700px;
+  margin: 16px auto 0;
+}
+
+.cards-grid {
+  margin-top: 32px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
+  gap: 18px;
 }
 
-.step-card {
+.service-card,
+.testimonial-card {
+  border-radius: 24px;
+  padding: 26px;
+  box-shadow: 0 12px 24px rgba(10, 33, 54, 0.09);
+}
+
+.service-card {
+  background: #ffffff;
   border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 18px;
-  background: var(--bg-soft);
-  transition: transform 0.2s ease;
 }
 
-.step-card:hover {
-  transform: translateY(-4px);
+.service-card h3 {
+  margin: 0;
+  font-size: 1.45rem;
 }
 
-.step-index {
+.service-card p {
+  margin: 12px 0 16px;
+  color: var(--muted);
+}
+
+.service-card a {
+  color: var(--green);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.benefits-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 26px;
+  align-items: center;
+}
+
+.check-list {
+  margin: 24px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.check-list li {
+  color: var(--muted);
+  padding-left: 28px;
+  position: relative;
+}
+
+.check-list li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
   display: inline-flex;
-  width: 30px;
-  height: 30px;
-  border-radius: 999px;
   align-items: center;
   justify-content: center;
-  background: var(--pill-bg);
-  color: var(--pill-text);
-  font-weight: 700;
-  font-size: 0.9rem;
-}
-
-.step-card h4,
-.feature-card h4 {
-  margin: 12px 0 8px;
-  font-size: 1.06rem;
-}
-
-.step-card p,
-.feature-card p {
-  margin: 0;
-  color: var(--text-muted);
-  line-height: 1.5;
-}
-
-.features {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.feature-card {
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 18px;
-  background: var(--bg-soft);
-  transition: transform 0.2s ease;
-}
-
-.feature-card:hover {
-  transform: translateY(-4px);
-}
-
-.feature-icon {
-  margin: 0;
-  font-size: 0.75rem;
+  background: #c8efdf;
+  color: var(--green-dark);
   font-weight: 800;
-  letter-spacing: 0.06em;
-  color: var(--accent);
+  font-size: 0.76rem;
 }
 
-.cta-final {
-  margin-top: 54px;
-  margin-bottom: 22px;
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  padding: 28px;
+.mosaic {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.mosaic img {
+  width: 100%;
+  height: 190px;
+  object-fit: cover;
+  border-radius: 24px;
+}
+
+.testimonials {
+  background: linear-gradient(180deg, #14ad68 0%, #18b96d 100%);
+  padding-bottom: 92px;
+}
+
+.section-tag-light {
+  color: #dcfff0;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.testimonials h2 {
+  color: #f0fff7;
   text-align: center;
-  background: var(--card-bg);
-  backdrop-filter: blur(8px);
 }
 
-.cta-final h3 {
-  margin: 0 0 8px;
-  font-size: 1.7rem;
+.testimonial-card {
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ebfff6;
 }
 
-.cta-final p {
-  margin: 0 0 20px;
-  color: var(--text-muted);
+.testimonial-card p {
+  margin: 0 0 18px;
+  line-height: 1.7;
 }
 
-.fade-in-up {
-  animation: fadeInUp 700ms ease-out both;
+.testimonial-card strong {
+  display: block;
 }
 
-.fade-in-up-delayed {
-  animation: fadeInUp 850ms ease-out both;
+.testimonial-card span {
+  color: #cbf8e5;
+  font-size: 0.93rem;
 }
 
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
+.testimonials .cards-grid {
+  margin-bottom: 14px;
+}
+
+.final-cta {
+  background: #f6fbf8;
+}
+
+.final-cta-inner {
+  text-align: center;
+}
+
+.final-cta .btn {
+  margin-top: 24px;
+}
+
+.footer {
+  background: #081833;
+  color: #d6e6ff;
+  padding: 54px 0 20px;
+}
+
+.footer-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr;
+  gap: 18px;
+}
+
+.footer .light {
+  color: #fff;
+}
+
+.footer p,
+.footer li {
+  color: #a8bfdc;
+}
+
+.footer h4 {
+  margin: 0 0 10px;
+  color: #fff;
+}
+
+.footer ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.footer-bottom {
+  margin-top: 28px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  text-align: center;
+  color: #8ea8ca;
+}
+
+@media (max-width: 1020px) {
+  .menu-links {
+    display: none;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 
-@media (max-width: 1000px) {
-  .hero,
-  .split,
-  .steps,
-  .features {
+  .hero-grid,
+  .benefits-grid,
+  .cards-grid,
+  .footer-grid {
     grid-template-columns: 1fr;
   }
 
-  .section-title {
-    margin-top: 40px;
+  .hero-visual {
+    min-height: 320px;
+  }
+
+  .hero-visual img {
+    min-height: 320px;
+  }
+
+  .floating-card.top,
+  .floating-card.bottom {
+    position: static;
+    margin-top: 10px;
+    display: inline-block;
+  }
+
+  .check-list {
+    grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 640px) {
-  .page {
-    padding: 16px;
+  .container {
+    width: min(1240px, calc(100% - 28px));
   }
 
-  .logo {
-    width: 56px;
-    height: 56px;
+  .brand-name {
+    font-size: 1.6rem;
   }
 
-  .hero {
-    margin-top: 28px;
-    gap: 18px;
-  }
-
-  .hero-content h1 {
-    font-size: clamp(1.8rem, 9vw, 2.5rem);
-  }
-
-  .hackathon-badge {
-    font-size: 0.72rem;
-  }
-
-  .cta-final {
-    padding: 22px 16px;
+  .topbar .btn {
+    min-height: 40px;
+    padding: 0 14px;
+    font-size: 0.82rem;
   }
 }
 </style>

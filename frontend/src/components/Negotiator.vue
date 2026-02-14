@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue';
 import { auth } from '@/auth';
+import { addRecipeToHistory } from '@/utils/recipeHistory';
 
 const emit = defineEmits(['choice']);
 
@@ -9,6 +10,7 @@ const activeView = ref('landing');
 const loading = ref(false);
 const saving = ref(false);
 const error = ref(null);
+const feedbackDialog = ref(null);
 
 const craving = ref('');
 const selectedMood = ref('');
@@ -30,6 +32,18 @@ const moods = [
   { id: 'outro', label: 'Outro', icon: '✨' }
 ];
 
+const storeInHistory = (data, source) => {
+  if (!data?.recipe) return;
+  addRecipeToHistory({
+    name: data.recipe.title,
+    ingredients: data.recipe.ingredients || [],
+    instructions: data.recipe.steps || [],
+    calories: data.recipe.calories ?? null,
+    source,
+    note: data.message || ''
+  });
+};
+
 // --- TEXT FLOW ---
 const generateTextRecipe = async () => {
   if (!craving.value.trim()) return;
@@ -49,6 +63,9 @@ const generateTextRecipe = async () => {
     }
     const data = await response.json();
     recipeResult.value = data;
+    if (data.recipe) {
+      storeInHistory(data, 'text');
+    }
     activeView.value = data.recipe ? 'recipe' : 'rejection';
   } catch (e) {
     error.value = e.message;
@@ -92,7 +109,11 @@ const generateMoodRecipe = async () => {
     });
 
     if (!response.ok) throw new Error("Erro ao gerar receita");
-    recipeResult.value = await response.json();
+    const data = await response.json();
+    recipeResult.value = data;
+    if (data.recipe) {
+      storeInHistory(data, 'mood');
+    }
     activeView.value = 'recipe';
   } catch (e) {
     error.value = e.message;
@@ -130,6 +151,7 @@ const uploadAndAnalyze = async (file) => {
     const data = await response.json();
     detectedIngredients.value = data.detected_ingredients;
     recipeResult.value = { recipe: data.recipe, message: data.message };
+    storeInHistory({ recipe: data.recipe, message: data.message }, 'vision');
     activeView.value = 'recipe';
   } catch (e) {
     error.value = e.message;
@@ -173,13 +195,25 @@ const saveRecipe = async () => {
 
     if (!favResponse.ok) throw new Error('Falha ao adicionar aos favoritos');
 
-    alert('Receita guardada com sucesso!');
+    feedbackDialog.value = {
+      type: 'success',
+      title: 'Receita guardada',
+      message: 'A receita foi adicionada aos teus favoritos com sucesso.'
+    };
   } catch (err) {
     console.error('Error saving recipe:', err);
-    alert('Erro ao guardar a receita.');
+    feedbackDialog.value = {
+      type: 'error',
+      title: 'Não foi possível guardar',
+      message: 'Ocorreu um erro ao guardar a receita. Tenta novamente.'
+    };
   } finally {
     saving.value = false;
   }
+};
+
+const closeFeedbackDialog = () => {
+  feedbackDialog.value = null;
 };
 
 const reset = () => {
@@ -375,6 +409,15 @@ const reset = () => {
         <h2>Aviso do Chef</h2>
         <p>{{ recipeResult?.message }}</p>
         <button @click="reset" class="btn-formatted-back">← Voltar</button>
+      </div>
+    </div>
+
+    <div v-if="feedbackDialog" class="ui-modal-overlay" @click.self="closeFeedbackDialog">
+      <div class="ui-feedback-modal" :class="feedbackDialog.type" role="dialog" aria-modal="true" aria-label="Mensagem">
+        <div class="ui-feedback-icon">{{ feedbackDialog.type === 'success' ? '✅' : '⚠️' }}</div>
+        <h3>{{ feedbackDialog.title }}</h3>
+        <p>{{ feedbackDialog.message }}</p>
+        <button class="ui-feedback-btn" @click="closeFeedbackDialog">Fechar</button>
       </div>
     </div>
 
@@ -578,6 +621,63 @@ const reset = () => {
 /* Rejection */
 .rejection-card-premium { text-align: center; padding: 80px 40px; background: var(--bg-elevated); border-radius: 40px; border: 1px solid var(--line); max-width: 600px; box-shadow: 0 20px 50px rgba(0,0,0,0.05); margin: 0 auto; }
 .rej-icon-large { font-size: 5rem; margin-bottom: 32px; }
+
+.ui-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 8, 22, 0.58);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 1300;
+}
+
+.ui-feedback-modal {
+  width: min(430px, 100%);
+  border-radius: 18px;
+  padding: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(165deg, rgba(18, 31, 62, 0.97), rgba(10, 19, 40, 0.97));
+  box-shadow: 0 24px 46px rgba(0, 0, 0, 0.35);
+}
+
+.ui-feedback-modal.success {
+  border-color: rgba(52, 211, 153, 0.42);
+}
+
+.ui-feedback-modal.error {
+  border-color: rgba(255, 127, 127, 0.36);
+}
+
+.ui-feedback-icon {
+  font-size: 1.5rem;
+  margin-bottom: 8px;
+}
+
+.ui-feedback-modal h3 {
+  margin: 0 0 6px 0;
+  color: var(--text-main);
+  font-weight: 900;
+}
+
+.ui-feedback-modal p {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.ui-feedback-btn {
+  margin-top: 16px;
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--menu-active-text), #ffffff 24%);
+  background: var(--menu-active-text);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
 
 /* Utils */
 .spinner-dot { 
