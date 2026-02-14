@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { auth, API_URL } from '@/auth'
 import { useUser } from '@/store/userStore'
 
@@ -144,6 +144,85 @@ const weeklyGoals = ref([
   { id: 3, label: 'Treinar 3x', done: false }
 ])
 
+const isListening = ref(false)
+const activeGoalIndex = ref(null)
+let recognitionInstance = null
+
+const toggleGoalListening = async (index) => {
+  if (isListening.value && activeGoalIndex.value === index) {
+    stopListening()
+    return
+  }
+  
+  // Stop any existing session
+  stopListening()
+  activeGoalIndex.value = index
+
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    alert('O seu navegador não suporta reconhecimento de voz.')
+    return
+  }
+
+  try {
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    recognitionInstance = new Recognition()
+    
+    recognitionInstance.lang = 'pt-PT'
+    recognitionInstance.continuous = false
+    recognitionInstance.interimResults = true
+    recognitionInstance.maxAlternatives = 1
+    
+    if ('lang' in recognitionInstance) {
+      recognitionInstance.lang = 'pt-PT'
+    }
+    
+    recognitionInstance.onstart = () => {
+      isListening.value = true
+    }
+    
+    recognitionInstance.onresult = (event) => {
+      let transcript = ''
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i]
+        if (result.isFinal) {
+          transcript += result[0].transcript + ' '
+        } else {
+          transcript += result[0].transcript
+        }
+      }
+      
+      if (transcript.trim() && activeGoalIndex.value !== null) {
+        updateGoalLabel(weeklyGoals.value[activeGoalIndex.value], transcript.trim())
+      }
+    }
+    
+    recognitionInstance.onerror = (event) => {
+      if (event.error !== 'aborted' && event.error !== 'no-speech') {
+         console.error('Speech recognition error:', event.error)
+      }
+      stopListening()
+    }
+    
+    recognitionInstance.onend = () => {
+      stopListening()
+    }
+    
+    recognitionInstance.start()
+  } catch (err) {
+    console.error('Failed to start speech recognition:', err)
+    stopListening()
+  }
+}
+
+const stopListening = () => {
+  isListening.value = false
+  activeGoalIndex.value = null
+  if (recognitionInstance) {
+    try { recognitionInstance.stop() } catch (e) {}
+    recognitionInstance = null
+  }
+}
+
 const persistWeeklyGoals = () => {
   localStorage.setItem(WEEKLY_GOALS_KEY, JSON.stringify(weeklyGoals.value))
 }
@@ -207,6 +286,7 @@ const loadData = async () => {
 }
 
 onMounted(loadData)
+onUnmounted(stopListening)
 </script>
 
 <template>
@@ -297,7 +377,7 @@ onMounted(loadData)
         <article class="card goals-card">
           <h3>Metas da Semana</h3>
           <ul>
-            <li v-for="goal in weeklyGoals" :key="goal.id" :class="{ done: goal.done }">
+            <li v-for="(goal, index) in weeklyGoals" :key="goal.id" :class="{ done: goal.done }">
               <label class="goal-check" :class="{ checked: goal.done }">
                 <input
                   type="checkbox"
@@ -312,6 +392,15 @@ onMounted(loadData)
                 @input="updateGoalLabel(goal, $event.target.value)"
                 placeholder="Escreve uma meta..."
               />
+              <button 
+                type="button" 
+                class="mic-btn-goal" 
+                :class="{ active: isListening && activeGoalIndex === index }"
+                @click="toggleGoalListening(index)"
+                title="Falar meta"
+              >
+                🎤
+              </button>
             </li>
           </ul>
         </article>
@@ -681,6 +770,31 @@ onMounted(loadData)
   outline: none;
   border-color: var(--menu-active-text);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--menu-active-text), transparent 80%);
+}
+
+.mic-btn-goal {
+  background: transparent;
+  border: none;
+  font-size: 1.1rem;
+  padding: 0 8px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mic-btn-goal:hover {
+  background: var(--menu-hover-bg);
+}
+.mic-btn-goal.active {
+  color: #ef4444;
+  animation: pulse-mic 1.5s infinite;
+}
+@keyframes pulse-mic {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
 }
 
 .action-grid {

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch, nextTick } from 'vue';
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { auth, API_URL } from '@/auth';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -35,6 +35,80 @@ const manualQuery = ref('');
 const locationSuggestions = ref([]);
 const showSuggestions = ref(false);
 const savingId = ref(null);
+const isListening = ref(false);
+let recognitionInstance = null;
+
+const toggleListening = async () => {
+  if (isListening.value) {
+    if (recognitionInstance) {
+      recognitionInstance.stop()
+    }
+    return
+  }
+
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    alert('O seu navegador não suporta reconhecimento de voz. Use Chrome, Edge ou Safari.')
+    return
+  }
+
+  try {
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    recognitionInstance = new Recognition()
+    
+    recognitionInstance.lang = 'pt-PT'
+    recognitionInstance.continuous = false
+    recognitionInstance.interimResults = true
+    recognitionInstance.maxAlternatives = 1
+    
+    if ('lang' in recognitionInstance) {
+      recognitionInstance.lang = 'pt-PT'
+    }
+    
+    recognitionInstance.onstart = () => {
+      isListening.value = true
+    }
+    
+    recognitionInstance.onresult = (event) => {
+      let transcript = ''
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i]
+        if (result.isFinal) {
+          transcript += result[0].transcript + ' '
+        } else {
+          transcript += result[0].transcript
+        }
+      }
+      
+      if (transcript.trim()) {
+        ingredients.value = transcript.trim()
+      }
+    }
+    
+    recognitionInstance.onerror = (event) => {
+      if (event.error !== 'aborted' && event.error !== 'no-speech') {
+         console.error('Speech recognition error:', event.error)
+      }
+      stopListening()
+    }
+    
+    recognitionInstance.onend = () => {
+      stopListening()
+    }
+    
+    recognitionInstance.start()
+  } catch (err) {
+    console.error('Failed to start speech recognition:', err)
+    stopListening()
+  }
+}
+
+const stopListening = () => {
+  isListening.value = false
+  if (recognitionInstance) {
+    try { recognitionInstance.stop() } catch (e) {}
+    recognitionInstance = null
+  }
+}
 
 watch(() => props.initialIngredients, (newVal) => {
   ingredients.value = newVal;
@@ -270,6 +344,10 @@ onMounted(() => {
     askForLocation();
   }
 });
+
+onUnmounted(() => {
+  stopListening();
+});
 </script>
 
 <template>
@@ -319,6 +397,15 @@ onMounted(() => {
             :placeholder="searchMode === 'restaurant' ? 'Prato ou tipo de comida...' : 'O que precisa de comprar?'"
             @keyup.enter="findShops"
           />
+          <button 
+            type="button" 
+            class="mic-btn-shop" 
+            :class="{ active: isListening }"
+            @click="toggleListening"
+            title="Falar pesquisa"
+          >
+            🎤
+          </button>
           <button @click="findShops" :disabled="loading" class="btn-search">
             {{ loading ? '...' : '🔍' }}
           </button>
@@ -512,6 +599,32 @@ onMounted(() => {
   padding: 12px 16px;
   font-size: 1rem;
   color: var(--text-main);
+  outline: none;
+}
+
+.mic-btn-shop {
+  background: transparent;
+  border: none;
+  font-size: 1.2rem;
+  padding: 0 12px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mic-btn-shop:hover {
+  background: var(--menu-hover-bg);
+}
+.mic-btn-shop.active {
+  color: #ef4444;
+  animation: pulse-mic 1.5s infinite;
+}
+@keyframes pulse-mic {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
 }
 
 .btn-search {
