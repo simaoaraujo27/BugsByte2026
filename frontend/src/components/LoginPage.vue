@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import logo from '@/assets/logo.png'
 
@@ -7,9 +7,25 @@ const router = useRouter()
 const email = ref('')
 const password = ref('')
 const rememberMe = ref(false)
+const showPassword = ref(false)
+const isLoading = ref(false)
 const calorieBudget = ref(1850)
 const errorMessage = ref('')
 const successMessage = ref('')
+
+// Load saved credentials on component mount
+onMounted(() => {
+  const savedRememberMe = localStorage.getItem('rememberMe') === 'true'
+  rememberMe.value = savedRememberMe
+  
+  if (savedRememberMe) {
+    const savedEmail = localStorage.getItem('rememberedEmail')
+    const savedPassword = localStorage.getItem('rememberedPassword')
+    if (savedEmail) email.value = savedEmail
+    if (savedPassword) password.value = savedPassword
+    console.log('Loaded saved credentials from localStorage')
+  }
+})
 
 // Clear messages on input
 const clearMessages = () => {
@@ -17,7 +33,15 @@ const clearMessages = () => {
     successMessage.value = ''
 }
 
+// Toggle password visibility (used by the eye icon button)
+const togglePasswordVisibility = () => {
+  showPassword.value = !showPassword.value
+  console.log('Password visibility toggled:', showPassword.value ? 'visible' : 'hidden')
+}
+
 const handleLogin = async () => {
+  if (isLoading.value) return
+  
   clearMessages()
   // Basic validation logic
   if (!email.value || !password.value) {
@@ -25,6 +49,7 @@ const handleLogin = async () => {
     return
   }
   
+  isLoading.value = true
   try {
     const response = await fetch('http://localhost:8000/login/', {
       method: 'POST',
@@ -49,6 +74,18 @@ const handleLogin = async () => {
     // Store user info
     localStorage.setItem('user_id', data.user_id)
     
+    // Handle remember me functionality
+    localStorage.setItem('rememberMe', rememberMe.value.toString())
+    if (rememberMe.value) {
+      localStorage.setItem('rememberedEmail', email.value)
+      localStorage.setItem('rememberedPassword', password.value)
+      console.log('Credentials saved to localStorage')
+    } else {
+      localStorage.removeItem('rememberedEmail')
+      localStorage.removeItem('rememberedPassword')
+      console.log('Credentials removed from localStorage')
+    }
+    
     setTimeout(() => { 
         successMessage.value = '' 
         // Redirect to dashboard
@@ -58,6 +95,8 @@ const handleLogin = async () => {
   } catch (error) {
     console.error('Login error:', error)
     errorMessage.value = error.message
+  } finally {
+    isLoading.value = false
   }
 }
 </script>
@@ -67,7 +106,7 @@ const handleLogin = async () => {
     <div class="auth-card">
       
       <!-- Header / Logo Area -->
-      <div class="text-center mb-8">
+      <div class="header-section">
         <div class="logo-container">
             <img :src="logo" alt="NutriVentures Logo" />
         </div>
@@ -76,12 +115,12 @@ const handleLogin = async () => {
       </div>
 
       <!-- Live Region for Alerts -->
-      <div role="alert" aria-live="assertive" class="min-h-[1.5rem] mb-4">
+      <div role="alert" aria-live="assertive" class="message-container">
           <p v-if="errorMessage" class="message error">
-              <span class="mr-2" aria-hidden="true">⚠️</span> {{ errorMessage }}
+              <span class="message-icon" aria-hidden="true">⚠️</span> {{ errorMessage }}
           </p>
           <p v-if="successMessage" class="message success">
-              <span class="mr-2" aria-hidden="true">✅</span> {{ successMessage }}
+              <span class="message-icon" aria-hidden="true">✅</span> {{ successMessage }}
           </p>
       </div>
       
@@ -102,34 +141,54 @@ const handleLogin = async () => {
         
         <div class="form-group">
           <label for="password">Password</label>
-          <input 
-            v-model="password"
-            @input="clearMessages"
-            type="password" 
-            id="password"
-            autocomplete="current-password"
-            required
-            placeholder="••••••••"
-          />
+          <div class="password-input-wrapper">
+            <input 
+              v-model="password"
+              @input="clearMessages"
+              :type="showPassword ? 'text' : 'password'" 
+              id="password"
+              autocomplete="current-password"
+              required
+              placeholder="••••••••"
+            />
+            <button 
+              type="button"
+              @click="togglePasswordVisibility"
+              class="password-toggle"
+              :aria-label="showPassword ? 'Hide password' : 'Show password'"
+            >
+              <svg v-if="showPassword" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              <svg v-else xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+              </svg>
+            </button>
+          </div>
         </div>
 
-        <div class="flex items-center justify-between mb-6">
-          <label class="checkbox-label">
-            <input 
-              v-model="rememberMe"
-              type="checkbox" 
-            />
-            <span class="ml-2">Remember me</span>
-          </label>
+        <div class="remember-forgot-row">
+          <div class="checkbox-group">
+            <label class="checkbox-label" for="remember-me">
+              <input 
+                v-model="rememberMe"
+                type="checkbox"
+                id="remember-me"
+              />
+              <span class="checkbox-text">Remember me</span>
+            </label>
+          </div>
           <router-link to="/forgot-password" class="forgot-link">Forgot password?</router-link>
         </div>
 
-        <button type="submit" class="btn btn-primary">
-          Sign In
+        <button type="submit" class="btn btn-primary" :disabled="isLoading">
+          <span v-if="isLoading">Signing in...</span>
+          <span v-else>Sign In</span>
         </button>
         
-        <div class="text-center mt-6">
-          <span class="text-sm text-gray-600">Don't have an account? </span>
+        <div class="signup-text">
+          <span class="signup-text-muted">Don't have an account? </span>
           <router-link to="/signup" class="signup-link">
             Sign up instead
           </router-link>
@@ -201,6 +260,11 @@ const handleLogin = async () => {
   color: var(--text-main);
 }
 
+.header-section {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
 .logo-container {
   width: 80px;
   height: 80px;
@@ -233,6 +297,11 @@ const handleLogin = async () => {
   margin-top: 4px;
 }
 
+.message-container {
+  min-height: 1.5rem;
+  margin-bottom: 16px;
+}
+
 .form-group {
   margin-bottom: 20px;
 }
@@ -259,18 +328,74 @@ const handleLogin = async () => {
   box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.15);
 }
 
+.password-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-wrapper input {
+  padding-right: 45px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  transition: color 0.2s;
+}
+
+.password-toggle:hover {
+  color: var(--accent);
+}
+
+.password-toggle svg {
+  width: 20px;
+  height: 20px;
+}
+
+.remember-forgot-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .checkbox-label {
   display: flex;
   align-items: center;
   font-size: 0.9rem;
   cursor: pointer;
   color: var(--text-muted);
+  user-select: none;
 }
 
-.checkbox-label input {
+.checkbox-label input[type="checkbox"] {
   accent-color: var(--accent);
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.checkbox-text {
+  margin-left: 8px;
 }
 
 .forgot-link {
@@ -308,6 +433,16 @@ const handleLogin = async () => {
   transform: translateY(0);
 }
 
+.signup-text {
+  text-align: center;
+  margin-top: 24px;
+}
+
+.signup-text-muted {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
 .signup-link {
   color: var(--accent);
   font-weight: 700;
@@ -325,6 +460,10 @@ const handleLogin = async () => {
   font-weight: 600;
   display: flex;
   align-items: center;
+}
+
+.message-icon {
+  margin-right: 8px;
 }
 
 .message.error {
