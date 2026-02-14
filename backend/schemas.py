@@ -78,3 +78,8 @@ class NegotiatorResponse(BaseModel):
     message: str
     recipe: Recipe | None = None
     restaurant_search_term: str
+
+class VisionResponse(BaseModel):
+    detected_ingredients: list[str]
+    recipe: Recipe
+    message: str

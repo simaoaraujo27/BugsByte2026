@@ -4,6 +4,7 @@ import SidebarNav from './SidebarNav.vue'
 import Negotiator from './Negotiator.vue'
 import ShopFinder from './ShopFinder.vue'
 import ProfilePanel from './ProfilePanel.vue'
+import VisionRecipe from './VisionRecipe.vue'
 
 const sections = [
   { id: 'inicio', label: 'Inicio', icon: '🏠' },
@@ -106,6 +107,10 @@ watch(isDarkMode, (value) => {
         <Negotiator @choice="handleNegotiationChoice" />
       </div>
       
+      <div v-else-if="activeSection === 'gerar-receita'">
+        <VisionRecipe />
+      </div>
+
       <div v-else-if="activeSection === 'supermercados'">
         <ShopFinder 
           :initial-ingredients="shopParams.ingredients" 
