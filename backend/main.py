@@ -4,7 +4,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 import hashlib
 import uuid
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
+from datetime import datetime
+from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 
@@ -20,7 +21,7 @@ print(f"Model: {os.getenv('OPENAI_MODEL', 'Default')}")
 print("="*30)
 
 # Use absolute imports (as per local requirement and working state)
-import models, schemas, shops, negotiator, auth, vision
+import models, schemas, shops, negotiator, food_data
 from database import SessionLocal, engine, get_db
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import timedelta
@@ -28,6 +29,35 @@ from datetime import timedelta
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
+VALID_MEAL_SECTIONS = {"breakfast", "lunch", "snack", "dinner", "extras"}
+
+def get_password_hash(password: str) -> str:
+    return hashlib.sha256(password.encode()).hexdigest()
+
+
+def validate_date_key(date_key: str) -> str:
+    try:
+        datetime.strptime(date_key, "%Y-%m-%d")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="date_key must use YYYY-MM-DD format") from exc
+    return date_key
+
+
+def get_or_create_diary_day(db: Session, user_id: int, date_key: str) -> models.DiaryDay:
+    day = (
+        db.query(models.DiaryDay)
+        .filter(models.DiaryDay.user_id == user_id, models.DiaryDay.date_key == date_key)
+        .first()
+    )
+    if day:
+        return day
+
+    day = models.DiaryDay(user_id=user_id, date_key=date_key, goal=1800)
+    db.add(day)
+    db.commit()
+    db.refresh(day)
+    return day
 
 # Configure CORS to allow frontend to access the backend
 origins = [
@@ -128,6 +158,97 @@ def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), c
     users = db.query(models.User).offset(skip).limit(limit).all()
     return users
 
+
+@app.get("/diary/{user_id}/{date_key}", response_model=schemas.DiaryDay)
+def get_diary_day(user_id: int, date_key: str, db: Session = Depends(get_db)):
+    validate_date_key(date_key)
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    day = get_or_create_diary_day(db, user_id, date_key)
+    return day
+
+
+@app.get("/diary/{user_id}", response_model=list[schemas.DiaryDay])
+def get_diary_days_range(user_id: int, start: str, end: str, db: Session = Depends(get_db)):
+    start_key = validate_date_key(start)
+    end_key = validate_date_key(end)
+    if start_key > end_key:
+        raise HTTPException(status_code=400, detail="start date must be before or equal to end date")
+
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    days = (
+        db.query(models.DiaryDay)
+        .filter(
+            models.DiaryDay.user_id == user_id,
+            models.DiaryDay.date_key >= start_key,
+            models.DiaryDay.date_key <= end_key,
+        )
+        .order_by(models.DiaryDay.date_key.asc())
+        .all()
+    )
+    return days
+
+
+@app.put("/diary/{user_id}/{date_key}/goal", response_model=schemas.DiaryDay)
+def update_diary_goal(user_id: int, date_key: str, payload: schemas.DiaryGoalUpdate, db: Session = Depends(get_db)):
+    validate_date_key(date_key)
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    day = get_or_create_diary_day(db, user_id, date_key)
+    day.goal = payload.goal
+    db.commit()
+    db.refresh(day)
+    return day
+
+
+@app.post("/diary/{user_id}/{date_key}/meals", response_model=schemas.DiaryDay)
+def add_diary_meal(user_id: int, date_key: str, payload: schemas.DiaryMealCreate, db: Session = Depends(get_db)):
+    validate_date_key(date_key)
+    if payload.section not in VALID_MEAL_SECTIONS:
+        raise HTTPException(status_code=400, detail="Invalid meal section")
+
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    day = get_or_create_diary_day(db, user_id, date_key)
+    meal = models.DiaryMeal(
+        day_id=day.id,
+        section=payload.section,
+        name=payload.name,
+        calories=payload.calories,
+        protein=payload.protein,
+        carbs=payload.carbs,
+        fat=payload.fat,
+    )
+    db.add(meal)
+    db.commit()
+    db.refresh(day)
+    return day
+
+
+@app.delete("/diary/meals/{meal_id}", response_model=schemas.DiaryDay)
+def delete_diary_meal(meal_id: int, db: Session = Depends(get_db)):
+    meal = db.query(models.DiaryMeal).filter(models.DiaryMeal.id == meal_id).first()
+    if not meal:
+        raise HTTPException(status_code=404, detail="Meal not found")
+
+    day = db.query(models.DiaryDay).filter(models.DiaryDay.id == meal.day_id).first()
+    if not day:
+        raise HTTPException(status_code=404, detail="Diary day not found")
+
+    db.delete(meal)
+    db.commit()
+    db.refresh(day)
+    return day
+
 @app.post("/shops/find", response_model=list[schemas.Shop])
 def find_shops(request: schemas.ShopSearchRequest, current_user: models.User = Depends(auth.get_current_user)):
     if request.mode == "restaurant":
@@ -163,6 +284,11 @@ def find_shops(request: schemas.ShopSearchRequest, current_user: models.User = D
         )
     
     return found_shops
+
+
+@app.get("/foods/search", response_model=list[schemas.FoodSearchItem])
+def search_foods(q: str, page_size: int = 10):
+    return food_data.search_foods(q, page_size=page_size)
 
 @app.post("/items/", response_model=schemas.Item)
 def create_item(item: schemas.ItemCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):

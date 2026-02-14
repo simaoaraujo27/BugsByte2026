@@ -35,6 +35,15 @@ const formatGoal = (value) => {
   return value || 'N/A'
 }
 
+const formatActivityLevel = (value) => {
+  const normalized = (value || '').toLowerCase()
+  if (normalized === 'sedentary') return 'Sedentario'
+  if (normalized === 'light') return 'Leve'
+  if (normalized === 'moderate') return 'Moderado'
+  if (normalized === 'high') return 'Elevado'
+  return value || 'N/A'
+}
+
 const bmi = computed(() => {
   if (!userProfile.value?.altura || !userProfile.value?.peso) return null
   const heightM = Number(userProfile.value.altura) / 100
@@ -54,6 +63,20 @@ const bmr = computed(() => {
   if (gender === 'male') return 10 * weight + 6.25 * height - 5 * age + 5
   if (gender === 'female') return 10 * weight + 6.25 * height - 5 * age - 161
   return 10 * weight + 6.25 * height - 5 * age - 78
+})
+
+const activityFactor = computed(() => {
+  const level = (userProfile.value?.activity_level || '').toLowerCase()
+  if (level === 'sedentary') return 1.0
+  if (level === 'light') return 1.175
+  if (level === 'moderate') return 1.35
+  if (level === 'high') return 1.525
+  return null
+})
+
+const tdee = computed(() => {
+  if (!bmr.value || !activityFactor.value) return null
+  return bmr.value * activityFactor.value
 })
 
 const bmiCategory = computed(() => {
@@ -172,6 +195,10 @@ onMounted(fetchProfile)
               <strong>{{ formatGoal(userProfile.goal) }}</strong>
             </li>
             <li>
+              <span>Nivel de Atividade</span>
+              <strong>{{ formatActivityLevel(userProfile.activity_level) }}</strong>
+            </li>
+            <li>
               <span>Alergenios</span>
               <strong>{{ allergiesText }}</strong>
             </li>
@@ -188,6 +215,11 @@ onMounted(fetchProfile)
           <div class="metric-box">
             <p>Taxa Metabolica Basal</p>
             <strong>{{ bmr ? Math.round(bmr) : '-' }} kcal/dia</strong>
+          </div>
+          <div class="metric-box">
+            <p>Kcal normais (TDEE)</p>
+            <strong>{{ tdee ? Math.round(tdee) : '-' }} kcal/dia</strong>
+            <small>Manutencao diaria com base no nivel de atividade.</small>
           </div>
         </article>
 
