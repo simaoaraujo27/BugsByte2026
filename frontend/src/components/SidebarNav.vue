@@ -1,4 +1,6 @@
 <script setup>
+import { useRouter } from 'vue-router'
+import { auth } from '@/auth'
 import logo from '@/assets/logo.png'
 import SidebarItem from './SidebarItem.vue'
 
@@ -13,7 +15,13 @@ defineProps({
   }
 })
 
-defineEmits(['select'])
+const emit = defineEmits(['select'])
+const router = useRouter()
+
+const handleLogout = () => {
+  auth.logout()
+  router.push('/')
+}
 </script>
 
 <template>
@@ -35,6 +43,14 @@ defineEmits(['select'])
         @select="$emit('select', section.id)"
       />
     </nav>
+
+    <div class="sidebar-footer">
+      <div class="menu-divider" aria-hidden="true"></div>
+      <button type="button" class="logout-btn" @click="handleLogout">
+        <span class="item-icon">🚪</span>
+        <span class="item-label">Sair</span>
+      </button>
+    </div>
   </aside>
 </template>
 
@@ -45,6 +61,9 @@ defineEmits(['select'])
   padding: 32px 20px;
   display: flex;
   flex-direction: column;
+  height: 100vh;
+  position: sticky;
+  top: 0;
 }
 
 .logo-wrap {
@@ -75,6 +94,42 @@ defineEmits(['select'])
   display: flex;
   flex-direction: column;
   gap: 10px;
+  flex: 1;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+}
+
+.logout-btn {
+  border: 0;
+  border-radius: 12px;
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #e53e3e;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.logout-btn:hover {
+  background: #fff5f5;
+  transform: translateX(4px);
+}
+
+:global(.theme-dark) .logout-btn:hover {
+  background: rgba(229, 62, 62, 0.1);
+}
+
+.item-icon {
+  font-size: 1.25rem;
+  line-height: 1;
 }
 
 @media (max-width: 860px) {
@@ -82,6 +137,8 @@ defineEmits(['select'])
     border-right: 0;
     border-bottom: 1px solid var(--line);
     padding: 16px;
+    height: auto;
+    position: relative;
   }
 
   .logo-wrap {
@@ -96,6 +153,14 @@ defineEmits(['select'])
   .menu {
     flex-direction: row;
     flex-wrap: wrap;
+  }
+
+  .sidebar-footer {
+    margin-top: 16px;
+  }
+  
+  .logout-btn {
+    width: auto;
   }
 }
 </style>

@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import logo from '@/assets/logo.png'
+import { auth } from '@/auth'
 
 const router = useRouter()
 const email = ref('')
@@ -69,10 +70,18 @@ const handleLogin = async () => {
 
     const data = await response.json()
     console.log('Login successful:', data)
-    successMessage.value = 'Bem-vindo de volta, Chef!'
     
-    // Store user info
-    localStorage.setItem('user_id', data.user_id)
+    // Store user info and token using auth utility
+    // The backend now returns {access_token, token_type}
+    // We also need the user_id, but the login endpoint currently doesn't return it.
+    // Let's first save the token.
+    localStorage.setItem('token', data.access_token)
+    
+    // Fetch user info to get the ID
+    const userMe = await auth.getMe()
+    localStorage.setItem('user_id', userMe.id)
+    
+    successMessage.value = 'Bem-vindo de volta, Chef!'
     
     // Handle remember me functionality
     localStorage.setItem('rememberMe', rememberMe.value.toString())

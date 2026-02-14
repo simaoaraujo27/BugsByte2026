@@ -12,7 +12,6 @@ export const auth = {
   logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('user_id');
-    window.location.reload();
   },
 
   // Obter cabeçalhos com o Token para as chamadas à API
