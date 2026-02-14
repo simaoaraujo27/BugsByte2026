@@ -2,9 +2,8 @@
   <div class="auth-page">
     <div class="auth-form-container">
       <h2 class="form-title">Reset Password</h2>
-      <p class="form-subtitle">Enter your email to receive a reset link.</p>
+      <p class="form-subtitle">Vamos enviar um link de recuperação para o email associado.</p>
 
-      <!-- Error/Success Messages -->
       <div v-if="errorMessage" class="message error">
         {{ errorMessage }}
       </div>
@@ -14,17 +13,17 @@
 
       <form @submit.prevent="submitForm" class="form-grid">
         <div class="form-group full-width">
-          <label for="email">Email Address</label>
-          <input type="email" id="email" v-model="email" placeholder="chef@nutriventures.com" required />
+          <label>Email associado</label>
+          <p class="email-target">{{ targetEmail || 'Sem email disponível' }}</p>
         </div>
 
         <div class="form-actions full-width">
-          <button type="submit" class="btn btn-primary" :disabled="isLoading">
-            {{ isLoading ? 'Sending...' : 'Send Reset Link' }}
+          <button type="submit" class="btn btn-primary" :disabled="isLoading || !targetEmail">
+            {{ isLoading ? 'A enviar...' : 'Enviar link de recuperação' }}
           </button>
           
           <div class="login-link">
-            <router-link to="/login">Back to Sign In</router-link>
+            <router-link to="/login">Voltar ao login</router-link>
           </div>
         </div>
       </form>
@@ -33,15 +32,20 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
+import { useRoute } from 'vue-router';
 import { API_URL } from '@/auth';
 
-const email = ref('');
+const route = useRoute();
+const targetEmail = ref('');
 const errorMessage = ref('');
 const successMessage = ref('');
 const isLoading = ref(false);
+const hasAutoSent = ref(false);
 
 const submitForm = async () => {
+  if (!targetEmail.value || isLoading.value) return;
+
   errorMessage.value = '';
   successMessage.value = '';
   isLoading.value = true;
@@ -52,7 +56,7 @@ const submitForm = async () => {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ username: email.value }),
+      body: JSON.stringify({ username: targetEmail.value }),
     });
 
     const data = await response.json();
@@ -60,9 +64,7 @@ const submitForm = async () => {
       throw new Error(data?.detail || 'Não foi possível enviar o pedido.');
     }
 
-    // In a real app, we don't show specific errors for security, but we show the success message
-    successMessage.value = data.message;
-    email.value = ''; // Clear input
+    successMessage.value = data.message || 'Se o email existir, enviámos um link de recuperação.';
 
   } catch (error) {
     console.error('Forgot Password error:', error);
@@ -71,6 +73,22 @@ const submitForm = async () => {
     isLoading.value = false;
   }
 };
+
+onMounted(async () => {
+  const routeEmail = typeof route.query.email === 'string' ? route.query.email : '';
+  const rememberedEmail = localStorage.getItem('rememberedEmail') || '';
+  targetEmail.value = (routeEmail || rememberedEmail).trim();
+
+  if (!targetEmail.value) {
+    errorMessage.value = 'Não foi possível detetar o email. Volta ao login e preenche o email da conta.';
+    return;
+  }
+
+  if (!hasAutoSent.value) {
+    hasAutoSent.value = true;
+    await submitForm();
+  }
+});
 </script>
 
 <style scoped>
@@ -188,6 +206,18 @@ const submitForm = async () => {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.15);
+}
+
+.email-target {
+  margin: 0;
+  min-height: 46px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f3f7f9;
+  font-size: 1rem;
+  color: var(--text-main);
+  word-break: break-all;
 }
 
 .form-actions {
