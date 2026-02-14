@@ -1,4 +1,5 @@
 <script setup>
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { auth } from '@/auth'
 import logo from '@/assets/logo.png'
@@ -17,39 +18,58 @@ defineProps({
 
 const emit = defineEmits(['select'])
 const router = useRouter()
+const isMenuOpen = ref(false)
 
 const handleLogout = () => {
   auth.logout()
   router.push('/')
 }
+
+const toggleMenu = () => {
+  isMenuOpen.value = !isMenuOpen.value
+}
+
+const handleSelect = (id) => {
+  isMenuOpen.value = false
+  emit('select', id)
+}
 </script>
 
 <template>
   <aside class="sidebar">
-    <div class="logo-wrap">
-      <img :src="logo" alt="Logo" class="logo" />
+    <div class="header-mobile">
+      <div class="logo-wrap">
+        <img :src="logo" alt="Logo" class="logo" />
+      </div>
+      <button class="hamburger-btn" :class="{ 'is-active': isMenuOpen }" @click="toggleMenu" aria-label="Menu">
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
+      </button>
     </div>
 
-    <div class="menu-divider" aria-hidden="true"></div>
-
-    <nav class="menu" aria-label="Navegacao principal">
-      <SidebarItem
-        v-for="section in sections"
-        :key="section.id"
-        :label="section.label"
-        :icon="section.icon"
-        :active="activeSection === section.id"
-        :highlight="Boolean(section.highlight)"
-        @select="$emit('select', section.id)"
-      />
-    </nav>
-
-    <div class="sidebar-footer">
+    <div class="menu-container" :class="{ 'is-open': isMenuOpen }">
       <div class="menu-divider" aria-hidden="true"></div>
-      <button type="button" class="logout-btn" @click="handleLogout">
-        <span class="item-icon">🚪</span>
-        <span class="item-label">Sair</span>
-      </button>
+
+      <nav class="menu" aria-label="Navegacao principal">
+        <SidebarItem
+          v-for="section in sections"
+          :key="section.id"
+          :label="section.label"
+          :icon="section.icon"
+          :active="activeSection === section.id"
+          :highlight="Boolean(section.highlight)"
+          @select="handleSelect(section.id)"
+        />
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="menu-divider" aria-hidden="true"></div>
+        <button type="button" class="logout-btn" @click="handleLogout">
+          <span class="item-icon">🚪</span>
+          <span class="item-label">Sair</span>
+        </button>
+      </div>
     </div>
   </aside>
 </template>
@@ -64,6 +84,14 @@ const handleLogout = () => {
   height: 100vh;
   position: sticky;
   top: 0;
+  transition: all 0.3s ease;
+}
+
+.header-mobile {
+  display: flex;
+  justify-content: center; /* Centered on desktop effectively */
+  align-items: center;
+  width: 100%;
 }
 
 .logo-wrap {
@@ -82,6 +110,48 @@ const handleLogout = () => {
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
 }
 
+.hamburger-btn {
+  display: none; /* Hidden on desktop */
+  flex-direction: column;
+  justify-content: space-between;
+  width: 30px;
+  height: 21px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin-left: auto; /* Pushes to right on mobile */
+  z-index: 101;
+}
+
+.hamburger-line {
+  width: 100%;
+  height: 3px;
+  background-color: var(--sidebar-text);
+  border-radius: 3px;
+  transition: all 0.3s ease;
+  transform-origin: center;
+}
+
+.hamburger-btn.is-active .hamburger-line:nth-child(1) {
+  transform: translateY(9px) rotate(45deg);
+}
+
+.hamburger-btn.is-active .hamburger-line:nth-child(2) {
+  opacity: 0;
+}
+
+.hamburger-btn.is-active .hamburger-line:nth-child(3) {
+  transform: translateY(-9px) rotate(-45deg);
+}
+
+.menu-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  width: 100%;
+}
+
 .menu-divider {
   height: 1px;
   width: 100%;
@@ -95,6 +165,7 @@ const handleLogout = () => {
   flex-direction: column;
   gap: 10px;
   flex: 1;
+  overflow-y: auto;
 }
 
 .sidebar-footer {
@@ -139,28 +210,49 @@ const handleLogout = () => {
     padding: 16px;
     height: auto;
     position: relative;
+    z-index: 100;
+  }
+
+  .header-mobile {
+    justify-content: space-between;
+    padding-bottom: 0;
   }
 
   .logo-wrap {
-    justify-content: flex-start;
+    padding-bottom: 0;
   }
 
   .logo {
-    width: 56px;
-    height: 56px;
+    width: 48px;
+    height: 48px;
+    padding: 6px;
+    border-radius: 12px;
+  }
+
+  .hamburger-btn {
+    display: flex;
+  }
+
+  .menu-container {
+    display: none; /* Hidden by default on mobile */
+    padding-top: 16px;
+  }
+
+  .menu-container.is-open {
+    display: flex;
+  }
+
+  .menu-divider {
+    margin: 10px 0;
   }
 
   .menu {
-    flex-direction: row;
-    flex-wrap: wrap;
+    flex-direction: column; /* Keep vertical */
+    max-height: 60vh; /* Scrollable if too long */
   }
 
   .sidebar-footer {
     margin-top: 16px;
-  }
-  
-  .logout-btn {
-    width: auto;
   }
 }
 </style>
