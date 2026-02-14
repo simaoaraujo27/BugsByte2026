@@ -22,10 +22,13 @@ const negotiate = async () => {
       body: JSON.stringify({ craving: craving.value, target_calories: 600 })
     });
 
-    if (!response.ok) throw new Error("Erro na negociação");
+    if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.detail || "Erro na negociação");
+    }
     result.value = await response.json();
   } catch (e) {
-    error.value = "Ocorreu um erro ao negociar. Tenta novamente.";
+    error.value = e.message;
     console.error(e);
   } finally {
     loading.value = false;
@@ -42,205 +45,378 @@ const goToIngredients = () => {
 
 <template>
   <div class="negotiator-container">
-    <div v-if="!result" class="start-screen">
-      <h1 class="title">TENHO FOME E QUERO ASNEIRA</h1>
-      <div class="input-wrapper">
+    <div v-if="!result" class="hero-section">
+      <h1 class="glow-title">TENHO FOME!</h1>
+      <p class="subtitle">Diz-nos o teu desejo e o nosso Chef Nutricionista vai negociar uma alternativa irresistível.</p>
+      
+      <div class="search-box-large">
         <input 
           v-model="craving" 
           type="text" 
-          placeholder="O que te apetece? (ex: Francesinha)" 
+          placeholder="O que te apetece comer? (Apenas comida real)" 
           @keyup.enter="negotiate"
+          :disabled="loading"
         />
-        <button @click="negotiate" :disabled="loading" class="btn-action">
-          {{ loading ? 'A Negociar...' : 'Resolver Problema' }}
+        <button @click="negotiate" :disabled="loading" class="btn-glow">
+          {{ loading ? 'A Analisar...' : 'Negociar Agora' }}
         </button>
       </div>
-      <p v-if="error" class="error">{{ error }}</p>
+      
+      <div v-if="error" class="error-bubble">{{ error }}</div>
+      <p class="disclaimer">Por favor, introduz apenas pedidos relacionados com alimentação.</p>
+      
+      <div class="suggestions-chips">
+        <span>Sugestões:</span>
+        <button @click="craving = 'Hambúrguer Gourmet'; negotiate()">🍔 Hambúrguer</button>
+        <button @click="craving = 'Pizza Pepperoni'; negotiate()">🍕 Pizza</button>
+        <button @click="craving = 'Sushi Variado'; negotiate()">🍣 Sushi</button>
+      </div>
     </div>
 
-    <div v-else class="results-screen">
-      <h2>{{ result.message }}</h2>
-      
-      <div class="options-grid single-option">
-        <!-- Option A: DIY -->
-        <div class="option-card diy">
-          <div class="card-header">
-            <h3>Faz tu mesmo (Saudável)</h3>
-            <span class="calories">{{ result.recipe.calories }} kcal</span>
-          </div>
-          <div class="recipe-content">
-            <h4>{{ result.recipe.title }}</h4>
-            <p><strong>Tempo:</strong> {{ result.recipe.time_minutes }} min</p>
-            <ul>
-              <li v-for="step in result.recipe.steps" :key="step">{{ step }}</li>
-            </ul>
-          </div>
-          <button @click="goToIngredients" class="btn-primary">
-            🛒 Comprar Ingredientes
-          </button>
-          
-          <button @click="negotiate" class="btn-retry">
-            🔄 Gerar Outra Opção
-          </button>
+    <div v-else-if="result && result.recipe" class="recipe-display fade-in">
+      <header class="recipe-header">
+        <div class="badge-calories">{{ result.recipe.calories }} kcal</div>
+        <h2 class="recipe-title">{{ result.recipe.title }}</h2>
+        <p class="chef-message">"{{ result.message }}"</p>
+        
+        <div class="recipe-meta">
+          <span>⏱️ {{ result.recipe.time_minutes }} min</span>
+          <span>👨‍🍳 Dificuldade: Média</span>
+          <span>🌱 100% Saudável</span>
         </div>
+      </header>
+
+      <div class="recipe-content-grid">
+        <!-- Ingredients Column -->
+        <section class="ingredients-card">
+          <h3>🛒 Ingredientes</h3>
+          <ul class="styled-list">
+            <li v-for="ing in result.recipe.ingredients" :key="ing">{{ ing }}</li>
+          </ul>
+          <button @click="goToIngredients" class="btn-shop-link">
+            Encontrar Ingredientes Perto 📍
+          </button>
+        </section>
+
+        <!-- Steps Column -->
+        <section class="steps-card">
+          <h3>👨‍🍳 Modo de Preparação</h3>
+          <div class="steps-timeline">
+            <div v-for="(step, index) in result.recipe.steps" :key="index" class="step-item">
+              <div class="step-number">{{ index + 1 }}</div>
+              <div class="step-text">{{ step }}</div>
+            </div>
+          </div>
+        </section>
       </div>
       
-      <button @click="result = null" class="btn-back">Voltar</button>
+      <footer class="recipe-actions">
+        <button @click="result = null" class="btn-secondary">🔙 Outro Desejo</button>
+        <button @click="negotiate" class="btn-refresh">🔄 Outra Receita</button>
+      </footer>
+    </div>
+
+    <!-- Rejection Screen -->
+    <div v-else-if="result && !result.recipe" class="rejection-card fade-in">
+      <div class="icon">🚫</div>
+      <h2>Pedido Inválido</h2>
+      <p>{{ result.message }}</p>
+      <button @click="result = null" class="btn-primary">Tentar Novamente</button>
     </div>
   </div>
 </template>
 
 <style scoped>
 .negotiator-container {
-  max-width: 900px;
+  max-width: 1000px;
   margin: 0 auto;
-  text-align: center;
   font-family: 'Sora', sans-serif;
-  padding: 40px 20px;
+  padding-bottom: 60px;
 }
 
-.title {
-  font-size: 3rem;
-  font-weight: 800;
+/* Hero Section */
+.hero-section {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.glow-title {
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  font-weight: 900;
   color: #e74c3c;
-  margin-bottom: 40px;
-  text-transform: uppercase;
-  line-height: 1.2;
+  text-shadow: 0 0 20px rgba(231, 76, 60, 0.2);
+  margin-bottom: 16px;
 }
 
-.input-wrapper {
+.subtitle {
+  color: #54667e;
+  font-size: 1.2rem;
+  max-width: 600px;
+  margin: 0 auto 40px;
+}
+
+.search-box-large {
+  display: flex;
+  background: white;
+  padding: 8px;
+  border-radius: 20px;
+  box-shadow: 0 15px 40px rgba(0,0,0,0.08);
+  max-width: 700px;
+  margin: 0 auto 24px;
+}
+
+.search-box-large input {
+  flex: 1;
+  border: none;
+  padding: 16px 24px;
+  font-size: 1.1rem;
+  border-radius: 16px;
+  outline: none;
+}
+
+.btn-glow {
+  background: #e74c3c;
+  color: white;
+  border: none;
+  padding: 0 32px;
+  border-radius: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-glow:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(231, 76, 60, 0.3);
+}
+
+.suggestions-chips {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+  color: #a0aec0;
+  font-size: 0.9rem;
+}
+
+.suggestions-chips button {
+  background: #edf2f7;
+  border: none;
+  padding: 6px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  color: #4a5568;
+  font-weight: 600;
+}
+
+/* Recipe Display */
+.recipe-display {
+  background: white;
+  border-radius: 32px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.05);
+  overflow: hidden;
+  animation: slideUp 0.5s ease-out;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.recipe-header {
+  background: linear-gradient(135deg, #fdf2f2 0%, #ffffff 100%);
+  padding: 48px;
+  text-align: center;
+  border-bottom: 1px solid #f1f5f9;
+  position: relative;
+}
+
+.badge-calories {
+  position: absolute;
+  top: 24px; right: 24px;
+  background: #07a374;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 12px;
+  font-weight: 800;
+}
+
+.recipe-title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #11263f;
+  margin-bottom: 12px;
+}
+
+.chef-message {
+  font-style: italic;
+  color: #54667e;
+  font-size: 1.1rem;
+  margin-bottom: 24px;
+}
+
+.recipe-meta {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  color: #718096;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.recipe-content-grid {
+  display: grid;
+  grid-template-columns: 350px 1fr;
+  gap: 40px;
+  padding: 48px;
+}
+
+.ingredients-card h3, .steps-card h3 {
+  font-size: 1.4rem;
+  margin-bottom: 24px;
+  color: #11263f;
+}
+
+.styled-list {
+  list-style: none;
+  padding: 0;
+}
+
+.styled-list li {
+  padding: 12px 0;
+  border-bottom: 1px solid #f1f5f9;
+  color: #4a5568;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.styled-list li::before { content: "•"; color: #07a374; font-weight: bold; }
+
+.btn-shop-link {
+  width: 100%;
+  margin-top: 24px;
+  padding: 16px;
+  background: #e3f7f2;
+  color: #07a374;
+  border: 2px dashed #07a374;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.steps-timeline {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
+}
+
+.step-item {
+  display: flex;
+  gap: 20px;
+}
+
+.step-number {
+  background: #11263f;
+  color: white;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-weight: 800;
+}
+
+.step-text {
+  color: #2d3748;
+  line-height: 1.6;
+  padding-top: 4px;
+}
+
+.recipe-actions {
+  padding: 32px 48px;
+  background: #f8fafc;
+  display: flex;
+  justify-content: space-between;
+}
+
+.btn-secondary {
+  background: none;
+  border: 1px solid #cbd5e0;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-refresh {
+  background: #11263f;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.error-bubble {
+  background: #fff5f5;
+  color: #c53030;
+  padding: 12px 24px;
+  border-radius: 12px;
+  display: inline-block;
+  margin-bottom: 20px;
+  font-weight: 600;
+}
+
+.disclaimer {
+  color: #a0aec0;
+  font-size: 0.85rem;
+  margin-top: -10px;
+  margin-bottom: 30px;
+}
+
+.rejection-card {
+  background: white;
+  padding: 60px;
+  border-radius: 32px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.05);
   max-width: 500px;
   margin: 0 auto;
 }
 
-input {
-  padding: 20px;
-  font-size: 1.2rem;
-  border: 2px solid #ddd;
-  border-radius: 12px;
-  text-align: center;
+.rejection-card .icon {
+  font-size: 4rem;
+  margin-bottom: 20px;
 }
 
-.btn-action {
-  padding: 16px;
-  font-size: 1.2rem;
-  font-weight: bold;
-  background: #e74c3c;
-  color: white;
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: transform 0.1s;
-}
-
-.btn-action:hover {
-  transform: scale(1.02);
-  background: #c0392b;
-}
-
-.options-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-  margin-top: 32px;
-  text-align: left;
-}
-
-.options-grid.single-option {
-  grid-template-columns: 1fr;
-  max-width: 600px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.option-card {
-  border: 1px solid #ddd;
-  border-radius: 16px;
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-.diy {
-  background: #f4fbf8;
-  border-color: #07a374;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.rejection-card h2 {
+  color: #11263f;
   margin-bottom: 16px;
 }
 
-.card-header h3 {
-  font-size: 1.1rem;
-  margin: 0;
+.rejection-card p {
+  color: #54667e;
+  margin-bottom: 32px;
+  line-height: 1.6;
 }
 
-.calories {
+.btn-primary {
   background: #07a374;
   color: white;
-  padding: 4px 8px;
+  padding: 12px 32px;
+  border: none;
   border-radius: 12px;
-  font-size: 0.9rem;
-  font-weight: bold;
-}
-
-.recipe-content ul {
-  padding-left: 20px;
-  font-size: 0.9rem;
-  color: #555;
-}
-
-.btn-primary {
-  width: 100%;
-  padding: 12px;
-  border: none;
-  border-radius: 8px;
-  font-weight: bold;
+  font-weight: 700;
   cursor: pointer;
-  margin-top: 16px;
 }
 
-.btn-primary {
-  background: #07a374;
-  color: white;
-}
-
-.btn-retry {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  background: #fff;
-  color: #666;
-  font-weight: 600;
-  cursor: pointer;
-  margin-top: 12px;
-}
-
-.btn-retry:hover {
-  background: #f9f9f9;
-  border-color: #ccc;
-}
-
-.btn-back {
-  margin-top: 32px;
-  background: none;
-  border: none;
-  text-decoration: underline;
-  cursor: pointer;
-  color: #666;
-}
-
-@media (max-width: 768px) {
-  .options-grid {
-    grid-template-columns: 1fr;
-  }
+@media (max-width: 850px) {
+  .recipe-content-grid { grid-template-columns: 1fr; }
+  .recipe-header { padding: 32px 24px; }
+  .recipe-title { font-size: 1.8rem; }
 }
 </style>

@@ -28,7 +28,7 @@ const shops = ref([]);
 const loading = ref(false);
 const error = ref(null);
 const userLocation = ref(null);
-const searchRadius = ref(3000); 
+const searchRadius = ref(1000); // Updated to 1km default
 const locationConsent = ref(localStorage.getItem('locationConsent') || 'ask'); 
 const manualQuery = ref('');
 const locationSuggestions = ref([]);
@@ -51,12 +51,12 @@ let userMarker = null;
 
 const initMap = (lat, lon) => {
   if (map) {
-    map.setView([lat, lon], 14);
+    map.setView([lat, lon], 15);
     updateUserMarker(lat, lon);
     return;
   }
   
-  map = L.map('map').setView([lat, lon], 14);
+  map = L.map('map').setView([lat, lon], 15);
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -96,10 +96,7 @@ const askForLocation = () => {
       initMap(userLocation.value.lat, userLocation.value.lon);
       error.value = null;
       
-      // Auto search if ingredients are present
-      if (ingredients.value) {
-        findShops();
-      }
+      if (ingredients.value) findShops();
     },
     (err) => {
       console.warn("Location error:", err);
@@ -131,16 +128,13 @@ const selectLocation = async (loc) => {
   manualQuery.value = loc.display_name;
   showSuggestions.value = false;
   locationSuggestions.value = [];
-  locationConsent.value = 'denied'; // Manual mode
+  locationConsent.value = 'denied'; 
   localStorage.setItem('locationConsent', 'denied');
   
   await nextTick();
   initMap(userLocation.value.lat, userLocation.value.lon);
   
-  // Auto search if ingredients present
-  if (ingredients.value) {
-    findShops();
-  }
+  if (ingredients.value) findShops();
 };
 
 const resetLocation = () => {
@@ -166,55 +160,42 @@ const findShops = async () => {
   error.value = null;
   shops.value = [];
 
-  // Clear existing shop markers
   markers.forEach(marker => map.removeLayer(marker));
   markers = [];
 
   try {
     const ingredientList = ingredients.value.split(',').map(i => i.trim());
-    
-    // Mock data check
-    if (ingredientList.includes('mock')) {
-        const baseLat = userLocation.value.lat;
-        const baseLon = userLocation.value.lon;
-        shops.value = [
-          { name: "Supermercado Exemplo 1", lat: baseLat + 0.002, lon: baseLon + 0.002, distance: 350 },
-          { name: "Mercearia Local", lat: baseLat - 0.003, lon: baseLon - 0.001, distance: 500 },
-          { name: "Hipermercado", lat: baseLat + 0.001, lon: baseLon - 0.004, distance: 750 },
-        ];
-    } else {
-      const payload = {
-        ingredients: ingredientList,
-        lat: userLocation.value.lat,
-        lon: userLocation.value.lon,
-        radius: searchRadius.value,
-        mode: searchMode.value
-      };
+    const payload = {
+      ingredients: ingredientList,
+      lat: userLocation.value.lat,
+      lon: userLocation.value.lon,
+      radius: searchRadius.value,
+      mode: searchMode.value
+    };
 
-      const response = await fetch('http://localhost:8000/shops/find', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
+    const response = await fetch('http://localhost:8000/shops/find', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
 
-      if (!response.ok) throw new Error('Falha ao obter resultados');
-      shops.value = await response.json();
+    if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.detail || 'Falha ao obter resultados');
     }
+    
+    shops.value = await response.json();
 
     if (shops.value.length === 0) {
-      error.value = "Não foram encontrados resultados nas proximidades.";
+      error.value = "Não foram encontrados resultados nas proximidades com este critério.";
     }
 
-    // Add markers
     shops.value.forEach(shop => {
-      const isRestaurant = searchMode.value === 'restaurant';
       const marker = L.marker([shop.lat, shop.lon], {
         icon: L.icon({
-          iconUrl: isRestaurant 
+          iconUrl: searchMode.value === 'restaurant' 
             ? 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-orange.png'
-            : 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+            : 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
           shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
           iconSize: [25, 41],
           iconAnchor: [12, 41],
@@ -234,11 +215,15 @@ const findShops = async () => {
     }
 
   } catch (err) {
-    console.error(err);
-    error.value = "Erro ao procurar. Verifica a ligação.";
+    error.value = err.message;
   } finally {
     loading.value = false;
   }
+};
+
+const openInMaps = (shop) => {
+    const url = `https://www.google.com/maps/search/?api=1&query=${shop.lat},${shop.lon}`;
+    window.open(url, '_blank');
 };
 
 onMounted(() => {
@@ -249,37 +234,35 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="shop-finder">
-    <h2>{{ searchMode === 'restaurant' ? 'Encontrar Restaurantes' : 'Encontrar Ingredientes' }}</h2>
+  <div class="shop-finder-container">
+    <header class="section-header">
+      <div class="header-info">
+        <h2>{{ searchMode === 'restaurant' ? '🍴 Restaurantes Saudáveis' : '🛒 Supermercados & Compras' }}</h2>
+        <p v-if="userLocation" class="location-badge">
+          📍 {{ manualQuery || 'Localização Atual' }} 
+          <button @click="resetLocation" class="btn-link">Alterar</button>
+        </p>
+      </div>
+    </header>
     
-    <!-- Location Selection (if not set) -->
-    <div v-if="!userLocation" class="location-setup">
-      <div class="consent-box" v-if="locationConsent === 'ask'">
-        <p>Partilha a tua localização para melhores resultados.</p>
-        <div class="buttons">
-          <button @click="askForLocation" class="btn-primary">📍 Usar GPS Atual</button>
-        </div>
-      </div>
-
-      <div class="method-divider" aria-hidden="true">
-        <span>OU</span>
-      </div>
-
-      <div class="manual-search">
-        <label>Pesquisar zona manualmente (sem GPS):</label>
-        <div class="search-wrapper">
+    <!-- Location Selection -->
+    <div v-if="!userLocation" class="location-card">
+      <div class="card-icon">📍</div>
+      <h3>Onde estás?</h3>
+      <p>Precisamos da tua localização para encontrar as melhores opções perto de ti.</p>
+      
+      <div class="location-actions">
+        <button @click="askForLocation" class="btn-gps">Usar GPS Atual</button>
+        <div class="divider">ou pesquisa manual</div>
+        <div class="search-box">
           <input 
             v-model="manualQuery" 
             type="text" 
             placeholder="Ex: Braga, Porto, Lisboa..."
             @input="searchLocation"
           />
-          <ul v-if="showSuggestions && locationSuggestions.length" class="suggestions">
-            <li 
-              v-for="loc in locationSuggestions" 
-              :key="loc.place_id" 
-              @click="selectLocation(loc)"
-            >
+          <ul v-if="showSuggestions && locationSuggestions.length" class="suggestions-list">
+            <li v-for="loc in locationSuggestions" :key="loc.place_id" @click="selectLocation(loc)">
               {{ loc.display_name }}
             </li>
           </ul>
@@ -288,249 +271,292 @@ onMounted(() => {
     </div>
 
     <!-- Main Interface -->
-    <div v-else class="interface-container">
-      <div class="top-bar">
-        <span class="location-label">
-          📍 {{ manualQuery || 'Localização Atual' }}
-        </span>
-        <button @click="resetLocation" class="btn-text">Alterar</button>
-      </div>
-
-      <div class="controls">
-        <div class="input-group">
+    <div v-else class="main-interface">
+      <div class="control-panel">
+        <div class="search-input-group">
           <input 
             v-model="ingredients" 
             type="text" 
-            :placeholder="searchMode === 'restaurant' ? 'Restaurante ou Prato (ex: Pizza)' : 'Ingredientes (ex: leite, pão)'"
+            :placeholder="searchMode === 'restaurant' ? 'Prato ou tipo de comida...' : 'O que precisas comprar?'"
             @keyup.enter="findShops"
           />
+          <button @click="findShops" :disabled="loading" class="btn-search">
+            {{ loading ? '...' : '🔍' }}
+          </button>
         </div>
         
-        <div class="radius-control">
-          <span>Raio: {{ searchRadius }}m</span>
-          <input type="range" v-model="searchRadius" min="500" max="10000" step="500">
+        <div class="radius-slider">
+          <label>Raio de Pesquisa: <strong>{{ searchRadius }}m</strong></label>
+          <input type="range" v-model="searchRadius" min="500" max="5000" step="100">
         </div>
-
-        <button @click="findShops" :disabled="loading" class="search-btn">
-          {{ loading ? 'A procurar...' : (searchMode === 'restaurant' ? '🔍 Encontrar Restaurantes' : '🔍 Encontrar Lojas') }}
-        </button>
       </div>
 
-      <p v-if="error" class="error">{{ error }}</p>
+      <div v-if="error" class="error-msg">{{ error }}</div>
 
-      <div id="map"></div>
-
-      <div v-if="shops.length > 0" class="shop-list">
-        <h3>{{ shops.length }} Resultados:</h3>
-        <ul class="shop-items">
-          <li v-for="shop in shops" :key="shop.id || shop.lat" class="shop-item">
-            <div class="info">
-              <strong>{{ shop.name }}</strong>
-              <small>{{ shop.distance }}m</small>
+      <div class="content-grid">
+        <div id="map"></div>
+        
+        <div class="results-panel">
+          <div v-if="shops.length > 0" class="results-list">
+            <div v-for="shop in shops" :key="shop.id || shop.lat" class="shop-card">
+              <div class="shop-info">
+                <span class="shop-icon">{{ searchMode === 'restaurant' ? '🍴' : '🏪' }}</span>
+                <div class="text">
+                  <h4 class="shop-name">{{ shop.name }}</h4>
+                  <p class="shop-dist">{{ shop.distance }} metros de distância</p>
+                </div>
+              </div>
+              <button @click="openInMaps(shop)" class="btn-maps">Ver no Mapa</button>
             </div>
-            <span class="tag">Aberto</span>
-          </li>
-        </ul>
+          </div>
+          <div v-else-if="!loading" class="empty-state">
+            <img src="https://cdn-icons-png.flaticon.com/512/6108/6108830.png" width="60" />
+            <p>Faz uma pesquisa para ver resultados</p>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.shop-finder {
-  width: 100%;
-  max-width: 800px;
+.shop-finder-container {
+  --primary: #07a374;
+  --secondary: #e74c3c;
+  --bg-card: #ffffff;
+  --text-dark: #11263f;
+  --text-light: #54667e;
+  
+  max-width: 1100px;
   margin: 0 auto;
-  font-family: 'Sora', sans-serif;
 }
 
-.location-setup {
-  background: white;
-  padding: 24px;
-  border-radius: 16px;
-  text-align: center;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-}
-
-.consent-box {
+.section-header {
   margin-bottom: 24px;
 }
 
-.buttons {
-  display: flex;
+.section-header h2 {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--text-dark);
+  margin: 0;
+}
+
+.location-badge {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  margin-top: 12px;
+  gap: 8px;
+  background: #e3f7f2;
+  color: var(--primary);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-top: 8px;
 }
 
-.method-divider {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 18px 0 16px;
-  color: #8a96a3;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+.btn-link {
+  background: none;
+  border: none;
+  text-decoration: underline;
+  color: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 0;
 }
 
-.method-divider::before,
-.method-divider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: #e7edf3;
+/* Location Card */
+.location-card {
+  background: white;
+  padding: 48px;
+  border-radius: 24px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+  max-width: 500px;
+  margin: 40px auto;
 }
 
-.manual-search {
-  text-align: left;
-}
+.card-icon { font-size: 3rem; margin-bottom: 16px; }
+.location-card h3 { font-size: 1.5rem; margin-bottom: 12px; }
+.location-card p { color: var(--text-light); margin-bottom: 32px; }
 
-.manual-search label {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 0.9rem;
-  color: #666;
-}
-
-.search-wrapper {
-  position: relative;
-}
-
-.search-wrapper input {
+.btn-gps {
+  background: var(--primary);
+  color: white;
   width: 100%;
-  padding: 12px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  padding: 16px;
+  border: none;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 1.1rem;
+}
+
+.divider {
+  margin: 20px 0;
+  color: #ccc;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+}
+
+.search-box { position: relative; }
+.search-box input {
+  width: 100%;
+  padding: 14px;
+  border: 2px solid #edf2f7;
+  border-radius: 12px;
   font-size: 1rem;
 }
 
-.suggestions {
+.suggestions-list {
   position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
+  top: 100%; left: 0; right: 0;
   background: white;
-  border: 1px solid #eee;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  margin: 4px 0 0;
-  padding: 0;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  z-index: 1000;
   list-style: none;
-  z-index: 10;
-  max-height: 200px;
-  overflow-y: auto;
+  padding: 8px;
+  text-align: left;
 }
 
-.suggestions li {
-  padding: 10px 12px;
+.suggestions-list li {
+  padding: 10px;
+  border-radius: 8px;
   cursor: pointer;
-  border-bottom: 1px solid #f5f5f5;
   font-size: 0.9rem;
 }
 
-.suggestions li:hover {
-  background: #f9f9f9;
-}
+.suggestions-list li:hover { background: #f7fafc; }
 
-.top-bar {
+/* Main Interface */
+.control-panel {
   display: flex;
-  justify-content: space-between;
+  gap: 24px;
+  background: white;
+  padding: 20px;
+  border-radius: 16px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.03);
   align-items: center;
-  margin-bottom: 16px;
 }
 
-.location-label {
-  font-weight: 600;
-  color: #333;
+.search-input-group {
+  flex: 1;
+  display: flex;
+  background: #f7fafc;
+  border-radius: 12px;
+  padding: 4px;
 }
 
-.btn-primary {
-  background: #07a374;
-  color: white;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 600;
-}
-
-.btn-text {
+.search-input-group input {
+  flex: 1;
   background: none;
   border: none;
-  color: #07a374;
-  text-decoration: underline;
-  cursor: pointer;
+  padding: 12px 16px;
+  font-size: 1rem;
 }
 
-.controls {
-  background: white;
-  padding: 16px;
-  border-radius: 12px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-}
-
-.input-group input {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  margin-bottom: 12px;
-}
-
-.radius-control {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-  font-size: 0.9rem;
-  color: #666;
-}
-
-.radius-control input {
-  flex: 1;
-}
-
-.search-btn {
-  width: 100%;
-  padding: 12px;
-  background: #07a374;
+.btn-search {
+  background: var(--primary);
   color: white;
   border: none;
-  border-radius: 8px;
-  font-weight: bold;
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
   cursor: pointer;
+  font-size: 1.2rem;
 }
 
-.search-btn:disabled {
-  background: #ccc;
+.radius-slider {
+  min-width: 200px;
 }
 
-#map {
-  height: 350px;
-  width: 100%;
-  border-radius: 12px;
-  margin-bottom: 24px;
-}
-
-.shop-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: white;
-  padding: 12px 16px;
-  border-radius: 8px;
-  border: 1px solid #eee;
+.radius-slider label {
+  display: block;
+  font-size: 0.8rem;
   margin-bottom: 8px;
 }
 
-.tag {
-  background: #e6fcf5;
-  color: #0ca678;
-  padding: 4px 8px;
+.radius-slider input {
+  width: 100%;
+  accent-color: var(--primary);
+}
+
+.content-grid {
+  display: grid;
+  grid-template-columns: 1fr 350px;
+  gap: 24px;
+  height: 500px;
+}
+
+#map {
+  border-radius: 20px;
+  border: 1px solid #edf2f7;
+  z-index: 1;
+}
+
+.results-panel {
+  background: white;
+  border-radius: 20px;
+  overflow-y: auto;
+  padding: 16px;
+  border: 1px solid #edf2f7;
+}
+
+.shop-card {
+  padding: 16px;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: transform 0.2s;
+}
+
+.shop-card:hover { background: #fafcfe; }
+
+.shop-info { display: flex; gap: 12px; }
+.shop-icon { font-size: 1.5rem; }
+.shop-name { margin: 0; font-size: 1rem; color: var(--text-dark); }
+.shop-dist { margin: 2px 0 0; font-size: 0.8rem; color: var(--text-light); }
+
+.btn-maps {
+  background: #edf2f7;
+  border: none;
+  padding: 8px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--primary);
+  cursor: pointer;
+}
+
+.btn-maps:hover { background: #e2e8f0; }
+
+.error-msg {
+  background: #fff5f5;
+  color: #c53030;
+  padding: 12px;
   border-radius: 12px;
-  font-size: 0.75rem;
+  margin-bottom: 16px;
+  font-size: 0.9rem;
   font-weight: 600;
+}
+
+.empty-state {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #a0aec0;
+  text-align: center;
+  padding: 20px;
+}
+
+@media (max-width: 900px) {
+  .content-grid { grid-template-columns: 1fr; height: auto; }
+  #map { height: 300px; }
+  .control-panel { flex-direction: column; align-items: stretch; }
 }
 </style>
