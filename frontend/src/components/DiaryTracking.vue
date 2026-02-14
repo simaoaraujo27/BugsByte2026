@@ -590,6 +590,7 @@ const addMeal = async (sectionId, closeAfter = true) => {
       body: JSON.stringify({
         section: sectionId,
         name,
+        grams: Math.round(grams),
         calories: Math.round(calories),
         protein,
         carbs,

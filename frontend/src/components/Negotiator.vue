@@ -26,128 +26,6 @@ const moodAnalysis = ref(null);
 const recipeResult = ref(null);
 const detectedIngredients = ref([]);
 
-// Vision
-const fileInput = ref(null);
-const cameraInput = ref(null);
-const videoRef = ref(null);
-const canvasRef = ref(null);
-const previewImage = ref(null);
-const isCameraActive = ref(false);
-const stream = ref(null);
-
-const onDragOver = (e) => {
-  e.preventDefault();
-  isDragging.value = true;
-};
-
-const onDragLeave = () => {
-  isDragging.value = false;
-};
-
-const onDrop = (e) => {
-  e.preventDefault();
-  isDragging.value = false;
-  const file = e.dataTransfer.files[0];
-  if (file && file.type.startsWith('image/')) {
-    processSelectedFile(file);
-  }
-};
-
-const onPaste = (e) => {
-  if (activeView.value !== 'vision_input') return;
-  const items = e.clipboardData?.items;
-  if (!items) return;
-  for (const item of items) {
-    if (item.type.startsWith('image/')) {
-      const file = item.getAsFile();
-      processSelectedFile(file);
-      break;
-    }
-  }
-};
-
-const processSelectedFile = (file) => {
-  const reader = new FileReader();
-  reader.onload = (e) => previewImage.value = e.target.result;
-  reader.readAsDataURL(file);
-  uploadAndAnalyze(file);
-};
-
-onMounted(() => {
-  window.addEventListener('paste', onPaste);
-});
-
-onUnmounted(() => {
-  window.removeEventListener('paste', onPaste);
-});
-
-const startCamera = async () => {
-  // On mobile, try to use native camera interface first for better reliability
-  if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-    cameraInput.value.click();
-    return;
-  }
-
-  isCameraActive.value = true;
-  error.value = null;
-  try {
-    stream.value = await navigator.mediaDevices.getUserMedia({ 
-      video: { facingMode: 'environment' } 
-    });
-    if (videoRef.value) {
-      videoRef.value.srcObject = stream.value;
-    }
-  } catch (err) {
-    console.error("Error accessing camera:", err);
-    error.value = "Não foi possível aceder à câmara.";
-    isCameraActive.value = false;
-  }
-};
-
-const stopCamera = () => {
-  if (stream.value) {
-    stream.value.getTracks().forEach(track => track.stop());
-    stream.value = null;
-  }
-  isCameraActive.value = false;
-};
-
-const capturePhoto = () => {
-  console.log("Attempting to capture photo...");
-  const video = videoRef.value;
-  const canvas = canvasRef.value;
-  if (video && canvas) {
-    try {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const context = canvas.getContext('2d');
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
-      console.log("Drawing video to canvas successful, creating blob...");
-      canvas.toBlob((blob) => {
-        if (blob) {
-          console.log("Blob created successfully, size:", blob.size);
-          const file = new File([blob], "captured_ingredients.jpg", { type: "image/jpeg" });
-          processSelectedFile(file);
-          
-          // Stop camera before starting upload to free resources
-          stopCamera();
-        } else {
-          console.error("Failed to create blob from canvas");
-          error.value = "Erro ao processar a imagem capturada.";
-        }
-      }, 'image/jpeg', 0.8);
-    } catch (err) {
-      console.error("Error during capturePhoto:", err);
-      error.value = "Erro ao capturar foto: " + err.message;
-    }
-  } else {
-    console.error("Video or Canvas ref is missing", { video: !!video, canvas: !!canvas });
-  }
-};
-
-const triggerFileSelect = () => fileInput.value.click();
-
 const moods = [
   { id: 'stressado', label: 'Stressado(a)', icon: '🌋' },
   { id: 'aborrecido', label: 'Aborrecido(a)', icon: '☁️' },
@@ -269,54 +147,6 @@ const generateMoodRecipe = async () => {
   }
 };
 
-// --- VISION FLOW ---
-const handleFileChange = (event) => {
-  const file = event.target.files[0];
-  if (file) {
-    processSelectedFile(file);
-  }
-};
-
-const uploadAndAnalyze = async (file) => {
-  console.log("uploadAndAnalyze called with file:", file.name, "size:", file.size);
-  loading.value = true;
-  error.value = null;
-  const formData = new FormData();
-  formData.append('file', file);
-
-  try {
-    const response = await fetch(`${API_URL}/vision/analyze`, {
-      method: 'POST',
-      headers: auth.getAuthHeaders(false),
-      body: formData,
-    });
-
-    console.log("Response status:", response.status);
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error("API Error response:", errText);
-      throw new Error('Erro ao analisar a imagem');
-    }
-    
-    const data = await response.json();
-    console.log("Analysis successful, received data:", data);
-
-    if (!data.detected_ingredients || data.detected_ingredients.length === 0) {
-      throw new Error('O Chef não conseguiu identificar alimentos nesta foto. Tenta novamente com um ângulo diferente.');
-    }
-
-    detectedIngredients.value = data.detected_ingredients;
-    recipeResult.value = { recipe: data.recipe, message: data.message };
-    storeInHistory({ recipe: data.recipe, message: data.message }, 'vision');
-    activeView.value = 'recipe';
-  } catch (e) {
-    console.error("Error in uploadAndAnalyze:", e);
-    error.value = e.message;
-  } finally {
-    loading.value = false;
-  }
-};
-
 // --- SHARED ---
 const goToIngredients = () => {
   emit('choice', {
@@ -379,7 +209,6 @@ const reset = () => {
   selectedMood.value = '';
   moodAnalysis.value = null;
   recipeResult.value = null;
-  previewImage.value = null;
   detectedIngredients.value = [];
   error.value = null;
 };

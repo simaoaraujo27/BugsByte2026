@@ -398,6 +398,7 @@ def add_diary_meal(date_key: str, payload: schemas.DiaryMealCreate, db: Session 
         day_id=day.id,
         section=payload.section,
         name=payload.name,
+        grams=payload.grams,
         calories=payload.calories,
         protein=payload.protein,
         carbs=payload.carbs,
