@@ -80,6 +80,10 @@ class LoginRequest(BaseModel):
 class ForgotPasswordRequest(BaseModel):
     username: str
 
+class ResetPasswordConfirm(BaseModel):
+    token: str
+    new_password: str = Field(..., min_length=8, max_length=128)
+
 class Shop(BaseModel):
     name: str
     lat: float

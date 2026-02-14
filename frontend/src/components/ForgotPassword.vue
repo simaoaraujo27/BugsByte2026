@@ -54,18 +54,18 @@ const submitForm = async () => {
       body: JSON.stringify({ username: email.value }),
     });
 
+    const data = await response.json();
     if (!response.ok) {
-      throw new Error('Failed to send request');
+      throw new Error(data?.detail || 'Não foi possível enviar o pedido.');
     }
 
-    const data = await response.json();
     // In a real app, we don't show specific errors for security, but we show the success message
     successMessage.value = data.message;
     email.value = ''; // Clear input
 
   } catch (error) {
     console.error('Forgot Password error:', error);
-    errorMessage.value = "An error occurred. Please try again later.";
+    errorMessage.value = error?.message || "Ocorreu um erro. Tenta novamente.";
   } finally {
     isLoading.value = false;
   }

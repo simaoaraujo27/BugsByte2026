@@ -5,6 +5,7 @@ import UserInfo from '../components/UserInfo.vue'
 import SiteHomePage from '../components/SiteHomePage.vue'
 import AboutPage from '../components/AboutPage.vue'
 import ForgotPassword from '../components/ForgotPassword.vue'
+import ResetPassword from '../components/ResetPassword.vue'
 import FavoritesPage from '../components/FavoritesPage.vue'
 
 const routes = [
@@ -32,6 +33,11 @@ const routes = [
     path: '/forgot-password',
     name: 'ForgotPassword',
     component: ForgotPassword
+  },
+  {
+    path: '/reset-password',
+    name: 'ResetPassword',
+    component: ResetPassword
   },
   {
     path: '/dashboard',
