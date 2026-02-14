@@ -234,43 +234,43 @@ const handleLogin = async () => {
 .auth-card {
   --bg-soft: #ffffff;
   --text-main: #13293d;
-  --text-muted: #3b566d;
+  --text-muted: #4b6a88;
   --accent: #0f766e;
   --accent-hover: #0b5c56;
-  --line: #d7e7e0;
+  --line: #e2e8f0;
   --error: #e53e3e;
   --success: #38a169;
 
   position: relative;
   z-index: 2;
   width: 100%;
-  max-width: 450px;
-  padding: 40px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border: 1px solid var(--line);
-  border-radius: 20px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  max-width: 480px;
+  padding: 48px 40px;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 24px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
   font-family: Sora, 'Segoe UI', Tahoma, sans-serif;
   color: var(--text-main);
 }
 
 .header-section {
   text-align: center;
-  margin-bottom: 32px;
+  margin-bottom: 40px;
 }
 
 .logo-container {
-  width: 80px;
-  height: 80px;
+  width: 72px;
+  height: 72px;
   background: white;
-  border-radius: 50%;
-  margin: 0 auto 16px;
+  border-radius: 20px;
+  margin: 0 auto 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 10px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  padding: 12px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.06);
 }
 
 .logo-container img {
@@ -280,47 +280,52 @@ const handleLogin = async () => {
 }
 
 .auth-title {
-  font-size: 2rem;
+  font-size: 2.25rem;
   font-weight: 800;
   margin: 0;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
+  color: #0f172a;
 }
 
 .auth-subtitle {
   color: var(--text-muted);
-  font-size: 0.95rem;
-  margin-top: 4px;
+  font-size: 1rem;
+  margin-top: 8px;
+  font-weight: 500;
 }
 
 .message-container {
-  min-height: 1.5rem;
-  margin-bottom: 16px;
+  min-height: 2.5rem;
+  margin-bottom: 24px;
 }
 
 .form-group {
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .form-group label {
   display: block;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   font-weight: 600;
   margin-bottom: 8px;
+  color: #334155;
 }
 
 .form-group input {
   width: 100%;
-  padding: 12px 14px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  padding: 14px 16px;
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
   font-size: 1rem;
-  transition: all 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: #f8fafc;
 }
 
 .form-group input:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.15);
+  background: white;
+  box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.1);
 }
 
 .password-input-wrapper {
@@ -330,22 +335,22 @@ const handleLogin = async () => {
 }
 
 .password-input-wrapper input {
-  padding-right: 45px;
+  padding-right: 50px;
 }
 
 .password-toggle {
   position: absolute;
-  right: 12px;
+  right: 14px;
   top: 50%;
   transform: translateY(-50%);
   background: none;
   border: none;
   cursor: pointer;
-  padding: 4px;
+  padding: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-muted);
+  color: #94a3b8;
   transition: color 0.2s;
 }
 
@@ -354,94 +359,104 @@ const handleLogin = async () => {
 }
 
 .password-toggle svg {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
 }
 
 .remember-forgot-row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  margin-bottom: 24px;
+  margin-top: -8px;
+  margin-bottom: 32px;
 }
 
 .checkbox-group {
   display: flex;
   flex-direction: column;
-  gap: 12px;
 }
 
 .checkbox-label {
   display: flex;
   align-items: center;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   cursor: pointer;
-  color: var(--text-muted);
+  color: #64748b;
   user-select: none;
+  font-weight: 500;
 }
 
 .checkbox-label input[type="checkbox"] {
   accent-color: var(--accent);
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   cursor: pointer;
   margin: 0;
-  flex-shrink: 0;
+  border-radius: 6px;
 }
 
 .checkbox-text {
-  margin-left: 8px;
+  margin-left: 10px;
 }
 
 .forgot-link {
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   color: var(--accent);
   text-decoration: none;
   font-weight: 600;
+  transition: color 0.2s;
 }
 
 .forgot-link:hover {
+  color: var(--accent-hover);
   text-decoration: underline;
 }
 
 .btn-primary {
   width: 100%;
-  padding: 14px;
+  padding: 16px;
   border: none;
-  border-radius: 999px;
+  border-radius: 14px;
   background: var(--accent);
   color: white;
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 1.1rem;
   cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 4px 14px rgba(15, 118, 110, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 10px 15px -3px rgba(15, 118, 110, 0.3);
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   background: var(--accent-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(15, 118, 110, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 20px 25px -5px rgba(15, 118, 110, 0.4);
 }
 
-.btn-primary:active {
+.btn-primary:active:not(:disabled) {
   transform: translateY(0);
+}
+
+.btn-primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 .signup-text {
   text-align: center;
-  margin-top: 24px;
+  margin-top: 28px;
 }
 
 .signup-text-muted {
-  font-size: 0.875rem;
-  color: #6b7280;
+  font-size: 0.95rem;
+  color: #64748b;
+  font-weight: 500;
 }
 
 .signup-link {
   color: var(--accent);
   font-weight: 700;
   text-decoration: none;
+  margin-left: 4px;
 }
 
 .signup-link:hover {
@@ -449,43 +464,53 @@ const handleLogin = async () => {
 }
 
 .message {
-  padding: 10px;
-  border-radius: 8px;
-  font-size: 0.9rem;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 0.95rem;
   font-weight: 600;
   display: flex;
   align-items: center;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
 .message-icon {
-  margin-right: 8px;
+  margin-right: 12px;
+  font-size: 1.1rem;
 }
 
 .message.error {
-  background: #fff5f5;
-  color: var(--error);
-  border: 1px solid #feb2b2;
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1.5px solid #fee2e2;
 }
 
 .message.success {
-  background: #f0fff4;
-  color: var(--success);
-  border: 1px solid #9ae6b4;
+  background: #f0fdf4;
+  color: #166534;
+  border: 1.5px solid #dcfce7;
 }
 
 .footer {
   text-align: center;
-  margin-top: 20px;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1.5px solid #f1f5f9;
 }
 
 .back-link {
-  color: var(--text-muted);
+  color: #94a3b8;
   font-size: 0.9rem;
   text-decoration: none;
   font-weight: 600;
+  transition: all 0.2s;
 }
 
 .back-link:hover {
-  color: var(--text-main);
+  color: #475569;
 }
 </style>
