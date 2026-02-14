@@ -151,7 +151,6 @@ const saveRecipe = async () => {
   saving.value = true;
 
   try {
-    // 1. Create the recipe
     const recipeData = {
       name: recipeResult.value.recipe.title,
       ingredients: recipeResult.value.recipe.ingredients.join(', '),
@@ -167,7 +166,6 @@ const saveRecipe = async () => {
     if (!createResponse.ok) throw new Error('Falha ao criar receita');
     const createdRecipe = await createResponse.json();
 
-    // 2. Add to favorites
     const favResponse = await fetch(`http://localhost:8000/users/me/favorites/recipes/${createdRecipe.id}`, {
       method: 'POST',
       headers: auth.getAuthHeaders()
@@ -183,6 +181,7 @@ const saveRecipe = async () => {
     saving.value = false;
   }
 };
+
 const reset = () => {
   activeView.value = 'landing';
   craving.value = '';
@@ -229,7 +228,7 @@ const reset = () => {
       </div>
     </div>
 
-    <!-- SUBMENU: Text Input (Desejo) -->
+    <!-- SUBMENU: Text Input -->
     <div v-if="activeView === 'text_input'" class="view-wrapper centered-view fade-in">
       <div class="hero-header-small">
         <div class="v-icon-top">🍔</div>
@@ -255,7 +254,7 @@ const reset = () => {
       <button @click="reset" class="btn-formatted-back">← Voltar</button>
     </div>
 
-    <!-- SUBMENU: Mood Selection (Estado de Alma) -->
+    <!-- SUBMENU: Mood Selection -->
     <div v-if="activeView === 'mood_select'" class="view-wrapper centered-view fade-in">
       <div class="hero-header-small">
         <div class="v-icon-top">🧘</div>
@@ -274,7 +273,7 @@ const reset = () => {
       <button @click="reset" class="btn-formatted-back">← Voltar</button>
     </div>
 
-    <!-- SUBMENU: Vision Input (O que tenho) -->
+    <!-- SUBMENU: Vision Input -->
     <div v-if="activeView === 'vision_input'" class="view-wrapper centered-view fade-in">
       <div class="hero-header-small">
         <div class="v-icon-top">🖼️</div>
@@ -359,11 +358,6 @@ const reset = () => {
             </div>
           </section>
         </div>
-<<<<<<< HEAD
-        <footer class="rec-footer-premium">
-          <button @click="reset" class="btn-formatted-back">← Voltar ao Início</button>
-        </footer>
-=======
 
         <div class="rec-final-action">
           <button @click="reset" class="btn-formatted-back">← Voltar</button>
@@ -371,7 +365,6 @@ const reset = () => {
             {{ saving ? 'A guardar...' : '❤️ Guardar Receita' }}
           </button>
         </div>
->>>>>>> abaeb07e3780395e1b3a38184ac1015e7719c8ef
       </div>
     </div>
 
@@ -390,143 +383,8 @@ const reset = () => {
 
 <style scoped>
 .negotiator-container { 
-<<<<<<< HEAD
   max-width: 1000px; margin: 0 auto; font-family: 'Sora', sans-serif; 
   min-height: 700px; display: flex; flex-direction: column;
-=======
-  max-width: 1000px; 
-  margin: 0 auto; 
-  font-family: 'Sora', sans-serif; 
-  min-height: 600px; 
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.step-item {
-  display: flex;
-  gap: 20px;
-}
-
-.step-number {
-  background: var(--text-main);
-  color: var(--bg-main);
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  font-weight: 800;
-}
-
-.step-text {
-  color: var(--text-main);
-  line-height: 1.6;
-  padding-top: 4px;
-}
-
-.recipe-actions {
-  padding: 32px 48px;
-  background: var(--bg-main);
-  display: flex;
-  justify-content: space-between;
-}
-
-.btn-secondary {
-  background: var(--bg-elevated);
-  border: 1px solid var(--line);
-  color: var(--text-main);
-  padding: 12px 24px;
-  border-radius: 12px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.btn-refresh {
-  background: var(--text-main);
-  color: var(--bg-main);
-  border: none;
-  padding: 12px 24px;
-  border-radius: 12px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.btn-save {
-  background: #ff5e5e;
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  border-radius: 12px;
-  font-weight: 600;
-  font-size: 1rem;
-  cursor: pointer;
-}
-.btn-save:hover { opacity: 0.9; }
-.btn-save:disabled { opacity: 0.6; }
-
-
-.error-bubble {
-  background: #fff5f5;
-  color: #c53030;
-  padding: 12px 24px;
-  border-radius: 12px;
-  display: inline-block;
-  margin-bottom: 20px;
-  font-weight: 600;
-}
-
-.disclaimer {
-  color: var(--text-muted);
-  font-size: 0.85rem;
-  margin-top: -10px;
-  margin-bottom: 30px;
-}
-
-.rejection-card {
-  background: var(--bg-elevated);
-  border: 1px solid var(--line);
-  padding: 60px;
-  border-radius: 32px;
-  text-align: center;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.05);
-  max-width: 500px;
-  margin: 0 auto;
-}
-
-.rejection-card .icon {
-  font-size: 4rem;
-  margin-bottom: 20px;
-}
-
-.rejection-card h2 {
-  color: var(--text-main);
-  margin-bottom: 16px;
-}
-
-.rejection-card p {
-  color: var(--text-muted);
-  margin-bottom: 32px;
-  line-height: 1.6;
-}
-
-.btn-primary {
-  background: #07a374;
-  color: white;
-  padding: 12px 32px;
-  border: none;
-  border-radius: 12px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-@media (max-width: 850px) {
-  .recipe-content-grid { grid-template-columns: 1fr; }
-  .recipe-header { padding: 32px 24px; }
-  .recipe-title { font-size: 1.8rem; }
->>>>>>> abaeb07e3780395e1b3a38184ac1015e7719c8ef
 }
 .fade-in { animation: fadeIn 0.5s ease-out both; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
@@ -600,7 +458,7 @@ const reset = () => {
 /* Final Recipe Display */
 .premium-recipe-display { background: var(--bg-elevated); border: 1px solid var(--line); border-radius: 40px; overflow: hidden; width: 100%; box-shadow: 0 30px 80px rgba(0,0,0,0.1); text-align: left; }
 .vision-bar-tags { background: #11263f; color: white; padding: 10px 40px; font-size: 0.85rem; font-weight: 600; }
-.rec-header-premium { padding: 60px 60px 40px; text-align: center; background: linear-gradient(135deg, var(--bg-main) 0%, var(--bg-elevated) 100%); border-bottom: 1px solid var(--line); }
+.rec-header-premium { padding: 60px 60px 40px; text-align: center; background: linear-gradient(135deg, var(--bg-main) 0%, var(--bg-elevated) 100%); border-bottom: 1px solid var(--line); position: relative; }
 .rec-header-badge-container { display: flex; justify-content: center; margin-bottom: 24px; }
 .rec-cal-badge-pill { background: #07a374; color: white; padding: 8px 24px; border-radius: 20px; font-weight: 900; font-size: 1.2rem; box-shadow: 0 4px 12px rgba(7, 163, 116, 0.2); }
 .rec-title-bold { font-size: 3rem; font-weight: 950; color: var(--text-main); margin-bottom: 16px; }
@@ -618,12 +476,12 @@ const reset = () => {
 .rec-step-txt { color: var(--text-main); line-height: 1.7; font-size: 1.05rem; }
 
 .btn-map-link-premium { width: 100%; margin-top: 32px; padding: 18px; background: var(--menu-active-bg); color: var(--menu-active-text); border: 2px dashed var(--menu-active-text); border-radius: 16px; font-weight: 900; cursor: pointer; }
-.rec-footer-premium { padding: 40px; background: var(--bg-main); text-align: center; border-top: 1px solid var(--line); }
+.rec-final-action { padding: 40px; background: var(--bg-main); text-align: center; border-top: 1px solid var(--line); display: flex; justify-content: center; gap: 20px; }
+.btn-save { background: #ff5e5e; color: white; border: none; padding: 12px 24px; border-radius: 12px; font-weight: 700; cursor: pointer; }
 
 /* Rejection */
 .rejection-card-premium { text-align: center; padding: 80px 40px; background: var(--bg-elevated); border-radius: 40px; border: 1px solid var(--line); max-width: 600px; box-shadow: 0 20px 50px rgba(0,0,0,0.05); margin: 0 auto; }
 .rej-icon-large { font-size: 5rem; margin-bottom: 32px; }
-.btn-primary-action { background: #e74c3c; color: white; border: none; padding: 16px 40px; border-radius: 16px; font-weight: 800; cursor: pointer; margin-top: 32px; }
 
 /* Utils */
 .spinner-dot { 
