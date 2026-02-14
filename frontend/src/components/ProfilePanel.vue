@@ -5,6 +5,11 @@ import { useUser } from '@/store/userStore'
 
 const { user: userProfile, fetchUser, setUser, displayName } = useUser()
 
+const toNumber = (val) => {
+  const n = parseFloat(val)
+  return isNaN(n) ? 0 : n
+}
+
 const loading = ref(false)
 const errorMessage = ref('')
 const passwordMessage = ref('')
@@ -28,6 +33,21 @@ const videoRef = ref(null)
 const canvasRef = ref(null)
 const isCameraActive = ref(false)
 const stream = ref(null)
+
+// Local directive for clicking outside
+const vClickOutside = {
+  mounted(el, binding) {
+    el.clickOutsideEvent = (event) => {
+      if (!(el === event.target || el.contains(event.target))) {
+        binding.value()
+      }
+    }
+    document.addEventListener('click', el.clickOutsideEvent)
+  },
+  unmounted(el) {
+    document.removeEventListener('click', el.clickOutsideEvent)
+  }
+}
 
 const startCamera = async () => {
   showImageMenu.value = false
@@ -192,23 +212,29 @@ const fetchProfileData = async () => {
 const syncEditForm = () => {
   if (!userProfile.value) return
   editForm.value = {
-    username: userProfile.value.username,
+    username: userProfile.value.username || '',
     full_name: userProfile.value.full_name || '',
-    peso: userProfile.value.peso,
-    altura: userProfile.value.altura,
-    idade: userProfile.value.idade,
-    sexo: userProfile.value.sexo,
-    goal: userProfile.value.goal,
-    activity_level: userProfile.value.activity_level
+    peso: toNumber(userProfile.value.peso),
+    altura: toNumber(userProfile.value.altura),
+    idade: toNumber(userProfile.value.idade),
+    sexo: userProfile.value.sexo || 'other',
+    goal: userProfile.value.goal || 'maintain',
+    activity_level: userProfile.value.activity_level || 'sedentary'
   }
 }
 
 const toggleEdit = () => {
-  if (isEditing.value) {
+  if (!isEditing.value) {
     syncEditForm()
   }
   isEditing.value = !isEditing.value
 }
+
+watch(userProfile, (newVal) => {
+  if (newVal && !isEditing.value) {
+    syncEditForm()
+  }
+}, { deep: true })
 
 const saveProfile = async () => {
   isSaving.value = true
@@ -227,6 +253,7 @@ const saveProfile = async () => {
     const updatedUser = await res.json()
     setUser(updatedUser)
     isEditing.value = false
+    alert('Perfil atualizado com sucesso!')
   } catch (err) {
     alert(err.message)
   } finally {
