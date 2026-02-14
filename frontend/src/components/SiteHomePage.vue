@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import SidebarNav from './SidebarNav.vue'
+import DashboardHome from './DashboardHome.vue'
 import Negotiator from './Negotiator.vue'
 import ShopFinder from './ShopFinder.vue'
 import ProfilePanel from './ProfilePanel.vue'
@@ -102,7 +103,11 @@ watch(isDarkMode, (value) => {
     <SidebarNav :sections="sections" :active-section="activeSection" @select="selectSection" />
 
     <main class="content">
-      <div v-if="activeSection === 'tenho-fome'">
+      <div v-if="activeSection === 'inicio'">
+        <DashboardHome @navigate="selectSection" />
+      </div>
+
+      <div v-else-if="activeSection === 'tenho-fome'">
         <Negotiator @choice="handleNegotiationChoice" />
       </div>
       
