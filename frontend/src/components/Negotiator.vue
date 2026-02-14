@@ -216,7 +216,7 @@ const saveRecipe = async () => {
     if (!createResponse.ok) throw new Error('Falha ao criar receita');
     const createdRecipe = await createResponse.json();
 
-    const favResponse = await fetch(`' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/users/me/favorites/recipes/${createdRecipe.id}`, {
+    const favResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/users/me/favorites/recipes/${createdRecipe.id}`, {
       method: 'POST',
       headers: auth.getAuthHeaders()
     });

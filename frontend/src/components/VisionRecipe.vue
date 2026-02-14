@@ -77,7 +77,7 @@ const saveRecipe = async () => {
     const createdRecipe = await createResponse.json();
 
     // 2. Add to favorites
-    const favResponse = await fetch(`' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/users/me/favorites/recipes/${createdRecipe.id}`, {
+    const favResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/users/me/favorites/recipes/${createdRecipe.id}`, {
       method: 'POST',
       headers: auth.getAuthHeaders()
     });

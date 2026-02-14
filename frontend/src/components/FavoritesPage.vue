@@ -285,7 +285,7 @@ export default {
 
     async deleteRecipe(id) {
       try {
-        const response = await fetch(`' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/users/me/favorites/recipes/${id}`, {
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/users/me/favorites/recipes/${id}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -306,7 +306,7 @@ export default {
 
     async deleteRestaurant(id) {
       try {
-        const response = await fetch(`' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/users/me/favorites/restaurants/${id}`, {
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/users/me/favorites/restaurants/${id}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
