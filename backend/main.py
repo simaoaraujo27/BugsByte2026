@@ -40,6 +40,9 @@ def sync_sqlite_schema() -> None:
             "source": "ALTER TABLE food_history ADD COLUMN source VARCHAR DEFAULT 'search'",
             "created_at": "ALTER TABLE food_history ADD COLUMN created_at DATETIME",
         },
+        "diary_meals": {
+            "grams": "ALTER TABLE diary_meals ADD COLUMN grams FLOAT",
+        },
     }
 
     with engine.begin() as conn:
@@ -398,6 +401,7 @@ def add_diary_meal(date_key: str, payload: schemas.DiaryMealCreate, db: Session 
         day_id=day.id,
         section=payload.section,
         name=payload.name,
+        grams=payload.grams,
         calories=payload.calories,
         protein=payload.protein,
         carbs=payload.carbs,
@@ -539,7 +543,8 @@ def add_favorite_recipe(recipe_id: int, db: Session = Depends(get_db), current_u
     recipe = db.query(models.Recipe).filter(models.Recipe.id == recipe_id).first()
     if not recipe:
         raise HTTPException(status_code=404, detail="Recipe not found")
-    current_user.favorite_recipes.append(recipe)
+    if recipe not in current_user.favorite_recipes:
+        current_user.favorite_recipes.append(recipe)
     db.commit()
     return current_user
 
@@ -550,6 +555,36 @@ def remove_favorite_recipe(recipe_id: int, db: Session = Depends(get_db), curren
         raise HTTPException(status_code=404, detail="Recipe not found")
     try:
         current_user.favorite_recipes.remove(recipe)
+        db.commit()
+    except ValueError:
+        pass
+    return current_user
+
+@app.post("/restaurants/", response_model=schemas.Restaurant)
+def create_restaurant(restaurant: schemas.RestaurantCreate, db: Session = Depends(get_db)):
+    db_restaurant = models.Restaurant(**restaurant.model_dump())
+    db.add(db_restaurant)
+    db.commit()
+    db.refresh(db_restaurant)
+    return db_restaurant
+
+@app.post("/users/me/favorites/restaurants/{restaurant_id}", response_model=schemas.User)
+def add_favorite_restaurant(restaurant_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    restaurant = db.query(models.Restaurant).filter(models.Restaurant.id == restaurant_id).first()
+    if not restaurant:
+        raise HTTPException(status_code=404, detail="Restaurant not found")
+    if restaurant not in current_user.favorite_restaurants:
+        current_user.favorite_restaurants.append(restaurant)
+    db.commit()
+    return current_user
+
+@app.delete("/users/me/favorites/restaurants/{restaurant_id}", response_model=schemas.User)
+def remove_favorite_restaurant(restaurant_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    restaurant = db.query(models.Restaurant).filter(models.Restaurant.id == restaurant_id).first()
+    if not restaurant:
+        raise HTTPException(status_code=404, detail="Restaurant not found")
+    try:
+        current_user.favorite_restaurants.remove(restaurant)
         db.commit()
     except ValueError:
         pass
