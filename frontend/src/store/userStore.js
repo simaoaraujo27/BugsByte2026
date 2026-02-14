@@ -1,7 +1,43 @@
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { auth } from '@/auth'
 
 const user = ref(null)
+
+const customMacroPercents = ref({
+  protein: 30,
+  carbs: 45,
+  fat: 25
+})
+
+// Sync customMacroPercents when user data is loaded
+watch(user, (newUser) => {
+  if (newUser) {
+    customMacroPercents.value = {
+      protein: newUser.macro_protein_percent ?? 30,
+      carbs: newUser.macro_carbs_percent ?? 45,
+      fat: newUser.macro_fat_percent ?? 25
+    }
+  }
+}, { immediate: true })
+
+const saveMacroPercents = async (percents) => {
+  try {
+    const { API_URL } = await import('@/auth')
+    const { auth } = await import('@/auth')
+    
+    await fetch(`${API_URL}/users/me`, {
+      method: 'PUT',
+      headers: auth.getAuthHeaders(),
+      body: JSON.stringify({
+        macro_protein_percent: percents.protein,
+        macro_carbs_percent: percents.carbs,
+        macro_fat_percent: percents.fat
+      })
+    })
+  } catch (e) {
+    console.error('Error saving macro percents to server:', e)
+  }
+}
 
 const toDisplayName = (profile) => {
   if (!profile) return 'Utilizador'
@@ -52,15 +88,14 @@ const tdee = computed(() => {
 })
 
 const targetCalories = computed(() => {
-  // If user has a manual override, use it
   if (user.value?.target_calories) {
     return user.value.target_calories
   }
 
-  if (!tdee.value) return 1800 // Default fallback
+  if (!tdee.value) return 1800 
   const goal = (user.value?.goal || '').toLowerCase()
   if (goal === 'lose') return Math.round(tdee.value - 500)
-  if (goal === 'gain') return Math.round(tdee.value + 500)
+  if (goal === 'gain') return Math.round(tdee.value + 300)
   return Math.round(tdee.value)
 })
 
@@ -81,6 +116,8 @@ export function useUser() {
     bmr,
     tdee,
     targetCalories,
+    customMacroPercents,
+    saveMacroPercents,
     fetchUser,
     setUser
   }

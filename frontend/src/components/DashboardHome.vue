@@ -7,7 +7,8 @@ const emit = defineEmits(['navigate'])
 
 const { 
   displayName, 
-  targetCalories 
+  targetCalories,
+  customMacroPercents
 } = useUser()
 
 const goToDiary = () => emit('navigate', 'diario')
@@ -27,6 +28,12 @@ const dashboardData = ref({
 
 const nutritionCards = computed(() => {
   const goal = targetCalories.value || dashboardData.value.calorie_goal || 2000
+  
+  // Calculate goals based on custom percentages
+  const proteinGoal = Math.round((goal * (customMacroPercents.value.protein / 100)) / 4)
+  const carbsGoal = Math.round((goal * (customMacroPercents.value.carbs / 100)) / 4)
+  const fatGoal = Math.round((goal * (customMacroPercents.value.fat / 100)) / 9)
+
   return [
     {
       title: 'Calorias',
@@ -41,8 +48,8 @@ const nutritionCards = computed(() => {
     title: 'Proteínas',
     value: String(Math.round(dashboardData.value.protein)),
     unit: 'g',
-    goalLabel: 'Meta: 120g',
-    percent: Math.min(100, Math.round((dashboardData.value.protein / 120) * 100)),
+    goalLabel: `Meta: ${proteinGoal}g`,
+    percent: Math.min(100, Math.round((dashboardData.value.protein / (proteinGoal || 1)) * 100)),
     accent: '#2563eb',
     icon: '💪'
   },
@@ -50,23 +57,31 @@ const nutritionCards = computed(() => {
     title: 'Carboidratos',
     value: String(Math.round(dashboardData.value.carbs)),
     unit: 'g',
-    goalLabel: 'Meta: 250g',
-    percent: Math.min(100, Math.round((dashboardData.value.carbs / 250) * 100)),
+    goalLabel: `Meta: ${carbsGoal}g`,
+    percent: Math.min(100, Math.round((dashboardData.value.carbs / (carbsGoal || 1)) * 100)),
     accent: '#14b8a6',
     icon: '🍎'
   },
-      {
-        title: 'Água',
-        value: String(dashboardData.value.water_liters),
-        unit: ' L',
-        goalLabel: 'Meta: 2.5L',
-        percent: Math.min(100, Math.round((dashboardData.value.water_liters / 2.5) * 100)),
-        accent: '#0891b2',
-        icon: '💧'
-      }
-    ]
-  })
-
+  {
+    title: 'Gorduras',
+    value: String(Math.round(dashboardData.value.fat)),
+    unit: 'g',
+    goalLabel: `Meta: ${fatGoal}g`,
+    percent: Math.min(100, Math.round((dashboardData.value.fat / (fatGoal || 1)) * 100)),
+    accent: '#f59e0b',
+    icon: '🥑'
+  },
+  {
+    title: 'Água',
+    value: String(dashboardData.value.water_liters),
+    unit: ' L',
+    goalLabel: 'Meta: 2.5L',
+    percent: Math.min(100, Math.round((dashboardData.value.water_liters / 2.5) * 100)),
+    accent: '#0891b2',
+    icon: '💧'
+  }
+]
+})
 const chartPeriods = [
   { id: '1S', label: '1S' },
   { id: '1M', label: '1M' },

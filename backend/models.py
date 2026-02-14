@@ -49,6 +49,9 @@ class User(Base):
     goal = Column(String, nullable=True)
     activity_level = Column(String, nullable=True)
     target_calories = Column(Integer, nullable=True)
+    macro_protein_percent = Column(Integer, nullable=True, default=30)
+    macro_carbs_percent = Column(Integer, nullable=True, default=45)
+    macro_fat_percent = Column(Integer, nullable=True, default=25)
 
     allergens = relationship("Allergen", secondary=user_allergens, back_populates="users")
     diary_days = relationship("DiaryDay", back_populates="user", cascade="all, delete-orphan")

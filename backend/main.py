@@ -36,6 +36,9 @@ def sync_sqlite_schema() -> None:
             "goal": "ALTER TABLE users ADD COLUMN goal VARCHAR",
             "activity_level": "ALTER TABLE users ADD COLUMN activity_level VARCHAR",
             "target_calories": "ALTER TABLE users ADD COLUMN target_calories INTEGER",
+            "macro_protein_percent": "ALTER TABLE users ADD COLUMN macro_protein_percent INTEGER DEFAULT 30",
+            "macro_carbs_percent": "ALTER TABLE users ADD COLUMN macro_carbs_percent INTEGER DEFAULT 45",
+            "macro_fat_percent": "ALTER TABLE users ADD COLUMN macro_fat_percent INTEGER DEFAULT 25",
         },
         "food_history": {
             "source": "ALTER TABLE food_history ADD COLUMN source VARCHAR DEFAULT 'search'",
@@ -280,8 +283,15 @@ def update_user_me(update_data: schemas.UserUpdate, db: Session = Depends(get_db
     
     # Check if target_calories was explicitly sent in the request (even if null)
     update_dict = update_data.model_dump(exclude_unset=True)
-    if "target_calories" in update_dict:
+    if update_data.target_calories is not None or "target_calories" in update_dict:
         current_user.target_calories = update_data.target_calories
+    
+    if update_data.macro_protein_percent is not None:
+        current_user.macro_protein_percent = update_data.macro_protein_percent
+    if update_data.macro_carbs_percent is not None:
+        current_user.macro_carbs_percent = update_data.macro_carbs_percent
+    if update_data.macro_fat_percent is not None:
+        current_user.macro_fat_percent = update_data.macro_fat_percent
     
     db.commit()
     db.refresh(current_user)
