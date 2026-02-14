@@ -48,14 +48,17 @@ const capturePhoto = () => {
   if (video && canvas) {
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-    canvas.getContext('2d').drawImage(video, 0, 0);
+    const context = canvas.getContext('2d');
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
     
     canvas.toBlob((blob) => {
-      const file = new File([blob], "camera_photo.jpg", { type: "image/jpeg" });
-      previewImage.value = URL.createObjectURL(blob);
-      uploadAndAnalyze(file);
-      stopCamera();
-    }, 'image/jpeg');
+      if (blob) {
+        const file = new File([blob], "captured_ingredients.jpg", { type: "image/jpeg" });
+        previewImage.value = URL.createObjectURL(blob);
+        uploadAndAnalyze(file);
+        stopCamera();
+      }
+    }, 'image/jpeg', 0.8);
   }
 };
 
