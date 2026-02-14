@@ -20,7 +20,7 @@ print(f"Model: {os.getenv('OPENAI_MODEL', 'Default')}")
 print("="*30)
 
 # Use absolute imports (as per local requirement and working state)
-import models, schemas, shops, negotiator, auth
+import models, schemas, shops, negotiator, auth, vision
 from database import SessionLocal, engine, get_db
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import timedelta
@@ -119,7 +119,7 @@ def negotiate_craving(request: schemas.NegotiatorRequest, current_user: models.U
     return negotiator.negotiate_craving(request.craving, request.target_calories)
 
 @app.post("/vision/analyze", response_model=schemas.VisionResponse)
-async def analyze_ingredients_photo(file: UploadFile = File(...)):
+async def analyze_ingredients_photo(file: UploadFile = File(...), current_user: models.User = Depends(auth.get_current_user)):
     contents = await file.read()
     return vision.analyze_image_ingredients(contents)
 
