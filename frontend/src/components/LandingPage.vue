@@ -37,6 +37,7 @@ watch(isDark, (val) => {
     document.documentElement.classList.remove('dark')
     localStorage.setItem('theme', 'light')
   }
+  window.dispatchEvent(new CustomEvent('theme-change', { detail: { theme: val ? 'dark' : 'light' } }))
 }, { immediate: true })
 </script>
 
