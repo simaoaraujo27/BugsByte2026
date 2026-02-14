@@ -48,6 +48,7 @@ class User(Base):
     reset_token = Column(String, nullable=True)
     goal = Column(String, nullable=True)
     activity_level = Column(String, nullable=True)
+    target_calories = Column(Integer, nullable=True)
 
     allergens = relationship("Allergen", secondary=user_allergens, back_populates="users")
     diary_days = relationship("DiaryDay", back_populates="user", cascade="all, delete-orphan")

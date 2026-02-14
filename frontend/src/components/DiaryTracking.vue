@@ -1,8 +1,11 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { auth, API_URL } from '@/auth'
+import { useUser } from '@/store/userStore'
 
-const DEFAULT_GOAL = 1800
+const { targetCalories } = useUser()
+
+const DEFAULT_GOAL = computed(() => targetCalories.value || 1800)
 const mealSections = [
   { id: 'breakfast', label: 'Pequeno-almoço', icon: '🥣' },
   { id: 'lunch', label: 'Almoço', icon: '🍛' },
@@ -195,7 +198,7 @@ const formatMealGrams = (value) => {
 const formatMacro = (value) => `${round1(toNumber(value))}g`
 
 const buildEmptyDay = () => ({
-  goal: DEFAULT_GOAL,
+  goal: DEFAULT_GOAL.value,
   meals: {
     breakfast: [],
     lunch: [],
@@ -239,7 +242,7 @@ const consumedProtein = computed(() => round1(allMealsToday.value.reduce((acc, i
 const consumedCarbs = computed(() => round1(allMealsToday.value.reduce((acc, item) => acc + toNumber(item.carbs), 0)))
 const consumedFat = computed(() => round1(allMealsToday.value.reduce((acc, item) => acc + toNumber(item.fat), 0)))
 
-const calorieGoal = computed(() => Math.max(1, toNumber(currentDay.value.goal) || DEFAULT_GOAL))
+const calorieGoal = computed(() => Math.max(1, DEFAULT_GOAL.value || toNumber(currentDay.value.goal)))
 const deltaCalories = computed(() => calorieGoal.value - consumedCalories.value)
 
 const progressPercent = computed(() => {
@@ -295,7 +298,7 @@ const isDayOnTarget = (day) => {
   const mealsList = Array.isArray(day.meals) ? day.meals : []
   const total = mealsList.reduce((acc, item) => acc + toNumber(item.calories), 0)
   if (total === 0) return false
-  return total <= toNumber(day.goal || DEFAULT_GOAL)
+  return total <= toNumber(day.goal || DEFAULT_GOAL.value)
 }
 
 const weeklyDays = computed(() => {
@@ -663,7 +666,7 @@ const setSelectedDay = (dateObj) => {
 }
 
 const updateGoal = async (event) => {
-  const next = Math.max(1000, Math.min(6000, toNumber(event.target.value) || DEFAULT_GOAL))
+  const next = Math.max(1000, Math.min(6000, toNumber(event.target.value) || DEFAULT_GOAL.value))
   try {
     const res = await fetch(`${API_URL}/diary/${dateKey.value}/goal`, {
       method: 'PUT',

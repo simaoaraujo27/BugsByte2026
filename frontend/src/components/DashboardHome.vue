@@ -5,8 +5,10 @@ import { useUser } from '@/store/userStore'
 
 const emit = defineEmits(['navigate'])
 
-const userStore = useUser()
-const displayName = computed(() => userStore.displayName.value)
+const { 
+  displayName, 
+  targetCalories 
+} = useUser()
 
 const goToDiary = () => emit('navigate', 'diario')
 const goToHungryMode = () => emit('navigate', 'tenho-fome')
@@ -23,16 +25,18 @@ const dashboardData = ref({
   weight_history: { labels: [], values: [] }
 })
 
-const nutritionCards = computed(() => [
-  {
-    title: 'Calorias',
-    value: String(dashboardData.value.consumed_calories),
-    unit: ' kcal',
-    goalLabel: `Meta: ${dashboardData.value.calorie_goal} kcal`,
-    percent: Math.min(100, Math.round((dashboardData.value.consumed_calories / (dashboardData.value.calorie_goal || 1)) * 100)),
-    accent: '#16a34a',
-    icon: '🔥'
-  },
+const nutritionCards = computed(() => {
+  const goal = targetCalories.value || dashboardData.value.calorie_goal || 2000
+  return [
+    {
+      title: 'Calorias',
+      value: String(dashboardData.value.consumed_calories),
+      unit: ' kcal',
+      goalLabel: `Meta: ${goal} kcal`,
+      percent: Math.min(100, Math.round((dashboardData.value.consumed_calories / (goal || 1)) * 100)),
+      accent: '#16a34a',
+      icon: '🔥'
+    },
   {
     title: 'Proteínas',
     value: String(Math.round(dashboardData.value.protein)),
@@ -51,16 +55,17 @@ const nutritionCards = computed(() => [
     accent: '#14b8a6',
     icon: '🍎'
   },
-  {
-    title: 'Água',
-    value: String(dashboardData.value.water_liters),
-    unit: ' L',
-    goalLabel: 'Meta: 2.5L',
-    percent: Math.min(100, Math.round((dashboardData.value.water_liters / 2.5) * 100)),
-    accent: '#0891b2',
-    icon: '💧'
-  }
-])
+      {
+        title: 'Água',
+        value: String(dashboardData.value.water_liters),
+        unit: ' L',
+        goalLabel: 'Meta: 2.5L',
+        percent: Math.min(100, Math.round((dashboardData.value.water_liters / 2.5) * 100)),
+        accent: '#0891b2',
+        icon: '💧'
+      }
+    ]
+  })
 
 const chartPeriods = [
   { id: '1S', label: '1S' },

@@ -62,6 +62,7 @@ class UserBase(BaseModel):
     idade: int
     goal: str | None = None
     activity_level: str | None = None
+    target_calories: Optional[int] = None
 
 class UserCreate(UserBase):
     password: str
@@ -78,6 +79,7 @@ class UserUpdate(BaseModel):
     idade: Optional[int] = None
     goal: Optional[str] = None
     activity_level: Optional[str] = None
+    target_calories: Optional[int] = None
 
 class User(UserBase):
     id: int
