@@ -58,7 +58,7 @@ def negotiate_craving(craving: str, target_calories: int = 600, mood: Optional[s
         "2. Se o utilizador forneceu uma lista de ingredientes ou disse o que tem em casa (ex: 'tenho salsichas e batatas'), cria uma receita criativa usando esses ingredientes. "
         "3. Analisa as receitas favoritas acima para alinhar o sabor ao paladar do utilizador. "
         "4. Se o pedido for inválido (não relacionado com comida), define 'recipe' como null. "
-        "\nRetorna RIGOROSAMENTE este JSON em PT-PT: "
+        "\nRetorna RIGOROSAMENTE este JSON em PT-PT (define SEMPRE 'calories' como 0, pois eu vou calcular o valor real): "
         "{ 'message': '...', 'recipe': { 'title': '...', 'calories': 0, 'time_minutes': 30, 'ingredients': [], 'steps': [] }, 'restaurant_search_term': '...' }"
     )
 

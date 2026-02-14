@@ -197,7 +197,7 @@ def search_foods(query: str, page_size: int = 10) -> List[Dict]:
 def get_nutrition_for_recipe(ingredients: List[str]) -> Dict:
     """
     Estimates total nutrition for a list of ingredients using FatSecret.
-    Returns a dict with 'calories', 'protein', 'carbs', 'fat'.
+    Parses quantities (g, kg, ml, etc.) for better accuracy.
     """
     fs_id = os.getenv("FATSECRET_CLIENT_ID") or os.getenv("Client ID")
     fs_secret = os.getenv("FATSECRET_CLIENT_SECRET") or os.getenv("Client Secret")
@@ -212,13 +212,31 @@ def get_nutrition_for_recipe(ingredients: List[str]) -> Dict:
         
         for ing in ingredients:
             try:
-                # Search for each ingredient
+                # 1. Extract quantity and unit
+                # Pattern to find numbers and units (g, kg, ml, l)
+                qty_match = re.search(r"(\d+(?:[.,]\d+)?)\s*(g|kg|ml|l|colher|unidade|chávena|dente|fatia)", ing.lower())
+                multiplier = 1.0 # Default to 1 unit or 100g depending on result
+                
+                search_term = ing
+                if qty_match:
+                    val = float(qty_match.group(1).replace(",", "."))
+                    unit = qty_match.group(2)
+                    search_term = ing.replace(qty_match.group(0), "").strip()
+                    
+                    if unit == "kg" or unit == "l":
+                        multiplier = val * 10 # Since FS usually returns per 100g
+                    elif unit == "g" or unit == "ml":
+                        multiplier = val / 100
+                    else:
+                        multiplier = val # For units like "2 eggs"
+
+                # 2. Search for the ingredient
                 response = requests.get(
                     FATSECRET_SEARCH_URL,
                     headers={"Authorization": f"Bearer {token}"},
                     params={
                         "method": "foods.search",
-                        "search_expression": ing,
+                        "search_expression": search_term,
                         "format": "json",
                         "max_results": 1,
                     },
@@ -234,19 +252,20 @@ def get_nutrition_for_recipe(ingredients: List[str]) -> Dict:
                 
                 if results:
                     desc = results[0].get("food_description", "")
-                    # Extract per 100g or use default portion if not found
-                    # This is an approximation as we don't know the weight of '1 tomato' exactly here
-                    # But we follow the search_foods extraction logic
                     parts = desc.split("|")
                     for p in parts:
                         if "Calories:" in p:
-                            total_nutrients["calories"] += _safe_float(p.replace("Calories:", "").replace("kcal", "").strip())
+                            cal = _safe_float(p.replace("Calories:", "").replace("kcal", "").strip())
+                            total_nutrients["calories"] += cal * multiplier
                         elif "Fat:" in p:
-                            total_nutrients["fat"] += _safe_float(p.replace("Fat:", "").replace("g", "").strip())
+                            fat = _safe_float(p.replace("Fat:", "").replace("g", "").strip())
+                            total_nutrients["fat"] += fat * multiplier
                         elif "Carbs:" in p:
-                            total_nutrients["carbs"] += _safe_float(p.replace("Carbs:", "").replace("g", "").strip())
+                            carbs = _safe_float(p.replace("Carbs:", "").replace("g", "").strip())
+                            total_nutrients["carbs"] += carbs * multiplier
                         elif "Protein:" in p:
-                            total_nutrients["protein"] += _safe_float(p.replace("Protein:", "").replace("g", "").strip())
+                            prot = _safe_float(p.replace("Protein:", "").replace("g", "").strip())
+                            total_nutrients["protein"] += prot * multiplier
             except Exception:
                 continue
                 

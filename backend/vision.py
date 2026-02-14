@@ -43,7 +43,7 @@ def analyze_image_ingredients(image_bytes: bytes, mode: str = "ingredients", api
             "2. Cria uma RECRIAÇÃO SAUDÁVEL desse exato prato. Não inventes uma receita aleatória; foca-te em tornar o prato da imagem mais nutritivo (ex: trocar massa normal por integral, reduzir gorduras saturadas, aumentar vegetais), mantendo a essência do prato original. "
             "3. Se não conseguires identificar o prato com certeza, analisa os ingredientes visíveis e sugere algo baseado neles como alternativa. "
             "4. Responde em PT-PT. "
-            "IMPORTANTE: Responde APENAS com um objeto JSON válido. "
+            "IMPORTANTE: Responde APENAS com um objeto JSON válido. Define SEMPRE 'calories' como 0. "
             "\nEstrutura JSON esperada: { \"detected_ingredients\": [\"nome do prato detetado\"], \"message\": \"Explicação de como tornaste este prato mais saudável...\", \"recipe\": { \"title\": \"Versão Saudável de [Nome do Prato]\", \"calories\": 0, \"time_minutes\": 25, \"ingredients\": [], \"steps\": [] } }"
         )
     else:
@@ -53,7 +53,7 @@ def analyze_image_ingredients(image_bytes: bytes, mode: str = "ingredients", api
             "1. Identifica os ingredientes presentes. "
             "2. Cria uma receita saudável que combine estes ingredientes, inspirada no estilo das receitas favoritas do utilizador. "
             "3. Responde em PT-PT. "
-            "IMPORTANTE: Responde APENAS com um objeto JSON válido. "
+            "IMPORTANTE: Responde APENAS com um objeto JSON válido. Define SEMPRE 'calories' como 0. "
             "\nEstrutura JSON esperada: { \"detected_ingredients\": [], \"message\": \"...\", \"recipe\": { \"title\": \"...\", \"calories\": 0, \"time_minutes\": 25, \"ingredients\": [], \"steps\": [] } }"
         )
 
