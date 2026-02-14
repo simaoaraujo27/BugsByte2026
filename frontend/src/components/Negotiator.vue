@@ -25,6 +25,8 @@ const selectedMood = ref('');
 const moodAnalysis = ref(null);
 const recipeResult = ref(null);
 const detectedIngredients = ref([]);
+const isListening = ref(false);
+let recognitionInstance = null;
 
 // Vision
 const fileInput = ref(null);
@@ -34,6 +36,78 @@ const canvasRef = ref(null);
 const previewImage = ref(null);
 const isCameraActive = ref(false);
 const stream = ref(null);
+
+const toggleListening = async () => {
+  if (isListening.value) {
+    if (recognitionInstance) {
+      recognitionInstance.stop()
+    }
+    return
+  }
+
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    alert('O seu navegador não suporta reconhecimento de voz. Use Chrome, Edge ou Safari.')
+    return
+  }
+
+  try {
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    recognitionInstance = new Recognition()
+    
+    recognitionInstance.lang = 'pt-PT'
+    recognitionInstance.continuous = false
+    recognitionInstance.interimResults = true
+    recognitionInstance.maxAlternatives = 1
+    
+    if ('lang' in recognitionInstance) {
+      recognitionInstance.lang = 'pt-PT'
+    }
+    
+    recognitionInstance.onstart = () => {
+      isListening.value = true
+    }
+    
+    recognitionInstance.onresult = (event) => {
+      let transcript = ''
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i]
+        if (result.isFinal) {
+          transcript += result[0].transcript + ' '
+        } else {
+          transcript += result[0].transcript
+        }
+      }
+      
+      if (transcript.trim()) {
+        craving.value = transcript.trim()
+      }
+    }
+    
+    recognitionInstance.onerror = (event) => {
+      if (event.error !== 'aborted' && event.error !== 'no-speech') {
+         console.error('Speech recognition error:', event.error)
+      }
+      stopListening()
+    }
+    
+    recognitionInstance.onend = () => {
+      stopListening()
+    }
+    
+    recognitionInstance.start()
+  } catch (err) {
+    console.error('Failed to start speech recognition:', err)
+    stopListening()
+  }
+}
+
+const stopListening = () => {
+  isListening.value = false
+  if (recognitionInstance) {
+    try { recognitionInstance.stop() } catch (e) {}
+    recognitionInstance = null
+  }
+}
 
 const onDragOver = (e) => {
   e.preventDefault();
@@ -79,6 +153,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('paste', onPaste);
+  stopListening();
 });
 
 const startCamera = async () => {
@@ -444,6 +519,15 @@ watch(
 
       <div class="search-box-premium">
         <input v-model="craving" type="text" placeholder="Ex: Risotto de cogumelos..." @keyup.enter="generateTextRecipe" autofocus />
+        <button 
+          type="button" 
+          class="mic-btn-negotiator" 
+          :class="{ active: isListening }"
+          @click="toggleListening"
+          title="Falar desejo"
+        >
+          🎤
+        </button>
         <button @click="generateTextRecipe" :disabled="loading" class="btn-primary-action">
           {{ loading ? '...' : 'Negociar' }}
         </button>
@@ -668,6 +752,30 @@ watch(
   width: 100%; max-width: 700px; box-shadow: 0 15px 40px rgba(0,0,0,0.06); margin-bottom: 24px;
 }
 .search-box-premium input { flex: 1; border: none; padding: 16px 24px; background: transparent; color: var(--text-main); font-size: 1.2rem; outline: none; }
+.mic-btn-negotiator {
+  background: transparent;
+  border: none;
+  font-size: 1.3rem;
+  padding: 0 16px;
+  cursor: pointer;
+  border-radius: 12px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mic-btn-negotiator:hover {
+  background: var(--menu-hover-bg);
+}
+.mic-btn-negotiator.active {
+  color: #ef4444;
+  animation: pulse-mic 1.5s infinite;
+}
+@keyframes pulse-mic {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
 .btn-primary-action {
   background: var(--menu-active-text);
   color: #ffffff;
