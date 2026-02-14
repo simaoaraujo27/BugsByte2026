@@ -439,13 +439,13 @@ watch(
       <div class="hero-header-small">
         <div class="v-icon-top">🍔</div>
         <h2 class="title-bold">O QUE TE APETECE?</h2>
-        <p class="subtitle-muted">O Chef vai negociar uma alternativa irresistível e saudável.</p>
+        <p class="subtitle-muted">Diz-nos o que queres comer ou o que tens no frigorífico e o Chef trata do resto.</p>
       </div>
 
       <div class="search-box-premium">
-        <input v-model="craving" type="text" placeholder="Ex: Risotto de cogumelos..." @keyup.enter="generateTextRecipe" autofocus />
+        <input v-model="craving" type="text" placeholder="Ex: Risotto ou tenho ovos e tomate..." @keyup.enter="generateTextRecipe" autofocus />
         <button @click="generateTextRecipe" :disabled="loading" class="btn-primary-action">
-          {{ loading ? '...' : 'Negociar' }}
+          {{ loading ? '...' : 'Cozinhar' }}
         </button>
       </div>
 

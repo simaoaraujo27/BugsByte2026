@@ -51,11 +51,12 @@ def negotiate_craving(craving: str, target_calories: int = 600, mood: Optional[s
 
     prompt = (
         f"{fav_header}"
-        f"O utilizador tem agora um desejo de: '{craving}'. Estado emocional: {mood}. "
+        f"O utilizador enviou o seguinte: '{craving}'. Estado emocional: {mood}. "
         "\nINSTRUÇÕES: "
-        "1. Analisa as receitas favoritas acima para entender o paladar do utilizador. "
-        "2. Cria uma NOVA receita GOURMET saudável que se alinhe com este perfil de gosto. "
-        "3. Se o pedido for inválido (não comida), define 'recipe' como null. "
+        "1. Se o utilizador descreveu um desejo específico (ex: 'apetece-me pizza'), cria uma versão saudável. "
+        "2. Se o utilizador forneceu uma lista de ingredientes ou disse o que tem em casa (ex: 'tenho salsichas e batatas'), cria uma receita criativa usando esses ingredientes. "
+        "3. Analisa as receitas favoritas acima para alinhar o sabor ao paladar do utilizador. "
+        "4. Se o pedido for inválido (não relacionado com comida), define 'recipe' como null. "
         "\nRetorna RIGOROSAMENTE este JSON em PT-PT: "
         "{ 'message': '...', 'recipe': { 'title': '...', 'calories': 500, 'time_minutes': 30, 'ingredients': [], 'steps': [] }, 'restaurant_search_term': '...' }"
     )
