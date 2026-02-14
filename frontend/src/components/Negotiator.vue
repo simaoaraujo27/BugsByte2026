@@ -199,7 +199,6 @@ const generateMoodRecipe = async () => {
 };
 
 // --- VISION FLOW ---
-const triggerFileSelect = () => fileInput.value.click();
 const handleFileChange = (event) => {
   const file = event.target.files[0];
   if (file) {
