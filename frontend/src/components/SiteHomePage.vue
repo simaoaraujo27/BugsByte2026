@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useUser } from '@/store/userStore'
 import SidebarNav from './SidebarNav.vue'
 import DashboardHome from './DashboardHome.vue'
 import Negotiator from './Negotiator.vue'
@@ -12,6 +13,8 @@ import VolumeComparison from './VolumeComparison.vue'
 import FavoritesPage from './FavoritesPage.vue'
 import HistoryPage from './HistoryPage.vue'
 import SettingsPage from './SettingsPage.vue'
+
+const { fetchUser } = useUser()
 
 const sections = [
   { id: 'inicio', label: 'Início', icon: '🏠' },
@@ -168,6 +171,7 @@ const containerStyle = computed(() => {
 })
 
 onMounted(() => {
+  fetchUser()
   const initialSection = resolveSectionFromRoute(route.params.section)
   const initialSubsection = typeof route.params.subsection === 'string' ? route.params.subsection : ''
   activeSection.value = initialSection
