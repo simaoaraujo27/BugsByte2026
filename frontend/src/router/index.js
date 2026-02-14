@@ -1,15 +1,14 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { auth } from '../auth'
 
-// Lazy load components for better reliability
-const LandingPage = () => import('../components/LandingPage.vue')
-const LoginPage = () => import('../components/LoginPage.vue')
-const UserInfo = () => import('../components/UserInfo.vue')
-const SiteHomePage = () => import('../components/SiteHomePage.vue')
-const AboutPage = () => import('../components/AboutPage.vue')
-const ForgotPassword = () => import('../components/ForgotPassword.vue')
-const ResetPassword = () => import('../components/ResetPassword.vue')
-const FavoritesPage = () => import('../components/FavoritesPage.vue')
+import LandingPage from '../components/LandingPage.vue'
+import LoginPage from '../components/LoginPage.vue'
+import UserInfo from '../components/UserInfo.vue'
+import SiteHomePage from '../components/SiteHomePage.vue'
+import AboutPage from '../components/AboutPage.vue'
+import ForgotPassword from '../components/ForgotPassword.vue'
+import ResetPassword from '../components/ResetPassword.vue'
+import FavoritesPage from '../components/FavoritesPage.vue'
 
 const routes = [
   { path: '/', name: 'Landing', component: LandingPage },
@@ -50,13 +49,16 @@ const router = createRouter({
   routes
 })
 
-router.beforeEach((to, from, next) => {
-  const loggedIn = auth.isLoggedIn()
+router.beforeEach(async (to, from, next) => {
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
+  const isAuthPage = to.path === '/login' || to.path === '/signup'
+  
+  // Use the new async verification
+  const loggedIn = await auth.checkAuth()
 
   if (requiresAuth && !loggedIn) {
     next('/login')
-  } else if (loggedIn && (to.path === '/login' || to.path === '/signup')) {
+  } else if (loggedIn && isAuthPage) {
     next('/dashboard')
   } else {
     next()

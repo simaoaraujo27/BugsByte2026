@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import logo from '@/assets/logo.png'
 import { auth } from '@/auth'
@@ -58,6 +58,14 @@ onBeforeUnmount(() => {
   window.removeEventListener('storage', handleStorageThemeChange)
 })
 
+watch(rememberMe, (val) => {
+  if (!val) {
+    localStorage.setItem('rememberMe', 'false')
+    localStorage.removeItem('rememberedEmail')
+    localStorage.removeItem('rememberedPassword')
+  }
+})
+
 // Clear messages on input
 const clearMessages = () => {
     errorMessage.value = ''
@@ -82,20 +90,19 @@ const handleLogin = async () => {
   
   isLoading.value = true
   try {
-    const data = await auth.login(email.value, password.value)
+    const data = await auth.login(email.value, password.value, rememberMe.value)
     console.log('Login successful:', data)
     successMessage.value = 'Bem-vindo de volta, Chef!'
 
-    // Handle remember me functionality
-    localStorage.setItem('rememberMe', rememberMe.value.toString())
+    // Handle remember me functionality for credentials
     if (rememberMe.value) {
+      localStorage.setItem('rememberMe', 'true')
       localStorage.setItem('rememberedEmail', email.value)
       localStorage.setItem('rememberedPassword', password.value)
-      console.log('Credentials saved to localStorage')
     } else {
+      localStorage.setItem('rememberMe', 'false')
       localStorage.removeItem('rememberedEmail')
       localStorage.removeItem('rememberedPassword')
-      console.log('Credentials removed from localStorage')
     }
     
     setTimeout(() => { 
@@ -145,7 +152,7 @@ const handleLogin = async () => {
             @input="clearMessages"
             type="email" 
             id="email"
-            autocomplete="email"
+            autocomplete="off"
             required
             placeholder="chef@nutriventures.com"
           />
@@ -159,7 +166,7 @@ const handleLogin = async () => {
               @input="clearMessages"
               :type="showPassword ? 'text' : 'password'" 
               id="password"
-              autocomplete="current-password"
+              autocomplete="off"
               required
               placeholder="••••••••"
             />

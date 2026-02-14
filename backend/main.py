@@ -162,6 +162,8 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     
     new_user = models.User(
         username=user.username,
+        full_name=user.full_name,
+        profile_image=user.profile_image,
         hashed_password=hashed_password,
         peso=user.peso,
         altura=user.altura,
@@ -207,6 +209,12 @@ def update_user_me(update_data: schemas.UserUpdate, db: Session = Depends(get_db
         if db_user and db_user.id != current_user.id:
             raise HTTPException(status_code=400, detail="Username already taken")
         current_user.username = update_data.username
+    
+    if update_data.full_name is not None:
+        current_user.full_name = update_data.full_name
+    
+    if update_data.profile_image is not None:
+        current_user.profile_image = update_data.profile_image
     
     if update_data.password:
         current_user.hashed_password = auth.get_password_hash(update_data.password)
