@@ -59,7 +59,7 @@ def negotiate_craving(craving: str, target_calories: int = 600, mood: Optional[s
         "3. Usa a lista de 'estilo' acima APENAS como base para o perfil de sabor, mas foca-te em ser VARIADO e ORIGINAL. Não sugiras sempre o mesmo tipo de prato. "
         "4. Se o pedido for inválido, define 'recipe' como null. "
         "\nRetorna RIGOROSAMENTE este JSON em PT-PT (define SEMPRE 'calories' como 0, pois eu vou calcular o valor real): "
-        "{ 'message': '...', 'recipe': { 'title': '...', 'calories': 0, 'time_minutes': 30, 'ingredients': [], 'steps': [] }, 'restaurant_search_term': '...' }"
+        "{ 'message': '...', 'recipe': { 'title': '...', 'calories': 0, 'time_minutes': 30, 'ingredients': ['Lista em PT-PT'], 'ingredients_en': ['Lista em Inglês apenas para pesquisa técnica'], 'steps': [] }, 'restaurant_search_term': '...' }"
     )
 
     try:
@@ -78,7 +78,10 @@ def negotiate_craving(craving: str, target_calories: int = 600, mood: Optional[s
         # Integrar FatSecret para calorias mais precisas se possível
         raw_recipe = data.get('recipe')
         if raw_recipe and raw_recipe.get('ingredients'):
-            fs_nutrition = food_data.get_nutrition_for_recipe(raw_recipe['ingredients'])
+            fs_nutrition = food_data.get_nutrition_for_recipe(
+                raw_recipe['ingredients'], 
+                ingredients_en=raw_recipe.get('ingredients_en')
+            )
             if fs_nutrition['calories'] > 0:
                 raw_recipe['calories'] = int(fs_nutrition['calories'])
 

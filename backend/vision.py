@@ -44,7 +44,7 @@ def analyze_image_ingredients(image_bytes: bytes, mode: str = "ingredients", api
             "3. Usa a lista de 'REFERÊNCIA DE ESTILO' acima apenas como inspiração subtil, mas foca-te na fidelidade ao prato da imagem. "
             "4. Responde em PT-PT. "
             "IMPORTANTE: Responde APENAS com um objeto JSON válido. Define SEMPRE 'calories' como 0. "
-            "\nEstrutura JSON esperada: { \"detected_ingredients\": [\"nome do prato detetado\"], \"message\": \"Explicação de como tornaste este prato mais saudável...\", \"recipe\": { \"title\": \"Versão Saudável de [Nome do Prato]\", \"calories\": 0, \"time_minutes\": 25, \"ingredients\": [], \"steps\": [] } }"
+            "\nEstrutura JSON esperada: { \"detected_ingredients\": [\"nome do prato detetado\"], \"message\": \"Explicação de como tornaste este prato mais saudável...\", \"recipe\": { \"title\": \"Versão Saudável de [Nome do Prato]\", \"calories\": 0, \"time_minutes\": 25, \"ingredients\": [\"Lista em PT-PT\"], \"ingredients_en\": [\"Same ingredients but in English for technical search\"], \"steps\": [] } }"
         )
     else:
         prompt = (
@@ -55,7 +55,7 @@ def analyze_image_ingredients(image_bytes: bytes, mode: str = "ingredients", api
             "3. Usa a lista de 'REFERÊNCIA DE ESTILO' acima APENAS como base para o perfil de sabor, mas foca-te em ser VARIADO e ORIGINAL. "
             "4. Responde em PT-PT. "
             "IMPORTANTE: Responde APENAS com um objeto JSON válido. Define SEMPRE 'calories' como 0. "
-            "\nEstrutura JSON esperada: { \"detected_ingredients\": [], \"message\": \"...\", \"recipe\": { \"title\": \"...\", \"calories\": 0, \"time_minutes\": 25, \"ingredients\": [], \"steps\": [] } }"
+            "\nEstrutura JSON esperada: { \"detected_ingredients\": [], \"message\": \"...\", \"recipe\": { \"title\": \"...\", \"calories\": 0, \"time_minutes\": 25, \"ingredients\": [\"Lista em PT-PT\"], \"ingredients_en\": [\"Same ingredients but in English for technical search\"], \"steps\": [] } }"
         )
 
     try:
@@ -90,7 +90,10 @@ def analyze_image_ingredients(image_bytes: bytes, mode: str = "ingredients", api
         # Integrar FatSecret para calorias mais precisas se possível
         raw_recipe = data.get('recipe', {})
         if raw_recipe and raw_recipe.get('ingredients'):
-            fs_nutrition = food_data.get_nutrition_for_recipe(raw_recipe['ingredients'])
+            fs_nutrition = food_data.get_nutrition_for_recipe(
+                raw_recipe['ingredients'],
+                ingredients_en=raw_recipe.get('ingredients_en')
+            )
             if fs_nutrition['calories'] > 0:
                 raw_recipe['calories'] = int(fs_nutrition['calories'])
 

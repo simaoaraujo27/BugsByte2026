@@ -195,10 +195,11 @@ def search_foods(query: str, page_size: int = 10) -> List[Dict]:
         return []
 
 
-def get_nutrition_for_recipe(ingredients: List[str]) -> Dict:
+def get_nutrition_for_recipe(ingredients: List[str], ingredients_en: Optional[List[str]] = None) -> Dict:
     """
     Estimates total nutrition for a list of ingredients using FatSecret.
     Parses quantities (g, kg, ml, etc.) for better accuracy.
+    Uses English ingredients for search if provided.
     """
     fs_id = os.getenv("FATSECRET_CLIENT_ID") or os.getenv("Client ID")
     fs_secret = os.getenv("FATSECRET_CLIENT_SECRET") or os.getenv("Client Secret")
@@ -208,33 +209,39 @@ def get_nutrition_for_recipe(ingredients: List[str]) -> Dict:
     if not fs_id or not fs_secret or not ingredients:
         return total_nutrients
 
+    # Use ingredients_en if available, matching by index
+    search_list = ingredients_en if ingredients_en and len(ingredients_en) == len(ingredients) else ingredients
+
     try:
         token = _get_fatsecret_token(fs_id, fs_secret)
         
-        for ing in ingredients:
+        for i, ing in enumerate(ingredients):
             try:
-                # 1. Extract quantity and unit
-                # Pattern to find numbers and units
+                # 1. Extract quantity and unit (always from PT string as it's the primary list)
                 qty_match = re.search(r"(\d+(?:[.,]\d+)?)\s*(g|kg|ml|l|colher|unidade|chávena|dente|fatia|fatias|ovo|ovos)", ing.lower())
                 multiplier = 1.0 
                 
-                search_term = ing
+                # Term to search on FS
+                search_term = search_list[i] if search_list[i] != ing else ing
+                
                 if qty_match:
                     val = float(qty_match.group(1).replace(",", "."))
                     unit = qty_match.group(2)
-                    search_term = ing.replace(qty_match.group(0), "").strip()
-                    # Clean search term: remove leading prepositions
-                    search_term = re.sub(r"^(de|do|da|dos|das)\s+", "", search_term, flags=re.IGNORECASE).strip()
+                    
+                    # If we are using the PT list for search, we need to clean it
+                    if search_term == ing:
+                        search_term = ing.replace(qty_match.group(0), "").strip()
+                        search_term = re.sub(r"^(de|do|da|dos|das)\s+", "", search_term, flags=re.IGNORECASE).strip()
                     
                     if unit == "kg" or unit == "l":
-                        multiplier = val * 10 # 10 * 100g = 1kg
+                        multiplier = val * 10 
                     elif unit == "g" or unit == "ml":
                         multiplier = val / 100
                     else:
                         multiplier = val
                 else:
-                    # Clean the term even if no quantity found
-                    search_term = re.sub(r"^\d+\s+", "", ing).strip()
+                    if search_term == ing:
+                        search_term = re.sub(r"^\d+\s+", "", ing).strip()
 
                 # 2. Search for the ingredient
                 response = requests.get(
