@@ -81,6 +81,13 @@ class Recipe(BaseModel):
 class NegotiatorRequest(BaseModel):
     craving: str
     target_calories: int = 600
+    mood: str | None = None
+
+class MoodAnalysisResponse(BaseModel):
+    mood_type: str
+    empathy_message: str
+    explanation: str
+    eating_strategy: str
 
 class NegotiatorResponse(BaseModel):
     original_craving: str
