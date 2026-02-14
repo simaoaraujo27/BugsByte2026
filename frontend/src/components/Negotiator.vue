@@ -147,15 +147,15 @@ const goToIngredients = () => {
 };
 
 const saveRecipe = async () => {
-  if (!result.value || !result.value.recipe) return;
+  if (!recipeResult.value || !recipeResult.value.recipe) return;
   saving.value = true;
 
   try {
     // 1. Create the recipe
     const recipeData = {
-      name: result.value.recipe.title,
-      ingredients: result.value.recipe.ingredients.join(', '),
-      instructions: result.value.recipe.steps.join('\n')
+      name: recipeResult.value.recipe.title,
+      ingredients: recipeResult.value.recipe.ingredients.join(', '),
+      instructions: recipeResult.value.recipe.steps.join('\n')
     };
 
     const createResponse = await fetch('http://localhost:8000/recipes/', {
@@ -164,7 +164,7 @@ const saveRecipe = async () => {
       body: JSON.stringify(recipeData)
     });
 
-    if (!createResponse.ok) throw new Error('Failed to create recipe');
+    if (!createResponse.ok) throw new Error('Falha ao criar receita');
     const createdRecipe = await createResponse.json();
 
     // 2. Add to favorites
@@ -173,7 +173,7 @@ const saveRecipe = async () => {
       headers: auth.getAuthHeaders()
     });
 
-    if (!favResponse.ok) throw new Error('Failed to add to favorites');
+    if (!favResponse.ok) throw new Error('Falha ao adicionar aos favoritos');
 
     alert('Receita guardada com sucesso!');
   } catch (err) {
@@ -182,6 +182,7 @@ const saveRecipe = async () => {
   } finally {
     saving.value = false;
   }
+};
 const reset = () => {
   activeView.value = 'landing';
   craving.value = '';
@@ -218,40 +219,6 @@ const reset = () => {
           <p>Refeições alinhadas com o teu humor atual.</p>
           <button class="s-btn">Fazer Check-in</button>
         </div>
-      </header>
-
-      <div class="recipe-content-grid">
-        <!-- Ingredients Column -->
-        <section class="ingredients-card">
-          <h3>🛒 Ingredientes</h3>
-          <ul class="styled-list">
-            <li v-for="ing in result.recipe.ingredients" :key="ing">{{ ing }}</li>
-          </ul>
-          <button @click="goToIngredients" class="btn-shop-link">
-            Encontrar Ingredientes Perto 📍
-          </button>
-        </section>
-
-        <!-- Steps Column -->
-        <section class="steps-card">
-          <h3>👨‍🍳 Modo de Preparação</h3>
-          <div class="steps-timeline">
-            <div v-for="(step, index) in result.recipe.steps" :key="index" class="step-item">
-              <div class="step-number">{{ index + 1 }}</div>
-              <div class="step-text">{{ step }}</div>
-            </div>
-          </div>
-        </section>
-      </div>
-      
-      <footer class="recipe-actions">
-        <button @click="result = null" class="btn-secondary">🔙 Outro Desejo</button>
-        <button @click="saveRecipe" class="btn-save" :disabled="saving">
-          {{ saving ? '...' : '❤️ Guardar' }}
-        </button>
-        <button @click="negotiate" class="btn-refresh">🔄 Outra Receita</button>
-      </footer>
-    </div>
 
         <div class="slim-card" @click="activeView = 'vision_input'">
           <div class="s-icon">📸</div>
@@ -390,6 +357,9 @@ const reset = () => {
 
         <div class="rec-final-action">
           <button @click="reset" class="btn-formatted-back">← Voltar</button>
+          <button @click="saveRecipe" class="btn-save" :disabled="saving">
+            {{ saving ? 'A guardar...' : '❤️ Guardar Receita' }}
+          </button>
         </div>
       </div>
     </div>
@@ -476,6 +446,7 @@ const reset = () => {
   padding: 12px 24px;
   border-radius: 12px;
   font-weight: 600;
+  font-size: 1rem;
   cursor: pointer;
 }
 .btn-save:hover { opacity: 0.9; }
