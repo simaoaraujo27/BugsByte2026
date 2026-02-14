@@ -477,7 +477,6 @@ const mergedHistory = computed(() => {
 
 const openComposer = (sectionId) => {
   composerFor.value = composerFor.value === sectionId ? '' : sectionId
-  composerMode.value = 'manual'
   foodSearchModalOpen.value = false
   foodSearch.value = { query: '', loading: false, error: '', results: [] }
   foodFilters.value = { source: 'all', sort: 'relevance', maxCalories: '', minProtein: '' }
@@ -550,7 +549,9 @@ const calculateNutrition = async () => {
     mealDraft.value.fat = data.fat
     mealDraft.value.source = 'IA'
     
-    composerMode.value = 'manual'
+    // Save directly and stay in auto mode
+    await addMeal(composerFor.value, false)
+    autoDraft.value.text = ''
   } catch (err) {
     console.error(err)
     alert(err.message)
@@ -559,34 +560,7 @@ const calculateNutrition = async () => {
   }
 }
 
-const estimateTypedFood = async () => {
-  if (!mealDraft.value.name.trim()) return
-  autoLoading.value = true
-  
-  try {
-    const res = await fetch(`${API_URL}/negotiator/nutrition`, {
-      method: 'POST',
-      headers: auth.getAuthHeaders(),
-      body: JSON.stringify({ food_text: mealDraft.value.name })
-    })
-    
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.detail || 'Falha ao calcular.')
-    
-    mealDraft.value.grams = data.estimated_grams
-    mealDraft.value.calories = data.calories
-    mealDraft.value.protein = data.protein
-    mealDraft.value.carbs = data.carbs
-    mealDraft.value.fat = data.fat
-  } catch (err) {
-    console.error(err)
-    alert(err.message)
-  } finally {
-    autoLoading.value = false
-  }
-}
-
-const addMeal = async (sectionId) => {
+const addMeal = async (sectionId, closeAfter = true) => {
   const name = mealDraft.value.name.trim()
   const grams = toNumber(mealDraft.value.grams)
   const calories = toNumber(mealDraft.value.calories)
@@ -626,12 +600,14 @@ const addMeal = async (sectionId) => {
     const updatedDay = await res.json()
     dataByDate.value[dateKey.value] = updatedDay
 
-    composerFor.value = ''
-    foodSearchModalOpen.value = false
+    if (closeAfter) {
+      composerFor.value = ''
+      foodSearchModalOpen.value = false
+    }
     foodSearch.value = { query: '', loading: false, error: '', results: [] }
     foodFilters.value = { source: 'all', sort: 'relevance', maxCalories: '', minProtein: '' }
     selectedFoodPer100g.value = null
-    mealDraft.value = { name: '', grams: '', calories: '', protein: '', carbs: '', fat: '' }
+    mealDraft.value = { name: '', grams: '', calories: '', protein: '', carbs: '', fat: '', source: 'manual' }
 
     // Save to history for future suggestions
     // Calculate per 100g
@@ -905,18 +881,7 @@ watch(
             <div v-if="composerMode === 'manual'" class="mode-manual">
               <div class="form-group-diary">
                 <label>Alimento</label>
-                <div class="input-with-action">
-                  <input v-model="mealDraft.name" type="text" placeholder="Ex: Frango Grelhado" />
-                  <button 
-                    type="button" 
-                    class="ai-estimate-btn" 
-                    :disabled="autoLoading || !mealDraft.name.trim()"
-                    @click="estimateTypedFood"
-                    title="Pedir à IA para estimar macros deste alimento"
-                  >
-                    {{ autoLoading ? '...' : '✨ Estimar' }}
-                  </button>
-                </div>
+                <input v-model="mealDraft.name" type="text" placeholder="Ex: Frango Grelhado" />
                 <button type="button" class="search-food-btn" @click="openFoodSearchModal">
                   Pesquisar na Base de Dados
                 </button>
