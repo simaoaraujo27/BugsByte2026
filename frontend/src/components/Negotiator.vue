@@ -28,6 +28,7 @@ const detectedIngredients = ref([]);
 const isListening = ref(false);
 let recognitionInstance = null;
 
+<<<<<<< HEAD
 // Vision
 const fileInput = ref(null);
 const cameraInput = ref(null);
@@ -223,6 +224,8 @@ const capturePhoto = () => {
 
 const triggerFileSelect = () => fileInput.value.click();
 
+=======
+>>>>>>> jdelgado
 const moods = [
   { id: 'stressado', label: 'Stressado(a)', icon: '🌋' },
   { id: 'aborrecido', label: 'Aborrecido(a)', icon: '☁️' },
@@ -344,54 +347,6 @@ const generateMoodRecipe = async () => {
   }
 };
 
-// --- VISION FLOW ---
-const handleFileChange = (event) => {
-  const file = event.target.files[0];
-  if (file) {
-    processSelectedFile(file);
-  }
-};
-
-const uploadAndAnalyze = async (file) => {
-  console.log("uploadAndAnalyze called with file:", file.name, "size:", file.size);
-  loading.value = true;
-  error.value = null;
-  const formData = new FormData();
-  formData.append('file', file);
-
-  try {
-    const response = await fetch(`${API_URL}/vision/analyze`, {
-      method: 'POST',
-      headers: auth.getAuthHeaders(false),
-      body: formData,
-    });
-
-    console.log("Response status:", response.status);
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error("API Error response:", errText);
-      throw new Error('Erro ao analisar a imagem');
-    }
-    
-    const data = await response.json();
-    console.log("Analysis successful, received data:", data);
-
-    if (!data.detected_ingredients || data.detected_ingredients.length === 0) {
-      throw new Error('O Chef não conseguiu identificar alimentos nesta foto. Tenta novamente com um ângulo diferente.');
-    }
-
-    detectedIngredients.value = data.detected_ingredients;
-    recipeResult.value = { recipe: data.recipe, message: data.message };
-    storeInHistory({ recipe: data.recipe, message: data.message }, 'vision');
-    activeView.value = 'recipe';
-  } catch (e) {
-    console.error("Error in uploadAndAnalyze:", e);
-    error.value = e.message;
-  } finally {
-    loading.value = false;
-  }
-};
-
 // --- SHARED ---
 const goToIngredients = () => {
   emit('choice', {
@@ -454,7 +409,6 @@ const reset = () => {
   selectedMood.value = '';
   moodAnalysis.value = null;
   recipeResult.value = null;
-  previewImage.value = null;
   detectedIngredients.value = [];
   error.value = null;
 };

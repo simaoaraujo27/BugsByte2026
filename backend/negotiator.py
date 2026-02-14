@@ -88,7 +88,7 @@ def analyze_nutrition(food_text: str) -> schemas.NutritionAnalysisResponse:
     prompt = (
         f"Analisa a informação nutricional para: '{food_text}'. "
         "Estima as calorias e macronutrientes totais para a quantidade indicada. "
-        "Se a quantidade não for explícita, assume uma porção padrão média. "
+        "Se a quantidade não for explícita, assume uma porção padrão média (ex: 1 banana = 120g). "
         "VALIDAÇÃO: Se o item indicado NÃO for um alimento ou for algo impossível de comer (ex: pedras, objetos), define 'is_food' como false e fornece uma 'error_message' explicativa em PT-PT. "
         "Responde APENAS com um objeto JSON com este formato (sem markdown): "
         "{ "
@@ -99,7 +99,7 @@ def analyze_nutrition(food_text: str) -> schemas.NutritionAnalysisResponse:
         "  'protein': 0.0, "
         "  'carbs': 0.0, "
         "  'fat': 0.0, "
-        "  'estimated_grams': 0 "
+        "  'estimated_grams': 100 "
         "}"
     )
 

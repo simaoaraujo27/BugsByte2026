@@ -177,6 +177,7 @@ class DiaryGoalUpdate(BaseModel):
 class DiaryMealCreate(BaseModel):
     section: str
     name: str
+    grams: float = Field(0, ge=0, le=5000)
     calories: int = Field(..., ge=0, le=10000)
     protein: float = Field(0, ge=0, le=1000)
     carbs: float = Field(0, ge=0, le=1000)
@@ -203,6 +204,7 @@ class DiaryMeal(BaseModel):
     id: int
     section: str
     name: str
+    grams: float
     calories: int
     protein: float
     carbs: float
