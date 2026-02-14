@@ -23,8 +23,8 @@ const isLoading = ref(false)
  * Pizza: 265 kcal/100g -> 189g (1.02x burger)
  * Soda: 42 kcal/100ml -> 1190g (6.4x burger)
  * Salad: 20 kcal/100g -> 2500g (13.5x burger → ∛13.5 = 2.38x visual scale)
- * Broccoli: 34 kcal/100g -> 1470g (7.9x burger → ∛7.9 = 2.0x visual scale)
- * Apple: 52 kcal/100g -> 960g (5.2x burger → ∛5.2 = 1.73x visual scale)
+ * Broccoli: 34 kcal/100g -> 1470g (7.9x burger → ∛13.5 = 2.0x visual scale)
+ * Apple: 52 kcal/100g -> 960g (5.2x burger → ∛13.5 = 1.73x visual scale)
  */
 const junkModels = [
   { name: 'Hambúrguer', file: 'burger.glb', baseScale: 0.15, caloriesPerGram: 2.7 },
@@ -63,10 +63,7 @@ let junkPlate, healthyPlate
 
 const initScene = () => {
   junkScene = new THREE.Scene()
-  // junkScene.background = new THREE.Color(props.isDarkMode ? 0x020617 : 0xf0f4f8)
-  
   healthyScene = new THREE.Scene()
-  // healthyScene.background = new THREE.Color(props.isDarkMode ? 0x020617 : 0xf0f4f8)
 
   const aspect = (canvasContainer.value.clientWidth / 2) / canvasContainer.value.clientHeight
   
@@ -95,7 +92,6 @@ const initScene = () => {
   setupLights(junkScene)
   setupLights(healthyScene)
 
-  // Add simple circular plate geometry instead of loading model
   const plateGeometry = new THREE.CylinderGeometry(2, 2, 0.1, 32)
   const plateMaterial = new THREE.MeshStandardMaterial({ color: 0xf8f8f8 })
   
@@ -195,15 +191,6 @@ const animate = () => {
 
 watch(calorieBudget, updateScales)
 
-watch(() => props.isDarkMode, () => {
-  /*
-  if (junkScene && healthyScene) {
-    junkScene.background = new THREE.Color(props.isDarkMode ? 0x020617 : 0xf0f4f8)
-    healthyScene.background = new THREE.Color(props.isDarkMode ? 0x020617 : 0xf0f4f8)
-  }
-  */
-})
-
 onMounted(() => {
   initScene()
   loadFood('junk')
@@ -228,202 +215,112 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="visualizer-wrapper" :class="{ 'theme-dark': isDarkMode }">
-    <div class="ui-header">
-      <div class="badge">Ajuste Manual de Volume</div>
-      <h1>A Escala Real das Calorias</h1>
-      <p>Compare o espaço físico ocupado por <strong>{{ calorieBudget }} kcal</strong></p>
-    </div>
+  <div class="flex flex-col h-full max-h-[calc(100vh-120px)] overflow-hidden" :class="{ 'dark': isDarkMode }">
+    <!-- Header: Minimal & Clean -->
+    <header class="mb-6 text-center">
+      <span class="px-4 py-1 text-[10px] font-extrabold tracking-[0.2em] text-white uppercase bg-blue-600 rounded-full shadow-lg shadow-blue-500/20">
+        Laboratório de Saciedade
+      </span>
+      <h1 class="mt-4 text-3xl font-black tracking-tight text-slate-800 dark:text-white md:text-4xl">
+        A Ilusão das Calorias
+      </h1>
+      <p class="mt-1 text-sm font-semibold text-slate-500 dark:text-slate-400">
+        Visualize como <span class="text-blue-600 dark:text-blue-400 font-bold underline decoration-2 underline-offset-4">{{ calorieBudget }} kcal</span> ocupam o espaço real.
+      </p>
+    </header>
 
-    <div class="canvas-box" ref="canvasContainer">
-      <div class="controls-header-box">
-        <div class="control-group">
-          <span class="type">Ultra-Processado</span>
-          <div class="name">{{ junkModels[currentJunkIndex].name }}</div>
-          <button @click="cycle('junk')" class="btn-swap">🔄 Trocar</button>
-        </div>
-        
-        <div class="vs-divider"></div>
-        
-        <div class="control-group">
-          <span class="type">Natural</span>
-          <div class="name">{{ healthyModels[currentHealthyIndex].name }}</div>
-          <button @click="cycle('healthy')" class="btn-swap">🔄 Trocar</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="ui-footer">
-      <div class="slider-card">
-        <div class="slider-header">
-          <label>Orçamento: <strong>{{ calorieBudget }} kcal</strong></label>
-          <span class="ratio" v-if="!isNaN(satietyMultiplier)">
-            {{ satietyMultiplier.toFixed(1) }}x mais volume
-          </span>
-        </div>
-        <input type="range" v-model.number="calorieBudget" min="100" max="2000" step="50" class="custom-slider">
-      </div>
+    <!-- Main Stage: Unified Dashboard Card (Apple Health / Clinical Look) -->
+    <div class="relative flex-1 min-h-0 bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-2xl shadow-slate-200/50 dark:shadow-none flex flex-col overflow-hidden">
       
-      <div class="insight-box">
-        <div class="icon">🥗</div>
-        <p>
-          O volume físico é o que sinaliza a saciedade. Alimentos naturais preenchem o seu estômago 
-          enquanto ultra-processados são apenas calorias vazias em espaços minúsculos.
-        </p>
+      <!-- 3D Viewport with Contrast-Enhancing Radial Gradient -->
+      <div class="relative flex-1 w-full min-h-0 cursor-grab active:cursor-grabbing bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white via-slate-50 to-slate-200 dark:from-gray-900 dark:to-black" ref="canvasContainer">
+        
+        <!-- Overlays: Left Food Info (Glassmorphism Pill) -->
+        <div class="absolute z-20 flex flex-col items-center p-4 transition-all transform top-6 left-6 rounded-[1.5rem] bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm shadow-lg border border-white/50 dark:border-slate-700/50 min-w-[140px]">
+          <span class="text-[9px] font-black text-rose-500 uppercase tracking-widest mb-1.5">Ultra-Processado</span>
+          <div class="text-base font-extrabold text-slate-800 dark:text-white">{{ junkModels[currentJunkIndex].name }}</div>
+          <button @click="cycle('junk')" class="mt-3 px-4 py-2 text-[11px] font-bold text-slate-600 dark:text-slate-200 bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-all flex items-center gap-2 border border-slate-100 dark:border-slate-600">
+            <span>Trocar</span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 opacity-60" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" /></svg>
+          </button>
+        </div>
+
+        <!-- VS Badge Center -->
+        <div class="absolute z-20 transform -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2">
+           <div class="flex items-center justify-center w-12 h-12 font-black text-white rounded-full shadow-2xl bg-slate-900 dark:bg-slate-700 outline outline-[6px] outline-white/30 dark:outline-slate-800/50 text-xs italic tracking-tighter">VS</div>
+        </div>
+
+        <!-- Overlays: Right Food Info (Glassmorphism Pill) -->
+        <div class="absolute z-20 flex flex-col items-center p-4 transition-all transform top-6 right-6 rounded-[1.5rem] bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm shadow-lg border border-white/50 dark:border-slate-700/50 min-w-[140px]">
+          <span class="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-1.5">Densidade Baixa</span>
+          <div class="text-base font-extrabold text-slate-800 dark:text-white">{{ healthyModels[currentHealthyIndex].name }}</div>
+          <button @click="cycle('healthy')" class="mt-3 px-4 py-2 text-[11px] font-bold text-slate-600 dark:text-slate-200 bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-all flex items-center gap-2 border border-slate-100 dark:border-slate-600">
+            <span>Trocar</span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 opacity-60" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" /></svg>
+          </button>
+        </div>
       </div>
+
+      <!-- Anchored Footer Controls (Dark Slate for Contrast) -->
+      <footer class="p-8 bg-slate-900 dark:bg-slate-950 border-t border-slate-800 dark:border-slate-900 rounded-b-3xl">
+        <div class="flex flex-col items-center gap-8 md:flex-row md:justify-between">
+          
+          <!-- Slider Control -->
+          <div class="flex-1 w-full max-w-xl">
+            <div class="flex items-center justify-between mb-4">
+              <label class="text-[10px] font-black tracking-[0.2em] uppercase text-slate-400">Ajuste de Orçamento</label>
+              <div class="flex items-baseline gap-1.5">
+                <span class="text-3xl font-black text-white tabular-nums">{{ calorieBudget }}</span>
+                <span class="text-xs font-bold text-slate-500 uppercase">kcal</span>
+              </div>
+            </div>
+            <input type="range" v-model.number="calorieBudget" min="100" max="2000" step="50" class="w-full h-2 rounded-lg appearance-none cursor-pointer bg-slate-800 accent-blue-500 focus:outline-none">
+          </div>
+
+          <!-- Satiety Insight Badge -->
+          <div class="flex items-center gap-5 px-6 py-5 bg-white/5 dark:bg-emerald-500/10 rounded-[2rem] border border-white/10 dark:border-emerald-500/20 md:max-w-xs transition-all hover:bg-white/10">
+            <div class="flex items-center justify-center w-12 h-12 text-2xl rounded-2xl bg-emerald-500/20 shadow-inner">🥗</div>
+            <div>
+              <div class="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-0.5">Fator de Saciedade</div>
+              <div class="text-xl font-black text-white">
+                {{ satietyMultiplier.toFixed(1) }}x <span class="text-sm font-medium text-slate-400">mais volume</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </footer>
     </div>
   </div>
 </template>
 
 <style scoped>
-.visualizer-wrapper {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  min-height: calc(100vh - 88px);
-  background: #ffffff;
-  border-radius: 24px;
-  overflow: hidden;
-  color: #1e293b;
-  transition: background 0.3s, color 0.3s;
+/* High-End Range Input Styling */
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 28px;
+  width: 28px;
+  border-radius: 50%;
+  background: #3b82f6;
+  cursor: pointer;
+  border: 5px solid white;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.visualizer-wrapper.theme-dark {
-  background: #020617;
-  color: white;
+input[type=range]::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  background: #2563eb;
 }
 
-.visualizer-wrapper.theme-dark h1,
-.visualizer-wrapper.theme-dark .name,
-.visualizer-wrapper.theme-dark label {
-  color: white;
-}
-
-.visualizer-wrapper.theme-dark .canvas-box {
-  background: #0f172a;
-}
-
-.ui-header { position: absolute; top: 0; left: 0; right: 0; padding: 30px; text-align: center; z-index: 10; pointer-events: none; }
-.badge { display: inline-block; background: #3b82f6; color: white; padding: 4px 12px; border-radius: 99px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; margin-bottom: 8px; }
-h1 { font-size: 1.8rem; margin: 0; font-weight: 700; color: #1e293b; }
-
-.canvas-box { 
-  flex: 1; 
-  position: relative; 
-  cursor: grab;
-  background: #ffffff;
-  border-radius: 24px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  margin: 0 24px 24px;
-  overflow: hidden;
-  transition: background 0.3s;
-}
-
-.viewport-box {
-  position: absolute;
-  top: 100px;
-  bottom: 20px;
-  width: calc(50% - 12px);
-  background: transparent;
-  border: 2px solid rgba(59, 130, 246, 0.15);
-  border-radius: 20px;
-  pointer-events: none;
-  box-shadow: none;
-  transition: border-color 0.3s;
-}
-
-.viewport-box.left-viewport {
-  left: 20px;
-}
-
-.viewport-box.right-viewport {
-  right: 20px;
-}
-
-.theme-dark .viewport-box {
-  background: transparent;
-  border-color: rgba(71, 85, 105, 0.2);
-  box-shadow: none;
-}30px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: auto;
-  min-width: 500px;
-  background: transparent;
-  padding: 15px 40px
-  border-radius: 20px;
-  border: 1px solid rgba(255,255,255,0.5);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-  backdrop-filter: blur(8px);
-  z-index: 20;
-  transition: all 0.3s ease;
-}
-
-.theme-dark .controls-header-box {
-  background: rgba(30, 41, 59, 0.95);
-  border-color: rgba(255,255,255,0.05);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.3); 
-}
-transparent;
-  border: none;
-  box-shadow: none;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  min-width: 150px;
-}
-
-.vs-divider {
-  width: 1px;
-  height: 60px;
-  background: #e2e8f0;
-  margin: 0 30px;
-}
-
-.theme-dark .vs-divider {
-  background: #334155;
-}
-
-.type { color: #3b82f6; font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
-.name { font-size: 1.2rem; font-weight: 700; margin: 0 0 10px; color: #1e293b; }
-.btn-swap { background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 700; cursor: pointer; width: 100%; font-size: 0.9em; transition: 0.2s; }
-.btn-swap:hover { background: #2563eb; transform: scale(1.02); }
-
-.ui-footer { position: absolute; bottom: 0; left: 0; right: 0; padding: 30px; display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; pointer-events: none; z-index: 10; }
-.slider-card, .insight-box { background: rgba(255, 255, 255, 0.98); padding: 24px; border-radius: 24px; border: 2px solid #e2e8f0; pointer-events: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.08); transition: background 0.3s, border-color 0.3s; }
-
-.theme-dark .slider-card,
-.theme-dark .insight-box {
-  background: rgba(30, 41, 59, 0.98);
-  border-color: #334155;
-}
-
-.slider-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; color: #1e293b; transition: color 0.3s; }
-.ratio { color: #10b981; font-weight: 800; font-size: 0.95rem; }
-
-.theme-dark .slider-header {
-  color: white;
-}
-
-.custom-slider { -webkit-appearance: none; width: 100%; height: 10px; background: #e2e8f0; border-radius: 5px; cursor: pointer; outline: none; transition: background 0.3s; }
-.custom-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; background: #3b82f6; border-radius: 50%; border: 3px solid white; cursor: pointer; box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3); }
-
-.theme-dark .custom-slider {
-  background: #1e293b;
-}
-
-.insight-box { display: flex; align-items: center; gap: 15px; color: #64748b; font-size: 0.95rem; line-height: 1.6; transition: color 0.3s; }
-
-.theme-dark .insight-box {
-  color: #94a3b8;
-}
-.insight-box .icon { font-size: 1.8rem; }
-
-@media (max-width: 900px) {
-  .ui-footer { grid-template-columns: 1fr; }
-  .controls-overlay { top: auto; bottom: 350px; }
+input[type=range]::-moz-range-thumb {
+  height: 28px;
+  width: 28px;
+  border-radius: 50%;
+  background: #3b82f6;
+  cursor: pointer;
+  border: 5px solid white;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3);
+  transition: all 0.2s ease;
 }
 </style>
