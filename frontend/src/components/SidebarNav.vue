@@ -42,7 +42,7 @@ defineEmits(['select'])
 .sidebar {
   border-right: 1px solid var(--line);
   background: var(--sidebar-bg);
-  padding: 24px 16px;
+  padding: 32px 20px;
   display: flex;
   flex-direction: column;
 }
@@ -50,26 +50,31 @@ defineEmits(['select'])
 .logo-wrap {
   display: flex;
   justify-content: center;
-  padding-bottom: 12px;
+  padding-bottom: 24px;
 }
 
 .logo {
-  width: 64px;
-  height: 64px;
+  width: 72px;
+  height: 72px;
   object-fit: contain;
+  background: white;
+  padding: 10px;
+  border-radius: 18px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
 }
 
 .menu-divider {
   height: 1px;
   width: 100%;
   background: var(--line);
-  margin: 8px 0 12px;
+  margin: 12px 0 20px;
+  opacity: 0.6;
 }
 
 .menu {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 @media (max-width: 860px) {
@@ -81,6 +86,11 @@ defineEmits(['select'])
 
   .logo-wrap {
     justify-content: flex-start;
+  }
+
+  .logo {
+    width: 56px;
+    height: 56px;
   }
 
   .menu {
