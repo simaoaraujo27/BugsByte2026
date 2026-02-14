@@ -29,11 +29,11 @@ def analyze_image_ingredients(image_bytes: bytes, mode: str = "ingredients", api
     client = OpenAI(api_key=final_api_key, base_url=base_url)
     base64_image = base64.b64encode(image_bytes).decode('utf-8')
 
-    # FAVORITES FIRST
+    # FAVORITES: subtle style reference
     fav_header = ""
     if favorite_recipes:
         fav_list = "\n".join([f"- {r.name}" for r in favorite_recipes])
-        fav_header = f"CONTEXTO DE PREFERÊNCIAS DO UTILIZADOR (RECEITAS QUE ELE ADORA):\n{fav_list}\n\n"
+        fav_header = f"REFERÊNCIA DE ESTILO (Usa isto apenas como inspiração subtil para o tipo de pratos que o utilizador gosta):\n{fav_list}\n\n"
 
     if mode == "plate":
         prompt = (
@@ -41,9 +41,9 @@ def analyze_image_ingredients(image_bytes: bytes, mode: str = "ingredients", api
             "Analisa esta imagem de um prato já cozinhado. "
             "1. Identifica o nome do prato (ex: Lasanha, Sushi, Hambúrguer). "
             "2. Cria uma RECRIAÇÃO SAUDÁVEL desse exato prato. Não inventes uma receita aleatória; foca-te em tornar o prato da imagem mais nutritivo (ex: trocar massa normal por integral, reduzir gorduras saturadas, aumentar vegetais), mantendo a essência do prato original. "
-            "3. Se não conseguires identificar o prato com certeza, analisa os ingredientes visíveis e sugere algo baseado neles como alternativa. "
+            "3. Usa a lista de 'REFERÊNCIA DE ESTILO' acima apenas como inspiração subtil, mas foca-te na fidelidade ao prato da imagem. "
             "4. Responde em PT-PT. "
-            "IMPORTANTE: Responde APENAS com um objeto JSON válido. "
+            "IMPORTANTE: Responde APENAS com um objeto JSON válido. Define SEMPRE 'calories' como 0. "
             "\nEstrutura JSON esperada: { \"detected_ingredients\": [\"nome do prato detetado\"], \"message\": \"Explicação de como tornaste este prato mais saudável...\", \"recipe\": { \"title\": \"Versão Saudável de [Nome do Prato]\", \"calories\": 0, \"time_minutes\": 25, \"ingredients\": [], \"steps\": [] } }"
         )
     else:
@@ -51,9 +51,10 @@ def analyze_image_ingredients(image_bytes: bytes, mode: str = "ingredients", api
             f"{fav_header}"
             "Analisa esta imagem de ingredientes. "
             "1. Identifica os ingredientes presentes. "
-            "2. Cria uma receita saudável que combine estes ingredientes, inspirada no estilo das receitas favoritas do utilizador. "
-            "3. Responde em PT-PT. "
-            "IMPORTANTE: Responde APENAS com um objeto JSON válido. "
+            "2. Cria uma receita saudável que combine estes ingredientes. "
+            "3. Usa a lista de 'REFERÊNCIA DE ESTILO' acima APENAS como base para o perfil de sabor, mas foca-te em ser VARIADO e ORIGINAL. "
+            "4. Responde em PT-PT. "
+            "IMPORTANTE: Responde APENAS com um objeto JSON válido. Define SEMPRE 'calories' como 0. "
             "\nEstrutura JSON esperada: { \"detected_ingredients\": [], \"message\": \"...\", \"recipe\": { \"title\": \"...\", \"calories\": 0, \"time_minutes\": 25, \"ingredients\": [], \"steps\": [] } }"
         )
 

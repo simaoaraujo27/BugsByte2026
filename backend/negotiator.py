@@ -44,21 +44,21 @@ def analyze_mood(craving: str, mood: str) -> schemas.MoodAnalysisResponse:
 def negotiate_craving(craving: str, target_calories: int = 600, mood: Optional[str] = None, favorite_recipes: List[schemas.Recipe] = []) -> schemas.NegotiatorResponse:
     client, model = get_client_config()
     
-    # FAVORITES FIRST: Construct context
+    # FAVORITES: Construct context as subtle inspiration
     fav_header = ""
     if favorite_recipes:
         fav_list = "\n".join([f"- {r.name}" for r in favorite_recipes])
-        fav_header = f"CONTEXTO DE PREFERÊNCIAS DO UTILIZADOR (ESTAS SÃO AS RECEITAS QUE ELE MAIS GOSTA):\n{fav_list}\n\n"
+        fav_header = f"REFERÊNCIA DE ESTILO (Usa isto apenas como inspiração subtil para o tipo de cozinha que o utilizador gosta):\n{fav_list}\n\n"
 
     prompt = (
         f"{fav_header}"
         f"O utilizador enviou o seguinte: '{craving}'. Estado emocional: {mood}. "
         "\nINSTRUÇÕES: "
-        "1. Se o utilizador descreveu um desejo específico (ex: 'apetece-me pizza'), cria uma versão saudável. "
-        "2. Se o utilizador forneceu uma lista de ingredientes ou disse o que tem em casa (ex: 'tenho salsichas e batatas'), cria uma receita criativa usando esses ingredientes. "
-        "3. Analisa as receitas favoritas acima para alinhar o sabor ao paladar do utilizador. "
-        "4. Se o pedido for inválido (não relacionado com comida), define 'recipe' como null. "
-        "\nRetorna RIGOROSAMENTE este JSON em PT-PT: "
+        "1. Se o utilizador descreveu um desejo específico, cria uma versão saudável. "
+        "2. Se forneceu ingredientes, cria uma receita criativa com eles. "
+        "3. Usa a lista de 'estilo' acima APENAS como base para o perfil de sabor, mas foca-te em ser VARIADO e ORIGINAL. Não sugiras sempre o mesmo tipo de prato. "
+        "4. Se o pedido for inválido, define 'recipe' como null. "
+        "\nRetorna RIGOROSAMENTE este JSON em PT-PT (define SEMPRE 'calories' como 0, pois eu vou calcular o valor real): "
         "{ 'message': '...', 'recipe': { 'title': '...', 'calories': 0, 'time_minutes': 30, 'ingredients': [], 'steps': [] }, 'restaurant_search_term': '...' }"
     )
 
@@ -66,7 +66,7 @@ def negotiate_craving(craving: str, target_calories: int = 600, mood: Optional[s
         response = client.chat.completions.create(
             model=model,
             messages=[
-                {"role": "system", "content": "És um Chef Michelin e Nutricionista. Prioriza sempre o perfil de gosto indicado pelas receitas favoritas do utilizador."},
+                {"role": "system", "content": "És um Chef Michelin e Nutricionista que adora variedade. Cria receitas novas e surpreendentes, usando as preferências do utilizador apenas como guia de estilo."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.85,
