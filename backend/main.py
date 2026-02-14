@@ -237,6 +237,10 @@ def analyze_mood(request: schemas.NegotiatorRequest, current_user: models.User =
 def negotiate_craving(request: schemas.NegotiatorRequest, current_user: models.User = Depends(auth.get_current_user)):
     return negotiator.negotiate_craving(request.craving, request.target_calories, request.mood, favorite_recipes=current_user.favorite_recipes)
 
+@app.post("/negotiator/nutrition", response_model=schemas.NutritionAnalysisResponse)
+def analyze_nutrition_endpoint(request: schemas.NutritionAnalysisRequest, current_user: models.User = Depends(auth.get_current_user)):
+    return negotiator.analyze_nutrition(request.food_text)
+
 @app.post("/vision/analyze", response_model=schemas.VisionResponse)
 async def analyze_ingredients_photo(file: UploadFile = File(...), current_user: models.User = Depends(auth.get_current_user)):
     contents = await file.read()
