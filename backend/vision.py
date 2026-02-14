@@ -34,6 +34,8 @@ def analyze_image_ingredients(image_bytes: bytes, mode: str = "ingredients", api
             "2. Cria uma RECRIAÇÃO SAUDÁVEL desse exato prato. Não inventes uma receita aleatória; foca-te em tornar o prato da imagem mais nutritivo. "
             "3. Usa a lista de 'REFERÊNCIA DE ESTILO' apenas como inspiração. "
             "4. Responde sempre em PORTUGUÊS DE PORTUGAL (PT-PT). "
+            "5. Em 'ingredients', usa quantidades realistas por ingrediente (g, ml, colheres, frações de unidade). "
+            "6. Evita unidade inteira quando não fizer sentido para uma porção (ex: '1/4 abacate' em vez de '1 abacate'). "
             "IMPORTANTE: Responde APENAS com um objeto JSON válido. Define 'calories' como 0. "
             "\nEstrutura JSON esperada: { \"detected_ingredients\": [\"nome do prato\"], \"message\": \"...\", \"recipe\": { \"title\": \"Versão Saudável de...\", \"calories\": 0, \"time_minutes\": 25, \"ingredients\": [\"200g massa\", \"100g carne\"], \"steps\": [] } }"
         )
@@ -45,6 +47,8 @@ def analyze_image_ingredients(image_bytes: bytes, mode: str = "ingredients", api
             "2. Cria uma receita saudável que combine estes ingredientes. "
             "3. Usa a lista de 'REFERÊNCIA DE ESTILO' APENAS como base para o perfil de sabor, mas foca-te em ser VARIADO e ORIGINAL. "
             "4. Responde em PT-PT. "
+            "5. Em 'ingredients', usa quantidades realistas por ingrediente (g, ml, colheres, frações de unidade). "
+            "6. Evita unidade inteira quando não fizer sentido para uma porção (ex: '1/4 abacate' em vez de '1 abacate'). "
             "IMPORTANTE: Responde APENAS com um objeto JSON válido. Define 'calories' como 0. "
             "\nEstrutura JSON esperada: { \"detected_ingredients\": [], \"message\": \"...\", \"recipe\": { \"title\": \"...\", \"calories\": 0, \"time_minutes\": 25, \"ingredients\": [\"200g de arroz\", \"1 tomate\"], \"steps\": [] } }"
         )
@@ -59,7 +63,7 @@ def analyze_image_ingredients(image_bytes: bytes, mode: str = "ingredients", api
         response = client.chat.completions.create(
             model=model,
             messages=[
-                {"role": "system", "content": "És um Chef Michelin e Nutricionista PT-PT que adora variedade. Cria receitas novas e surpreendentes."},
+                {"role": "system", "content": "És um Chef Michelin e Nutricionista PT-PT que adora variedade. Cria receitas novas e surpreendentes com quantidades realistas por ingrediente."},
                 {"role": "user", "content": [
                     {"type": "text", "text": prompt},
                     {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}

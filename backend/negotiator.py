@@ -46,6 +46,9 @@ def negotiate_craving(craving: str, target_calories: int = 600, mood: Optional[s
         "3. Usa a lista de 'estilo' APENAS como base para o perfil de sabor, mas sê VARIADO e ORIGINAL. "
         "4. Se o pedido for inválido, define 'recipe' como null. "
         "5. IMPORTANTE: Responde sempre em PORTUGUÊS DE PORTUGAL (PT-PT). "
+        "6. Em 'ingredients', usa SEMPRE quantidades realistas por ingrediente (g, ml, colheres, unidades parciais). "
+        "7. Evita unidade inteira quando não fizer sentido para uma porção (ex: '1/4 abacate' em vez de '1 abacate'). "
+        "8. Prefere porções equilibradas e proporcionais ao prato e ao objetivo calórico. "
         "\nRetorna RIGOROSAMENTE este JSON (define 'calories' como 0, pois será calculado externamente): "
         "{ 'message': '...', 'recipe': { 'title': '...', 'calories': 0, 'time_minutes': 30, 'ingredients': ['200g arroz', '100g frango'], 'steps': [] }, 'restaurant_search_term': '...' }"
     )
@@ -54,7 +57,7 @@ def negotiate_craving(craving: str, target_calories: int = 600, mood: Optional[s
         response = client.chat.completions.create(
             model=model,
             messages=[
-                {"role": "system", "content": "És um Chef Michelin e Nutricionista PT-PT que adora variedade."},
+                {"role": "system", "content": "És um Chef Michelin e Nutricionista PT-PT que adora variedade. Especifica sempre quantidades realistas por ingrediente."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.9,
