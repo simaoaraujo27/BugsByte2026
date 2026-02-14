@@ -264,9 +264,7 @@ export default {
       this.loading = true;
       try {
         const response = await fetch(`${API_URL}/users/me/favorites`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
+          headers: auth.getAuthHeaders(false)
         });
 
         if (!response.ok) throw new Error('Failed to fetch favorites');
@@ -287,9 +285,7 @@ export default {
       try {
         const response = await fetch(`${API_URL}/users/me/favorites/recipes/${id}`, {
           method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
+          headers: auth.getAuthHeaders(false)
         });
 
         if (response.ok) {
@@ -308,9 +304,7 @@ export default {
       try {
         const response = await fetch(`${API_URL}/users/me/favorites/restaurants/${id}`, {
           method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
+          headers: auth.getAuthHeaders(false)
         });
 
         if (response.ok) {

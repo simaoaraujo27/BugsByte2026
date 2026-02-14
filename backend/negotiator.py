@@ -28,25 +28,32 @@ def analyze_mood(craving: str, mood: str) -> schemas.MoodAnalysisResponse:
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-def negotiate_craving(craving: str, target_calories: int = 600, mood: Optional[str] = None, favorite_recipes: List[schemas.Recipe] = []) -> schemas.NegotiatorResponse:
+def negotiate_craving(craving: str, target_calories: int = 600, mood: Optional[str] = None, favorite_recipes: List[schemas.Recipe] = [], allergens: List[str] = []) -> schemas.NegotiatorResponse:
     client, model = get_client_config()
     
     # FAVORITES: Construct context as subtle inspiration
     fav_header = ""
     if favorite_recipes:
         fav_list = "\n".join([f"- {r.name}" for r in favorite_recipes])
-        fav_header = f"REFERÊNCIA DE ESTILO (Usa isto apenas como inspiração subtil para o tipo de cozinha que o utilizador gosta):\n{fav_list}\n\n"
+        fav_header = f"REFERÊNCIA DE ESTILO (Usa isto apenas como inspiração subtil):\n{fav_list}\n\n"
+
+    allergen_context = ""
+    if allergens:
+        allergen_list = ", ".join(allergens)
+        allergen_context = f"AVISO DE ALERGIA: O utilizador é alérgico a: {allergen_list}. NÃO uses estes ingredientes na receita.\n\n"
 
     prompt = (
         f"{fav_header}"
+        f"{allergen_context}"
         f"O utilizador enviou o seguinte: '{craving}'. Estado emocional: {mood}. "
         "\nINSTRUÇÕES: "
         "1. Se o utilizador descreveu um desejo específico, cria uma versão saudável. "
         "2. Se forneceu ingredientes, cria uma receita criativa com eles. "
-        "3. Usa a lista de 'estilo' APENAS como base para o perfil de sabor, mas sê VARIADO e ORIGINAL. "
-        "4. Se o pedido for inválido, define 'recipe' como null. "
-        "5. IMPORTANTE: Responde sempre em PORTUGUÊS DE PORTUGAL (PT-PT). "
-        "\nRetorna RIGOROSAMENTE este JSON (define 'calories' como 0, pois será calculado externamente): "
+        "3. Se houver ALERGÉNIOS listados acima, ignora-os TOTALMENTE. "
+        "4. Usa a lista de 'estilo' APENAS como base para o perfil de sabor. "
+        "5. Se o pedido for inválido, define 'recipe' como null. "
+        "6. IMPORTANTE: Responde sempre em PORTUGUÊS DE PORTUGAL (PT-PT). "
+        "\nRetorna JSON: "
         "{ 'message': '...', 'recipe': { 'title': '...', 'calories': 0, 'time_minutes': 30, 'ingredients': ['200g arroz', '100g frango'], 'steps': [] }, 'restaurant_search_term': '...' }"
     )
 

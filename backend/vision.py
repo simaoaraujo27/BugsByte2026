@@ -8,7 +8,7 @@ import food_data
 from fastapi import HTTPException
 from llm_client import get_client_config
 
-def analyze_image_ingredients(image_bytes: bytes, mode: str = "ingredients", api_key: Optional[str] = None, favorite_recipes: List[schemas.Recipe] = []) -> schemas.VisionResponse:
+def analyze_image_ingredients(image_bytes: bytes, mode: str = "ingredients", api_key: Optional[str] = None, favorite_recipes: List[schemas.Recipe] = [], allergens: List[str] = []) -> schemas.VisionResponse:
     client, model = get_client_config()
     
     # Check if we are using Groq
@@ -24,29 +24,36 @@ def analyze_image_ingredients(image_bytes: bytes, mode: str = "ingredients", api
     fav_header = ""
     if favorite_recipes:
         fav_list = "\n".join([f"- {r.name}" for r in favorite_recipes])
-        fav_header = f"REFERÊNCIA DE ESTILO (Usa isto apenas como inspiração subtil para o tipo de pratos que o utilizador gosta):\n{fav_list}\n\n"
+        fav_header = f"REFERÊNCIA DE ESTILO (Usa isto apenas como inspiração subtil):\n{fav_list}\n\n"
+
+    allergen_context = ""
+    if allergens:
+        allergen_list = ", ".join(allergens)
+        allergen_context = f"AVISO DE ALERGIA: O utilizador é alérgico a: {allergen_list}. NÃO uses estes ingredientes na receita.\n\n"
 
     if mode == "plate":
         prompt = (
             f"{fav_header}"
+            f"{allergen_context}"
             "Analisa esta imagem de um prato já cozinhado. "
-            "1. Identifica o nome do prato (ex: Lasanha, Sushi, Hambúrguer). "
-            "2. Cria uma RECRIAÇÃO SAUDÁVEL desse exato prato. Não inventes uma receita aleatória; foca-te em tornar o prato da imagem mais nutritivo. "
-            "3. Usa a lista de 'REFERÊNCIA DE ESTILO' apenas como inspiração. "
+            "1. Identifica o nome do prato. "
+            "2. Cria uma RECRIAÇÃO SAUDÁVEL desse prato. "
+            "3. Se houver ALERGÉNIOS listados acima, substitui-os por alternativas seguras. "
             "4. Responde sempre em PORTUGUÊS DE PORTUGAL (PT-PT). "
             "IMPORTANTE: Responde APENAS com um objeto JSON válido. Define 'calories' como 0. "
-            "\nEstrutura JSON esperada: { \"detected_ingredients\": [\"nome do prato\"], \"message\": \"...\", \"recipe\": { \"title\": \"Versão Saudável de...\", \"calories\": 0, \"time_minutes\": 25, \"ingredients\": [\"200g massa\", \"100g carne\"], \"steps\": [] } }"
+            "\nEstrutura JSON: { \"detected_ingredients\": [\"nome do prato\"], \"message\": \"...\", \"recipe\": { \"title\": \"Versão Saudável de...\", \"calories\": 0, \"time_minutes\": 25, \"ingredients\": [\"200g massa\", \"100g carne\"], \"steps\": [] } }"
         )
     else:
         prompt = (
             f"{fav_header}"
+            f"{allergen_context}"
             "Analisa esta imagem de ingredientes. "
             "1. Identifica os ingredientes presentes. "
-            "2. Cria uma receita saudável que combine estes ingredientes. "
-            "3. Usa a lista de 'REFERÊNCIA DE ESTILO' APENAS como base para o perfil de sabor, mas foca-te em ser VARIADO e ORIGINAL. "
+            "2. Cria uma receita saudável combinando-os. "
+            "3. Se houver ALERGÉNIOS listados acima, IGNORA-OS TOTALMENTE e não os uses na receita. "
             "4. Responde em PT-PT. "
             "IMPORTANTE: Responde APENAS com um objeto JSON válido. Define 'calories' como 0. "
-            "\nEstrutura JSON esperada: { \"detected_ingredients\": [], \"message\": \"...\", \"recipe\": { \"title\": \"...\", \"calories\": 0, \"time_minutes\": 25, \"ingredients\": [\"200g de arroz\", \"1 tomate\"], \"steps\": [] } }"
+            "\nEstrutura JSON: { \"detected_ingredients\": [], \"message\": \"...\", \"recipe\": { \"title\": \"...\", \"calories\": 0, \"time_minutes\": 25, \"ingredients\": [\"200g de arroz\", \"1 tomate\"], \"steps\": [] } }"
         )
 
     try:

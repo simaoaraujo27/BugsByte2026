@@ -51,11 +51,13 @@ def get_shop_type(ingredients: List[str], api_key: Optional[str] = None) -> str:
 
     ingredients_str = ", ".join(ingredients)
     prompt = (
-        f"Analyze this list of ingredients/terms: {ingredients_str}. "
-        "1. If the terms are nonsensical, inappropriate, offensive, or have absolutely nothing to do with food or valid retail categories, return exactly the word 'invalid'. "
-        "2. Otherwise, determine the single best OpenStreetMap 'shop' tag key to find them. "
-        "Examples: 'supermarket', 'convenience', 'greengrocer', 'butcher', 'health_food', 'delicatessen'. "
-        "Return ONLY the clean string of the tag (or 'invalid') with no punctuation or extra text."
+        f"Analyze this query: {ingredients_str}. "
+        "The query may be a specific item (e.g., '1l milk'), a category (e.g., 'dairy'), or a generic term (e.g., 'bread'). "
+        "It can be in Portuguese, English, or mixed. "
+        "1. If it's clearly non-food related, return 'invalid'. "
+        "2. Otherwise, return the most appropriate OpenStreetMap 'shop' tag. "
+        "Options: 'supermarket', 'convenience', 'greengrocer', 'butcher', 'bakery', 'health_food', 'dairy', 'deli', 'beverages', 'seafood'. "
+        "Return ONLY the tag name."
     )
 
     try:

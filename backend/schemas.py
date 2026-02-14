@@ -173,6 +173,8 @@ class NutritionAnalysisResponse(BaseModel):
 class DiaryGoalUpdate(BaseModel):
     goal: int = Field(..., ge=1000, le=6000)
 
+class DiaryWaterUpdate(BaseModel):
+    water_liters: float = Field(..., ge=0, le=10)
 
 class DiaryMealCreate(BaseModel):
     section: str

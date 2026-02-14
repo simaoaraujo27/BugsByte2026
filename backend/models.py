@@ -97,6 +97,7 @@ class DiaryDay(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     date_key = Column(String, nullable=False, index=True)  # YYYY-MM-DD
     goal = Column(Integer, nullable=False, default=1800)
+    water_liters = Column(Float, nullable=False, default=0.0)
 
     user = relationship("User", back_populates="diary_days")
     meals = relationship("DiaryMeal", back_populates="day", cascade="all, delete-orphan")

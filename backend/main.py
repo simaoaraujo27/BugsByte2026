@@ -318,7 +318,7 @@ def get_dashboard_summary(db: Session = Depends(get_db), current_user: models.Us
         "carbs": carbs,
         "fat": fat,
         "streak_days": streak,
-        "water_liters": 0.0,
+        "water_liters": day.water_liters,
         "weight_history": weight_history
     }
 
@@ -387,6 +387,15 @@ def update_diary_goal(date_key: str, payload: schemas.DiaryGoalUpdate, db: Sessi
     db.refresh(day)
     return day
 
+@app.put("/diary/{date_key}/water", response_model=schemas.DiaryDay)
+def update_diary_water(date_key: str, payload: schemas.DiaryWaterUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    validate_date_key(date_key)
+    day = get_or_create_diary_day(db, current_user.id, date_key)
+    day.water_liters = payload.water_liters
+    db.commit()
+    db.refresh(day)
+    return day
+
 @app.post("/diary/{date_key}/meals", response_model=schemas.DiaryDay)
 def add_diary_meal(date_key: str, payload: schemas.DiaryMealCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     validate_date_key(date_key)
@@ -430,7 +439,8 @@ def analyze_mood(request: schemas.NegotiatorRequest, current_user: models.User =
 
 @app.post("/negotiator/negotiate", response_model=schemas.NegotiatorResponse)
 def negotiate_craving(request: schemas.NegotiatorRequest, current_user: models.User = Depends(auth.get_current_user)):
-    return negotiator.negotiate_craving(request.craving, request.target_calories, request.mood, favorite_recipes=current_user.favorite_recipes)
+    allergens = [a.name for a in current_user.allergens]
+    return negotiator.negotiate_craving(request.craving, request.target_calories, request.mood, favorite_recipes=current_user.favorite_recipes, allergens=allergens)
 
 @app.post("/negotiator/nutrition", response_model=schemas.NutritionAnalysisResponse)
 def analyze_nutrition_endpoint(request: schemas.NutritionAnalysisRequest, current_user: models.User = Depends(auth.get_current_user)):
@@ -439,7 +449,8 @@ def analyze_nutrition_endpoint(request: schemas.NutritionAnalysisRequest, curren
 @app.post("/vision/analyze", response_model=schemas.VisionResponse)
 async def analyze_ingredients_photo(mode: str = "ingredients", file: UploadFile = File(...), current_user: models.User = Depends(auth.get_current_user)):
     contents = await file.read()
-    return vision.analyze_image_ingredients(contents, mode=mode, favorite_recipes=current_user.favorite_recipes)
+    allergens = [a.name for a in current_user.allergens]
+    return vision.analyze_image_ingredients(contents, mode=mode, favorite_recipes=current_user.favorite_recipes, allergens=allergens)
 
 @app.post("/shops/find", response_model=list[schemas.Shop])
 def find_shops(request: schemas.ShopSearchRequest, current_user: models.User = Depends(auth.get_current_user)):
