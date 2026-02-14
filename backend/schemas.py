@@ -126,6 +126,31 @@ class FoodSearchItem(BaseModel):
     fat_per_100g: float
     source: str
 
+class FoodHistoryBase(BaseModel):
+    name: str
+    calories_per_100g: float
+    protein_per_100g: float
+    carbs_per_100g: float
+    fat_per_100g: float
+    source: str = "search"
+
+class FoodHistoryCreate(FoodHistoryBase):
+    pass
+
+class FoodHistoryResponse(FoodHistoryBase):
+    id: int
+    user_id: int
+    created_at: str
+
+    class ConfigDict:
+        from_attributes = True
+
+    @field_validator("created_at", mode="before")
+    def serialize_datetime(cls, v):
+        if v:
+            return v.isoformat()
+        return v
+
 class NegotiatorRecipe(BaseModel):
     title: str
     calories: int

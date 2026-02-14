@@ -417,6 +417,62 @@ def find_shops(request: schemas.ShopSearchRequest, current_user: models.User = D
 def search_foods(q: str, page_size: int = 10, current_user: models.User = Depends(auth.get_current_user)):
     return food_data.search_foods(q, page_size=page_size)
 
+@app.post("/users/me/food-history", response_model=schemas.FoodHistoryResponse)
+def add_food_history(
+    item: schemas.FoodHistoryCreate, 
+    db: Session = Depends(get_db), 
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    # Check if exists to update timestamp or duplicates
+    # For simplicity, we can just add a new entry. Or, if we want "Recent" unique list, we can update.
+    # Let's delete old one if exists with same name to keep list clean and update timestamp (via new insert)
+    
+    existing = db.query(models.FoodHistory).filter(
+        models.FoodHistory.user_id == current_user.id,
+        models.FoodHistory.name == item.name
+    ).first()
+    
+    if existing:
+        db.delete(existing)
+        db.commit()
+    
+    new_entry = models.FoodHistory(
+        user_id=current_user.id,
+        name=item.name,
+        calories_per_100g=item.calories_per_100g,
+        protein_per_100g=item.protein_per_100g,
+        carbs_per_100g=item.carbs_per_100g,
+        fat_per_100g=item.fat_per_100g,
+        source=item.source
+    )
+    db.add(new_entry)
+    db.commit()
+    db.refresh(new_entry)
+    
+    # Optional: Limit history size (e.g., keep last 50)
+    count = db.query(models.FoodHistory).filter(models.FoodHistory.user_id == current_user.id).count()
+    if count > 50:
+        oldest = db.query(models.FoodHistory).filter(models.FoodHistory.user_id == current_user.id).order_by(models.FoodHistory.created_at.asc()).first()
+        if oldest:
+            db.delete(oldest)
+            db.commit()
+            
+    return new_entry
+
+@app.get("/users/me/food-history", response_model=list[schemas.FoodHistoryResponse])
+def get_food_history(
+    limit: int = 20, 
+    db: Session = Depends(get_db), 
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    return (
+        db.query(models.FoodHistory)
+        .filter(models.FoodHistory.user_id == current_user.id)
+        .order_by(models.FoodHistory.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
 @app.post("/recipes/", response_model=schemas.Recipe)
 def create_recipe(recipe: schemas.RecipeCreate, db: Session = Depends(get_db)):
     db_recipe = models.Recipe(**recipe.model_dump())
