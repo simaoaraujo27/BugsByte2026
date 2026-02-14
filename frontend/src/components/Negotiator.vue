@@ -2,6 +2,7 @@
 import { ref, watch, onMounted, onUnmounted } from 'vue';
 import { auth, API_URL } from '@/auth';
 import { addRecipeToHistory } from '@/utils/recipeHistory';
+import { optimizeImageForVision } from '@/utils/imageUpload';
 
 const props = defineProps({
   routeMode: {
@@ -140,11 +141,19 @@ const onPaste = (e) => {
   }
 };
 
-const processSelectedFile = (file) => {
+const processSelectedFile = async (file) => {
+  let uploadFile = file;
+  try {
+    uploadFile = await optimizeImageForVision(file);
+    console.log("Optimized image size:", uploadFile.size);
+  } catch (err) {
+    console.warn("Could not optimize image, using original file.", err);
+  }
+
   const reader = new FileReader();
   reader.onload = (e) => previewImage.value = e.target.result;
-  reader.readAsDataURL(file);
-  uploadAndAnalyze(file);
+  reader.readAsDataURL(uploadFile);
+  uploadAndAnalyze(uploadFile);
 };
 
 onMounted(() => {
@@ -368,9 +377,19 @@ const uploadAndAnalyze = async (file) => {
 
     console.log("Response status:", response.status);
     if (!response.ok) {
-      const errText = await response.text();
-      console.error("API Error response:", errText);
-      throw new Error('Erro ao analisar a imagem');
+      let errorMessage = 'Erro ao analisar a imagem';
+      try {
+        const errData = await response.json();
+        if (response.status === 413) {
+          errorMessage = errData?.detail || 'A imagem é demasiado grande. Tenta novamente com outra imagem.';
+        } else if (errData?.detail) {
+          errorMessage = errData.detail;
+        }
+      } catch {
+        const errText = await response.text();
+        console.error("API Error response:", errText);
+      }
+      throw new Error(errorMessage);
     }
     
     const data = await response.json();
@@ -446,6 +465,63 @@ const saveRecipe = async () => {
 
 const closeFeedbackDialog = () => {
   feedbackDialog.value = null;
+};
+
+const generateAnotherRecipe = async () => {
+  if (loading.value || !recipeResult.value?.recipe) return;
+  loading.value = true;
+  error.value = null;
+
+  const previousTitle = (recipeResult.value.recipe.title || '').replace(/"/g, "'");
+  const variantHint = previousTitle
+    ? ` Gera uma alternativa diferente e não repitas o título "${previousTitle}".`
+    : ' Gera uma alternativa diferente da receita anterior.';
+
+  let payload = { craving: `Receita saudável.${variantHint}`, target_calories: 600 };
+  let source = 'text';
+
+  if (detectedIngredients.value.length > 0) {
+    payload = {
+      craving: `Receita saudável com estes ingredientes: ${detectedIngredients.value.join(', ')}.${variantHint}`,
+      target_calories: 600
+    };
+    source = 'vision';
+  } else if (selectedMood.value) {
+    payload = {
+      craving: `Menu saudável.${variantHint}`,
+      mood: selectedMood.value
+    };
+    source = 'mood';
+  } else if (craving.value.trim()) {
+    payload = {
+      craving: `${craving.value.trim()}.${variantHint}`,
+      target_calories: 600
+    };
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/negotiator/negotiate`, {
+      method: 'POST',
+      headers: auth.getAuthHeaders(),
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const errData = await response.json();
+      throw new Error(errData.detail || "Erro ao gerar alternativa");
+    }
+
+    const data = await response.json();
+    recipeResult.value = data;
+    if (data.recipe) {
+      storeInHistory(data, source);
+    }
+    activeView.value = data.recipe ? 'recipe' : 'rejection';
+  } catch (e) {
+    error.value = e.message;
+  } finally {
+    loading.value = false;
+  }
 };
 
 const reset = () => {
@@ -686,6 +762,9 @@ watch(
 
         <div class="rec-final-action">
           <button @click="reset" class="btn-formatted-back">← Voltar</button>
+          <button @click="generateAnotherRecipe" class="btn-alt-recipe" :disabled="loading || saving">
+            {{ loading ? 'A gerar...' : '🔁 Gerar Outra Receita' }}
+          </button>
           <button @click="saveRecipe" class="btn-save" :disabled="saving">
             {{ saving ? 'A guardar...' : '❤️ Guardar Receita' }}
           </button>
@@ -987,7 +1066,8 @@ watch(
 }
 
 .rec-final-action .btn-formatted-back,
-.rec-final-action .btn-save {
+.rec-final-action .btn-save,
+.rec-final-action .btn-alt-recipe {
   min-width: 170px;
   min-height: 56px;
   margin-top: 0;
@@ -1022,6 +1102,32 @@ watch(
   transform: translateY(-2px);
   box-shadow: 0 18px 34px rgba(255, 94, 94, 0.34);
   filter: brightness(1.03);
+}
+
+.btn-alt-recipe {
+  background: linear-gradient(135deg, #2063c7, #154fa8);
+  color: #fff;
+  border: 1px solid rgba(147, 186, 255, 0.45);
+  padding: 12px 24px;
+  border-radius: 14px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  box-shadow: 0 14px 30px rgba(21, 79, 168, 0.28);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.btn-alt-recipe:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 34px rgba(21, 79, 168, 0.34);
+  filter: brightness(1.03);
+}
+
+.btn-alt-recipe:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .btn-save:disabled {
@@ -1111,7 +1217,8 @@ watch(
     flex-direction: column;
   }
   .rec-final-action .btn-formatted-back,
-  .rec-final-action .btn-save {
+  .rec-final-action .btn-save,
+  .rec-final-action .btn-alt-recipe {
     width: 100%;
     max-width: 320px;
   }

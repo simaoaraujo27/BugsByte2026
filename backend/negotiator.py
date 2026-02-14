@@ -1,5 +1,6 @@
 import os
 import json
+import random
 from typing import List, Dict, Optional
 from openai import OpenAI
 import schemas
@@ -30,40 +31,82 @@ def analyze_mood(craving: str, mood: str) -> schemas.MoodAnalysisResponse:
 
 def negotiate_craving(craving: str, target_calories: int = 600, mood: Optional[str] = None, favorite_recipes: List[schemas.Recipe] = []) -> schemas.NegotiatorResponse:
     client, model = get_client_config()
+    cuisine_focus = random.choice(["mediterrânica", "asiática leve", "mexicana equilibrada", "portuguesa moderna", "levantina"])
+    technique_focus = random.choice(["forno", "grelhar", "saltear rápido", "estufar leve", "air fryer"])
+    format_focus = random.choice(["bowl", "wrap", "prato no prato", "salada morna", "tosta aberta"])
     
-    # FAVORITES: Construct context as subtle inspiration
+    # FAVORITES: use a small random sample so favorites influence less
     fav_header = ""
     if favorite_recipes:
-        fav_list = "\n".join([f"- {r.name}" for r in favorite_recipes])
-        fav_header = f"REFERÊNCIA DE ESTILO (Usa isto apenas como inspiração subtil para o tipo de cozinha que o utilizador gosta):\n{fav_list}\n\n"
+        sampled = random.sample(favorite_recipes, k=min(2, len(favorite_recipes)))
+        fav_list = "\n".join([f"- {r.name}" for r in sampled])
+        fav_header = (
+            "REFERÊNCIA DE ESTILO (influência leve):\n"
+            "Usa APENAS para um toque subtil de perfil de sabor. "
+            "NÃO copies pratos favoritos nem reutilizes títulos iguais.\n"
+            f"{fav_list}\n\n"
+        )
 
     prompt = (
         f"{fav_header}"
+        f"BRIEF CRIATIVO DESTA GERAÇÃO: cozinha {cuisine_focus}, técnica {technique_focus}, formato {format_focus}. "
         f"O utilizador enviou o seguinte: '{craving}'. Estado emocional: {mood}. "
         "\nINSTRUÇÕES: "
         "1. Se o utilizador descreveu um desejo específico, cria uma versão saudável. "
         "2. Se forneceu ingredientes, cria uma receita criativa com eles. "
-        "3. Usa a lista de 'estilo' APENAS como base para o perfil de sabor, mas sê VARIADO e ORIGINAL. "
+        "3. Usa a lista de 'estilo' com peso BAIXO e gera propostas novas; evita repetições de títulos, combinações e passos. "
+        "3.1. Mantém identidade claramente diferente de receitas comuns anteriores (novo ângulo de sabor, técnica ou empratamento). "
         "4. Se o pedido for inválido, define 'recipe' como null. "
         "5. IMPORTANTE: Responde sempre em PORTUGUÊS DE PORTUGAL (PT-PT). "
+        "6. Em 'ingredients', usa SEMPRE quantidades realistas por ingrediente (g, ml, colheres, unidades parciais). "
+        "7. Evita unidade inteira quando não fizer sentido para uma porção (ex: '1/4 abacate' em vez de '1 abacate'). "
+        "8. Prefere porções equilibradas e proporcionais ao prato e ao objetivo calórico. "
+        "9. PROIBIDO usar quinoa/qinoa em qualquer parte da receita (título, ingredientes ou passos). "
         "\nRetorna RIGOROSAMENTE este JSON (define 'calories' como 0, pois será calculado externamente): "
         "{ 'message': '...', 'recipe': { 'title': '...', 'calories': 0, 'time_minutes': 30, 'ingredients': ['200g arroz', '100g frango'], 'steps': [] }, 'restaurant_search_term': '...' }"
     )
 
-    try:
+    strict_json_rules = (
+        "\nREGRAS JSON ESTRITAS: "
+        "Retorna APENAS JSON válido, sem markdown e sem texto fora do objeto. "
+        "Em 'ingredients' e 'steps', cada item deve ser APENAS uma string simples. "
+        "Não uses arrays aninhados, não mistures números soltos dentro de strings, não uses quebras inválidas. "
+        "NÃO uses quinoa/qinoa."
+    )
+
+    def request_recipe_response(temp: float, presence: float, frequency: float, strict_mode: bool = False):
+        system_content = (
+            "És um Chef Michelin e Nutricionista PT-PT que adora variedade alta, pouca repetição e quantidades realistas por ingrediente. Quinoa/qinoa é proibida."
+        )
+        user_content = prompt + (strict_json_rules if strict_mode else "")
         response = client.chat.completions.create(
             model=model,
             messages=[
-                {"role": "system", "content": "És um Chef Michelin e Nutricionista PT-PT que adora variedade."},
-                {"role": "user", "content": prompt}
+                {"role": "system", "content": system_content},
+                {"role": "user", "content": user_content}
             ],
-            temperature=0.9,
-            presence_penalty=0.6,
-            frequency_penalty=0.5,
+            temperature=temp,
+            presence_penalty=presence,
+            frequency_penalty=frequency,
             response_format={"type": "json_object"},
             max_tokens=1000
         )
-        data = json.loads(response.choices[0].message.content)
+        return json.loads(response.choices[0].message.content)
+
+    try:
+        data = request_recipe_response(temp=1.08, presence=0.9, frequency=0.8, strict_mode=False)
+    except Exception as first_error:
+        error_text = str(first_error).lower()
+        should_retry = "json_validate_failed" in error_text or "failed to generate json" in error_text
+        if not should_retry:
+            print(f"Erro Negotiator: {first_error}")
+            raise HTTPException(status_code=500, detail="Erro ao processar receita personalizada.")
+        try:
+            data = request_recipe_response(temp=0.65, presence=0.35, frequency=0.35, strict_mode=True)
+        except Exception as retry_error:
+            print(f"Erro Negotiator (retry): {retry_error}")
+            raise HTTPException(status_code=500, detail="Erro ao processar receita personalizada.")
+    try:
         
         # Calcular calorias reais via "food_data" (que usa a IA como DB)
         raw_recipe = data.get('recipe')

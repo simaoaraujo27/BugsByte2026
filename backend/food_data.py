@@ -1,8 +1,14 @@
 import requests
 import re
-from typing import List, Dict, Optional
+import os
+import json
+from functools import lru_cache
+from typing import List, Dict
+from llm_client import get_client_config
 
 OPEN_FOOD_FACTS_URL = "https://world.openfoodfacts.org/cgi/search.pl"
+OFF_TIMEOUT_SECONDS = float(os.getenv("OFF_TIMEOUT_SECONDS", "2.0"))
+OFF_DEFAULT_PAGE_SIZE = int(os.getenv("OFF_DEFAULT_PAGE_SIZE", "3"))
 
 # Fallback values for common staples if API fails (kcal/100g)
 COMMON_STAPLES = {
@@ -48,10 +54,11 @@ def _simplify_search_term(term: str) -> str:
     # Use first two words if available (e.g. "salsicha peru"), else just one
     return " ".join(words[:2])
 
-def search_foods(query: str, page_size: int = 10) -> List[Dict]:
+@lru_cache(maxsize=512)
+def _search_foods_cached(query: str, page_size: int) -> tuple[dict, ...]:
     query = query.strip()
     if not query:
-        return []
+        return tuple()
 
     try:
         response = requests.get(
@@ -65,11 +72,11 @@ def search_foods(query: str, page_size: int = 10) -> List[Dict]:
                 "lc": "pt", 
                 "fields": "product_name,nutriments,brands"
             },
-            timeout=5
+            timeout=OFF_TIMEOUT_SECONDS
         )
         
         if not response.ok:
-            return []
+            return tuple()
             
         data = response.json()
         products = data.get("products", [])
@@ -92,11 +99,46 @@ def search_foods(query: str, page_size: int = 10) -> List[Dict]:
                 "source": "openfoodfacts"
             })
             
-        return results
+        return tuple(results)
 
     except Exception as e:
         print(f"OFF Search Error: {e}")
-        return []
+        return tuple()
+
+def search_foods(query: str, page_size: int = 10) -> List[Dict]:
+    normalized_size = max(1, min(page_size or OFF_DEFAULT_PAGE_SIZE, 10))
+    return [dict(item) for item in _search_foods_cached(query.strip(), normalized_size)]
+
+def estimate_recipe_calories_with_ai(ingredients: List[str]) -> int:
+    if not ingredients:
+        return 0
+
+    try:
+        client, model = get_client_config()
+        joined = ", ".join(ingredients[:30])
+        prompt = (
+            "Estima as calorias totais aproximadas desta receita com base nos ingredientes e quantidades indicadas. "
+            "Responde APENAS JSON válido com formato: "
+            "{ \"estimated_total_calories\": 0 }. "
+            f"Ingredientes: {joined}"
+        )
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": "És um nutricionista. Retorna apenas JSON."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.2,
+            response_format={"type": "json_object"},
+            max_tokens=120
+        )
+        content = response.choices[0].message.content
+        data = json.loads(content)
+        calories = int(float(data.get("estimated_total_calories", 0)))
+        return max(0, calories)
+    except Exception as e:
+        print(f"AI Calories Fallback Error: {e}")
+        return 0
 
 def calculate_recipe_calories(ingredients: List[str]) -> int:
     total_calories = 0.0
@@ -157,5 +199,10 @@ def calculate_recipe_calories(ingredients: List[str]) -> int:
                 
         except Exception:
             continue
-            
-    return int(total_calories)
+
+    total_int = int(total_calories)
+    if total_int > 0:
+        return total_int
+
+    # Fallback final: if OFF/common staples failed and total is 0, ask LLM for an estimate.
+    return estimate_recipe_calories_with_ai(ingredients)

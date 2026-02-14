@@ -109,6 +109,7 @@ class DiaryMeal(Base):
     day_id = Column(Integer, ForeignKey("diary_days.id"), nullable=False, index=True)
     section = Column(String, nullable=False, index=True)  # breakfast/lunch/snack/dinner/extras
     name = Column(String, nullable=False)
+    grams = Column(Float, nullable=True)
     calories = Column(Integer, nullable=False, default=0)
     protein = Column(Float, nullable=False, default=0)
     carbs = Column(Float, nullable=False, default=0)
