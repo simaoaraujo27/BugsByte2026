@@ -6,7 +6,7 @@ import hashlib
 import smtplib
 import uuid
 from datetime import datetime, timedelta, timezone
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Request
 from email.message import EmailMessage
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -91,9 +91,9 @@ def sync_database_schema() -> None:
 
 sync_database_schema()
 
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Request
+app = FastAPI(redirect_slashes=False)
 
-# ... after app definition ...
+VALID_MEAL_SECTIONS = {"breakfast", "lunch", "snack", "dinner", "extras"}
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
