@@ -59,22 +59,39 @@ const stopCamera = () => {
 };
 
 const capturePhoto = () => {
+  console.log("Attempting to capture photo...");
   const video = videoRef.value;
   const canvas = canvasRef.value;
   if (video && canvas) {
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const context = canvas.getContext('2d');
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
-    canvas.toBlob((blob) => {
-      if (blob) {
-        const file = new File([blob], "captured_ingredients.jpg", { type: "image/jpeg" });
-        previewImage.value = URL.createObjectURL(blob);
-        uploadAndAnalyze(file);
-        stopCamera();
-      }
-    }, 'image/jpeg', 0.8);
+    try {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const context = canvas.getContext('2d');
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      console.log("Drawing video to canvas successful, creating blob...");
+      canvas.toBlob((blob) => {
+        if (blob) {
+          console.log("Blob created successfully, size:", blob.size);
+          const file = new File([blob], "captured_ingredients.jpg", { type: "image/jpeg" });
+          previewImage.value = URL.createObjectURL(blob);
+          
+          // Stop camera before starting upload to free resources
+          stopCamera();
+          
+          console.log("Starting upload and analyze...");
+          uploadAndAnalyze(file);
+        } else {
+          console.error("Failed to create blob from canvas");
+          error.value = "Erro ao processar a imagem capturada.";
+        }
+      }, 'image/jpeg', 0.8);
+    } catch (err) {
+      console.error("Error during capturePhoto:", err);
+      error.value = "Erro ao capturar foto: " + err.message;
+    }
+  } else {
+    console.error("Video or Canvas ref is missing", { video: !!video, canvas: !!canvas });
   }
 };
 
@@ -213,25 +230,37 @@ const handleFileChange = (event) => {
 };
 
 const uploadAndAnalyze = async (file) => {
+  console.log("uploadAndAnalyze called with file:", file.name, "size:", file.size);
   loading.value = true;
   error.value = null;
   const formData = new FormData();
   formData.append('file', file);
 
   try {
-    const response = await fetch('' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/vision/analyze', {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    console.log("Sending POST request to:", `${apiUrl}/vision/analyze`);
+    
+    const response = await fetch(`${apiUrl}/vision/analyze`, {
       method: 'POST',
       headers: auth.getAuthHeaders(false),
       body: formData,
     });
 
-    if (!response.ok) throw new Error('Erro ao analisar a imagem');
+    console.log("Response status:", response.status);
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error("API Error response:", errText);
+      throw new Error('Erro ao analisar a imagem');
+    }
+    
     const data = await response.json();
+    console.log("Analysis successful, received data:", data);
     detectedIngredients.value = data.detected_ingredients;
     recipeResult.value = { recipe: data.recipe, message: data.message };
     storeInHistory({ recipe: data.recipe, message: data.message }, 'vision');
     activeView.value = 'recipe';
   } catch (e) {
+    console.error("Error in uploadAndAnalyze:", e);
     error.value = e.message;
   } finally {
     loading.value = false;

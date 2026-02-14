@@ -43,28 +43,39 @@ const stopCamera = () => {
 };
 
 const capturePhoto = () => {
+  console.log("VisionRecipe: Attempting capture...");
   const video = videoRef.value;
   const canvas = canvasRef.value;
   if (video && canvas) {
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const context = canvas.getContext('2d');
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
-    canvas.toBlob((blob) => {
-      if (blob) {
-        const file = new File([blob], "captured_ingredients.jpg", { type: "image/jpeg" });
-        previewImage.value = URL.createObjectURL(blob);
-        uploadAndAnalyze(file);
-        stopCamera();
-      }
-    }, 'image/jpeg', 0.8);
+    try {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const context = canvas.getContext('2d');
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      canvas.toBlob((blob) => {
+        if (blob) {
+          console.log("VisionRecipe: Blob created, size:", blob.size);
+          const file = new File([blob], "captured_ingredients.jpg", { type: "image/jpeg" });
+          previewImage.value = URL.createObjectURL(blob);
+          uploadAndAnalyze(file);
+          stopCamera();
+        } else {
+          console.error("VisionRecipe: Failed to create blob");
+          error.value = "Erro ao processar imagem capturada.";
+        }
+      }, 'image/jpeg', 0.8);
+    } catch (err) {
+      console.error("VisionRecipe: Capture error:", err);
+      error.value = "Erro na captura: " + err.message;
+    }
   }
 };
 
 const handleFileChange = (event) => {
   const file = event.target.files[0];
   if (file) {
+    console.log("VisionRecipe: File selected via input:", file.name);
     const reader = new FileReader();
     reader.onload = (e) => {
       previewImage.value = e.target.result;
@@ -75,6 +86,7 @@ const handleFileChange = (event) => {
 };
 
 const uploadAndAnalyze = async (file) => {
+  console.log("VisionRecipe: Starting uploadAndAnalyze...");
   loading.value = true;
   error.value = null;
   result.value = null;
@@ -83,22 +95,27 @@ const uploadAndAnalyze = async (file) => {
   formData.append('file', file);
 
   try {
-    // For file uploads, we must NOT set Content-Type manually so the browser can set the boundary.
-    const response = await fetch('' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/vision/analyze', {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    console.log("VisionRecipe: Fetching from:", `${apiUrl}/vision/analyze`);
+    
+    const response = await fetch(`${apiUrl}/vision/analyze`, {
       method: 'POST',
       headers: auth.getAuthHeaders(false),
       body: formData,
     });
 
+    console.log("VisionRecipe: Response status:", response.status);
     if (!response.ok) {
-      const errData = await response.json();
-      throw new Error(errData.detail || 'Erro ao analisar a imagem');
+      const errText = await response.text();
+      console.error("VisionRecipe: API Error:", errText);
+      throw new Error('Erro ao analisar a imagem');
     }
 
     result.value = await response.json();
+    console.log("VisionRecipe: Analysis success");
   } catch (e) {
+    console.error("VisionRecipe: uploadAndAnalyze error:", e);
     error.value = e.message;
-    console.error(e);
   } finally {
     loading.value = false;
   }
