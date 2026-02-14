@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 import hashlib
 import smtplib
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
 from email.message import EmailMessage
 from sqlalchemy.orm import Session
@@ -19,7 +19,6 @@ load_dotenv()
 import models, schemas, shops, negotiator, food_data, auth, vision
 from database import SessionLocal, engine, get_db
 from fastapi.middleware.cors import CORSMiddleware
-from datetime import timedelta
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -161,7 +160,6 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     
     hashed_password = auth.get_password_hash(user.password)
     
-    # Create user instance without allergens first
     new_user = models.User(
         username=user.username,
         hashed_password=hashed_password,
@@ -174,13 +172,12 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     )
     db.add(new_user)
     
-    # Handle allergens
     for allergen_name in user.allergens:
         db_allergen = db.query(models.Allergen).filter(models.Allergen.name == allergen_name).first()
         if not db_allergen:
             db_allergen = models.Allergen(name=allergen_name)
             db.add(db_allergen)
-            db.flush() # Use flush instead of commit to keep it in the transaction
+            db.flush()
         new_user.allergens.append(db_allergen)
 
     db.commit()
@@ -203,6 +200,79 @@ def login(request: schemas.LoginRequest, db: Session = Depends(get_db)):
 def read_user_me(current_user: models.User = Depends(auth.get_current_user)):
     return current_user
 
+@app.put("/users/me", response_model=schemas.User)
+def update_user_me(update_data: schemas.UserUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    if update_data.username:
+        db_user = db.query(models.User).filter(models.User.username == update_data.username).first()
+        if db_user and db_user.id != current_user.id:
+            raise HTTPException(status_code=400, detail="Username already taken")
+        current_user.username = update_data.username
+    
+    if update_data.password:
+        current_user.hashed_password = auth.get_password_hash(update_data.password)
+    
+    if update_data.peso is not None:
+        current_user.peso = update_data.peso
+    if update_data.altura is not None:
+        current_user.altura = update_data.altura
+    if update_data.sexo is not None:
+        current_user.sexo = update_data.sexo
+    if update_data.idade is not None:
+        current_user.idade = update_data.idade
+    if update_data.goal is not None:
+        current_user.goal = update_data.goal
+    if update_data.activity_level is not None:
+        current_user.activity_level = str(update_data.activity_level)
+    
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
+@app.get("/users/me/dashboard", response_model=schemas.DashboardResponse)
+def get_dashboard_summary(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    date_key = datetime.now().strftime("%Y-%m-%d")
+    day = get_or_create_diary_day(db, current_user.id, date_key)
+    
+    consumed_calories = sum(m.calories for m in day.meals)
+    protein = sum(m.protein for m in day.meals)
+    carbs = sum(m.carbs for m in day.meals)
+    fat = sum(m.fat for m in day.meals)
+    
+    streak = 0
+    curr = datetime.now()
+    for i in range(365):
+        dk = (curr - timedelta(days=i)).strftime("%Y-%m-%d")
+        d = db.query(models.DiaryDay).filter(models.DiaryDay.user_id == current_user.id, models.DiaryDay.date_key == dk).first()
+        if d and sum(m.calories for m in d.meals) > 0:
+            streak += 1
+        else:
+            if i == 0: continue
+            break
+    
+    weights = db.query(models.WeightEntry).filter(models.WeightEntry.user_id == current_user.id).order_by(models.WeightEntry.date.asc()).all()
+    
+    if not weights:
+        weight_history = {
+            "labels": ["Sem 1", "Sem 2", "Sem 3", "Sem 4"],
+            "values": [current_user.peso] * 4 if current_user.peso else [70.0] * 4
+        }
+    else:
+        weight_history = {
+            "labels": [w.date for w in weights[-7:]],
+            "values": [w.weight for w in weights[-7:]]
+        }
+            
+    return {
+        "consumed_calories": consumed_calories,
+        "calorie_goal": day.goal,
+        "protein": protein,
+        "carbs": carbs,
+        "fat": fat,
+        "streak_days": streak,
+        "water_liters": 0.0,
+        "weight_history": weight_history
+    }
+
 @app.post("/forgot-password/")
 def forgot_password(request: schemas.ForgotPasswordRequest, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter(models.User.username == request.username).first()
@@ -210,8 +280,6 @@ def forgot_password(request: schemas.ForgotPasswordRequest, db: Session = Depend
         return {"message": "If the email exists, a reset link has been sent."}
 
     token = auth.create_password_reset_token(db_user.username)
-    # Store token in DB for legacy compatibility if needed, 
-    # though auth.create_password_reset_token might be JWT-based now.
     db_user.reset_token = token
     db.commit()
 
@@ -219,8 +287,6 @@ def forgot_password(request: schemas.ForgotPasswordRequest, db: Session = Depend
         send_password_reset_email(db_user.username, token)
     except Exception as exc:
         print(f"Password reset email failed: {exc}")
-        # We don't necessarily want to fail if email fails in simulation mode, 
-        # but if it was supposed to work, we should know.
     
     return {"message": "If the email exists, a reset link has been sent."}
 
@@ -237,6 +303,76 @@ def reset_password(request: schemas.ResetPasswordConfirm, db: Session = Depends(
     db_user.hashed_password = auth.get_password_hash(request.new_password)
     db.commit()
     return {"message": "Palavra-passe alterada com sucesso."}
+
+@app.get("/diary/{date_key}", response_model=schemas.DiaryDay)
+def get_diary_day(date_key: str, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    validate_date_key(date_key)
+    day = get_or_create_diary_day(db, current_user.id, date_key)
+    return day
+
+@app.get("/diary-range/", response_model=list[schemas.DiaryDay])
+def get_diary_days_range(start: str, end: str, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    start_key = validate_date_key(start)
+    end_key = validate_date_key(end)
+    if start_key > end_key:
+        raise HTTPException(status_code=400, detail="start date must be before or equal to end date")
+
+    days = (
+        db.query(models.DiaryDay)
+        .filter(
+            models.DiaryDay.user_id == current_user.id,
+            models.DiaryDay.date_key >= start_key,
+            models.DiaryDay.date_key <= end_key,
+        )
+        .order_by(models.DiaryDay.date_key.asc())
+        .all()
+    )
+    return days
+
+@app.put("/diary/{date_key}/goal", response_model=schemas.DiaryDay)
+def update_diary_goal(date_key: str, payload: schemas.DiaryGoalUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    validate_date_key(date_key)
+    day = get_or_create_diary_day(db, current_user.id, date_key)
+    day.goal = payload.goal
+    db.commit()
+    db.refresh(day)
+    return day
+
+@app.post("/diary/{date_key}/meals", response_model=schemas.DiaryDay)
+def add_diary_meal(date_key: str, payload: schemas.DiaryMealCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    validate_date_key(date_key)
+    if payload.section not in VALID_MEAL_SECTIONS:
+        raise HTTPException(status_code=400, detail="Invalid meal section")
+
+    day = get_or_create_diary_day(db, current_user.id, date_key)
+    meal = models.DiaryMeal(
+        day_id=day.id,
+        section=payload.section,
+        name=payload.name,
+        calories=payload.calories,
+        protein=payload.protein,
+        carbs=payload.carbs,
+        fat=payload.fat,
+    )
+    db.add(meal)
+    db.commit()
+    db.refresh(day)
+    return day
+
+@app.delete("/diary/meals/{meal_id}", response_model=schemas.DiaryDay)
+def delete_diary_meal(meal_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    meal = db.query(models.DiaryMeal).filter(models.DiaryMeal.id == meal_id).first()
+    if not meal:
+        raise HTTPException(status_code=404, detail="Meal not found")
+
+    day = db.query(models.DiaryDay).filter(models.DiaryDay.id == meal.day_id).first()
+    if not day or day.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this meal")
+
+    db.delete(meal)
+    db.commit()
+    db.refresh(day)
+    return day
 
 @app.post("/negotiator/analyze-mood", response_model=schemas.MoodAnalysisResponse)
 def analyze_mood(request: schemas.NegotiatorRequest, current_user: models.User = Depends(auth.get_current_user)):
@@ -255,103 +391,7 @@ async def analyze_ingredients_photo(file: UploadFile = File(...), current_user: 
     contents = await file.read()
     return vision.analyze_image_ingredients(contents, favorite_recipes=current_user.favorite_recipes)
 
-@app.get("/users/", response_model=list[schemas.User])
-def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    users = db.query(models.User).offset(skip).limit(limit).all()
-    return users
-
-
-@app.get("/diary/{user_id}/{date_key}", response_model=schemas.DiaryDay)
-def get_diary_day(user_id: int, date_key: str, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    validate_date_key(date_key)
-    user = db.query(models.User).filter(models.User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    day = get_or_create_diary_day(db, user_id, date_key)
-    return day
-
-
-@app.get("/diary/{user_id}", response_model=list[schemas.DiaryDay])
-def get_diary_days_range(user_id: int, start: str, end: str, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    start_key = validate_date_key(start)
-    end_key = validate_date_key(end)
-    if start_key > end_key:
-        raise HTTPException(status_code=400, detail="start date must be before or equal to end date")
-
-    user = db.query(models.User).filter(models.User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    days = (
-        db.query(models.DiaryDay)
-        .filter(
-            models.DiaryDay.user_id == user_id,
-            models.DiaryDay.date_key >= start_key,
-            models.DiaryDay.date_key <= end_key,
-        )
-        .order_by(models.DiaryDay.date_key.asc())
-        .all()
-    )
-    return days
-
-
-@app.put("/diary/{user_id}/{date_key}/goal", response_model=schemas.DiaryDay)
-def update_diary_goal(user_id: int, date_key: str, payload: schemas.DiaryGoalUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    validate_date_key(date_key)
-    user = db.query(models.User).filter(models.User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    day = get_or_create_diary_day(db, user_id, date_key)
-    day.goal = payload.goal
-    db.commit()
-    db.refresh(day)
-    return day
-
-
-@app.post("/diary/{user_id}/{date_key}/meals", response_model=schemas.DiaryDay)
-def add_diary_meal(user_id: int, date_key: str, payload: schemas.DiaryMealCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    validate_date_key(date_key)
-    if payload.section not in VALID_MEAL_SECTIONS:
-        raise HTTPException(status_code=400, detail="Invalid meal section")
-
-    user = db.query(models.User).filter(models.User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    day = get_or_create_diary_day(db, user_id, date_key)
-    meal = models.DiaryMeal(
-        day_id=day.id,
-        section=payload.section,
-        name=payload.name,
-        calories=payload.calories,
-        protein=payload.protein,
-        carbs=payload.carbs,
-        fat=payload.fat,
-    )
-    db.add(meal)
-    db.commit()
-    db.refresh(day)
-    return day
-
-
-@app.delete("/diary/meals/{meal_id}", response_model=schemas.DiaryDay)
-def delete_diary_meal(meal_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    meal = db.query(models.DiaryMeal).filter(models.DiaryMeal.id == meal_id).first()
-    if not meal:
-        raise HTTPException(status_code=404, detail="Meal not found")
-
-    day = db.query(models.DiaryDay).filter(models.DiaryDay.id == meal.day_id).first()
-    if not day:
-        raise HTTPException(status_code=404, detail="Diary day not found")
-
-    db.delete(meal)
-    db.commit()
-    db.refresh(day)
-    return day
-
-@app.post("/shops/find", response_model=list[schemas.Shop])
+@app.get("/shops/find", response_model=list[schemas.Shop])
 def find_shops(request: schemas.ShopSearchRequest, current_user: models.User = Depends(auth.get_current_user)):
     if request.mode == "restaurant":
         search_val = "restaurant"
@@ -368,44 +408,14 @@ def find_shops(request: schemas.ShopSearchRequest, current_user: models.User = D
         )
     else:
         shop_tag = shops.get_shop_type(request.ingredients)
-        
         if shop_tag == "invalid":
             raise HTTPException(status_code=400, detail="A pesquisa contém termos inválidos ou não relacionados com alimentação.")
-
-        found_shops = shops.find_nearby_shops(
-            shop_tag, 
-            request.lat, 
-            request.lon, 
-            request.radius,
-            key="shop"
-        )
-    
+        found_shops = shops.find_nearby_shops(shop_tag, request.lat, request.lon, request.radius, key="shop")
     return found_shops
-
 
 @app.get("/foods/search", response_model=list[schemas.FoodSearchItem])
 def search_foods(q: str, page_size: int = 10, current_user: models.User = Depends(auth.get_current_user)):
     return food_data.search_foods(q, page_size=page_size)
-
-@app.post("/items/", response_model=schemas.Item)
-def create_item(item: schemas.ItemCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    db_item = models.Item(**item.model_dump())
-    db.add(db_item)
-    db.commit()
-    db.refresh(db_item)
-    return db_item
-
-@app.get("/items/", response_model=list[schemas.Item])
-def read_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    items = db.query(models.Item).offset(skip).limit(limit).all()
-    return items
-
-@app.get("/items/{item_id}", response_model=schemas.Item)
-def read_item(item_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    item = db.query(models.Item).filter(models.Item.id == item_id).first()
-    if item is None:
-        raise HTTPException(status_code=404, detail="Item not found")
-    return item
 
 @app.post("/recipes/", response_model=schemas.Recipe)
 def create_recipe(recipe: schemas.RecipeCreate, db: Session = Depends(get_db)):
@@ -419,19 +429,6 @@ def create_recipe(recipe: schemas.RecipeCreate, db: Session = Depends(get_db)):
 def read_recipes(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     recipes = db.query(models.Recipe).offset(skip).limit(limit).all()
     return recipes
-
-@app.post("/restaurants/", response_model=schemas.Restaurant)
-def create_restaurant(restaurant: schemas.RestaurantCreate, db: Session = Depends(get_db)):
-    db_restaurant = models.Restaurant(**restaurant.model_dump())
-    db.add(db_restaurant)
-    db.commit()
-    db.refresh(db_restaurant)
-    return db_restaurant
-
-@app.get("/restaurants/", response_model=List[schemas.Restaurant])
-def read_restaurants(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    restaurants = db.query(models.Restaurant).offset(skip).limit(limit).all()
-    return restaurants
 
 @app.get("/users/me/favorites", response_model=schemas.User)
 def get_user_favorites(current_user: models.User = Depends(auth.get_current_user)):
@@ -455,28 +452,7 @@ def remove_favorite_recipe(recipe_id: int, db: Session = Depends(get_db), curren
         current_user.favorite_recipes.remove(recipe)
         db.commit()
     except ValueError:
-        pass # Recipe not in favorites
-    return current_user
-
-@app.post("/users/me/favorites/restaurants/{restaurant_id}", response_model=schemas.User)
-def add_favorite_restaurant(restaurant_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    restaurant = db.query(models.Restaurant).filter(models.Restaurant.id == restaurant_id).first()
-    if not restaurant:
-        raise HTTPException(status_code=404, detail="Restaurant not found")
-    current_user.favorite_restaurants.append(restaurant)
-    db.commit()
-    return current_user
-
-@app.delete("/users/me/favorites/restaurants/{restaurant_id}", response_model=schemas.User)
-def remove_favorite_restaurant(restaurant_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    restaurant = db.query(models.Restaurant).filter(models.Restaurant.id == restaurant_id).first()
-    if not restaurant:
-        raise HTTPException(status_code=404, detail="Restaurant not found")
-    try:
-        current_user.favorite_restaurants.remove(restaurant)
-        db.commit()
-    except ValueError:
-        pass # Restaurant not in favorites
+        pass
     return current_user
 
 @app.api_route("/", methods=["GET", "HEAD"])

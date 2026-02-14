@@ -22,6 +22,7 @@ const quickFoods = [
 
 const dataByDate = ref({})
 const selectedDate = ref(new Date())
+const isLoading = ref(false)
 const composerFor = ref('')
 const composerMode = ref('manual') // 'manual' or 'auto'
 const autoLoading = ref(false)
@@ -51,6 +52,41 @@ const mealDraft = ref({
 const autoDraft = ref({
   text: ''
 })
+const isListening = ref(false)
+
+const startListening = () => {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    alert('O seu navegador não suporta reconhecimento de voz.')
+    return
+  }
+  
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition
+  const recognition = new Recognition()
+  
+  recognition.lang = 'pt-PT'
+  recognition.interimResults = false
+  recognition.maxAlternatives = 1
+  
+  recognition.onstart = () => {
+    isListening.value = true
+  }
+  
+  recognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript
+    autoDraft.value.text = transcript
+  }
+  
+  recognition.onerror = (event) => {
+    console.error('Speech recognition error', event.error)
+    isListening.value = false
+  }
+  
+  recognition.onend = () => {
+    isListening.value = false
+  }
+  
+  recognition.start()
+}
 
 const today = new Date()
 today.setHours(12, 0, 0, 0)
@@ -65,6 +101,23 @@ const toDateKey = (date) => {
 const fromDateKey = (key) => {
   const [y, m, d] = key.split('-').map(Number)
   return new Date(y, m - 1, d, 12, 0, 0, 0)
+}
+
+const fetchDay = async (key) => {
+  if (dataByDate.value[key]) return
+  isLoading.value = true
+  try {
+    const res = await fetch(`${API_URL}/diary/${key}`, {
+      headers: auth.getAuthHeaders()
+    })
+    if (!res.ok) throw new Error('Falha ao carregar diário')
+    const day = await res.json()
+    dataByDate.value[key] = day
+  } catch (err) {
+    console.error(err)
+  } finally {
+    isLoading.value = false
+  }
 }
 
 const dateKey = computed(() => toDateKey(selectedDate.value))
@@ -117,31 +170,28 @@ const normalizeDay = (rawDay) => {
   return day
 }
 
-const persist = () => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(dataByDate.value))
-}
+// persist function removed
 
 const ensureDay = (key) => {
-  if (dataByDate.value[key]) return
-  dataByDate.value = {
-    ...dataByDate.value,
-    [key]: buildEmptyDay()
-  }
-  persist()
+  fetchDay(key)
 }
 
-const currentDay = computed(() => normalizeDay(dataByDate.value[dateKey.value]))
-
-const updateCurrentDay = (mutator) => {
-  const key = dateKey.value
-  const clone = normalizeDay(dataByDate.value[key])
-  mutator(clone)
-  dataByDate.value = {
-    ...dataByDate.value,
-    [key]: clone
+const currentDay = computed(() => {
+  const day = dataByDate.value[dateKey.value]
+  if (!day) return buildEmptyDay()
+  
+  const normalized = {
+    goal: day.goal,
+    meals: {
+      breakfast: day.meals.filter(m => m.section === 'breakfast'),
+      lunch: day.meals.filter(m => m.section === 'lunch'),
+      snack: day.meals.filter(m => m.section === 'snack'),
+      dinner: day.meals.filter(m => m.section === 'dinner'),
+      extras: day.meals.filter(m => m.section === 'extras')
+    }
   }
-  persist()
-}
+  return normalized
+})
 
 const allMealsToday = computed(() =>
   mealSections.flatMap((section) => currentDay.value.meals[section.id] || [])
@@ -356,7 +406,7 @@ const calculateNutrition = async () => {
   }
 }
 
-const addMeal = (sectionId) => {
+const addMeal = async (sectionId) => {
   const name = mealDraft.value.name.trim()
   const grams = toNumber(mealDraft.value.grams)
   const calories = toNumber(mealDraft.value.calories)
@@ -374,24 +424,33 @@ const addMeal = (sectionId) => {
     fat = estimated.fat
   }
 
-  updateCurrentDay((day) => {
-    day.meals[sectionId].push({
-      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      name,
-      grams: Math.round(grams),
-      calories: Math.round(calories),
-      protein,
-      carbs,
-      fat
+  try {
+    const res = await fetch(`${API_URL}/diary/${dateKey.value}/meals`, {
+      method: 'POST',
+      headers: auth.getAuthHeaders(),
+      body: JSON.stringify({
+        section: sectionId,
+        name,
+        calories: Math.round(calories),
+        protein,
+        carbs,
+        fat
+      })
     })
-  })
+    if (!res.ok) throw new Error('Falha ao adicionar refeição')
+    const updatedDay = await res.json()
+    dataByDate.value[dateKey.value] = updatedDay
 
-  composerFor.value = ''
-  foodSearchModalOpen.value = false
-  foodSearch.value = { query: '', loading: false, error: '', results: [] }
-  foodFilters.value = { source: 'all', sort: 'relevance', maxCalories: '', minProtein: '' }
-  selectedFoodPer100g.value = null
-  mealDraft.value = { name: '', grams: '', calories: '', protein: '', carbs: '', fat: '' }
+    composerFor.value = ''
+    foodSearchModalOpen.value = false
+    foodSearch.value = { query: '', loading: false, error: '', results: [] }
+    foodFilters.value = { source: 'all', sort: 'relevance', maxCalories: '', minProtein: '' }
+    selectedFoodPer100g.value = null
+    mealDraft.value = { name: '', grams: '', calories: '', protein: '', carbs: '', fat: '' }
+  } catch (err) {
+    console.error(err)
+    alert('Erro ao adicionar refeição.')
+  }
 }
 
 const openFoodSearchModal = () => {
@@ -485,10 +544,19 @@ const displayedFoodResults = computed(() => {
   return []
 })
 
-const removeMeal = (sectionId, itemId) => {
-  updateCurrentDay((day) => {
-    day.meals[sectionId] = day.meals[sectionId].filter((item) => item.id !== itemId)
-  })
+const removeMeal = async (sectionId, itemId) => {
+  try {
+    const res = await fetch(`${API_URL}/diary/meals/${itemId}`, {
+      method: 'DELETE',
+      headers: auth.getAuthHeaders()
+    })
+    if (!res.ok) throw new Error('Falha ao remover refeição')
+    const updatedDay = await res.json()
+    dataByDate.value[dateKey.value] = updatedDay
+  } catch (err) {
+    console.error(err)
+    alert('Erro ao remover refeição.')
+  }
 }
 
 const shiftDay = (delta) => {
@@ -504,23 +572,24 @@ const setSelectedDay = (dateObj) => {
   selectedDate.value = d
 }
 
-const updateGoal = (event) => {
+const updateGoal = async (event) => {
   const next = Math.max(1000, Math.min(6000, toNumber(event.target.value) || DEFAULT_GOAL))
-  updateCurrentDay((day) => {
-    day.goal = next
-  })
+  try {
+    const res = await fetch(`${API_URL}/diary/${dateKey.value}/goal`, {
+      method: 'PUT',
+      headers: auth.getAuthHeaders(),
+      body: JSON.stringify({ goal: next })
+    })
+    if (!res.ok) throw new Error('Falha ao atualizar meta')
+    const updatedDay = await res.json()
+    dataByDate.value[dateKey.value] = updatedDay
+  } catch (err) {
+    console.error(err)
+    alert('Erro ao atualizar meta.')
+  }
 }
 
 onMounted(() => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) {
-      const parsed = JSON.parse(raw)
-      if (parsed && typeof parsed === 'object') dataByDate.value = parsed
-    }
-  } catch {
-    dataByDate.value = {}
-  }
   ensureDay(dateKey.value)
 })
 
@@ -645,12 +714,22 @@ watch(
 
             <div v-else class="mode-auto">
               <p class="helper-text">Descreva o que comeu e a quantidade. A IA calculará os macros.</p>
-              <input 
-                v-model="autoDraft.text" 
-                type="text" 
-                placeholder="Ex: 1 banana média e 200ml de leite" 
-                @keyup.enter="calculateNutrition"
-              />
+              <div class="voice-input-wrapper">
+                <input 
+                  v-model="autoDraft.text" 
+                  type="text" 
+                  placeholder="Ex: 1 banana média e 200ml de leite" 
+                  @keyup.enter="calculateNutrition"
+                />
+                <button 
+                  type="button" 
+                  class="mic-btn" 
+                  :class="{ active: isListening }"
+                  @click="startListening"
+                >
+                  🎤
+                </button>
+              </div>
               <div class="composer-actions">
                 <button type="button" class="save-btn" :disabled="autoLoading" @click="calculateNutrition">
                   {{ autoLoading ? 'A calcular...' : '✨ Calcular Macros' }}
@@ -1127,6 +1206,42 @@ watch(
 .mode-manual, .mode-auto {
   display: grid;
   gap: 8px;
+}
+
+.voice-input-wrapper {
+  display: flex;
+  gap: 8px;
+}
+
+.voice-input-wrapper input {
+  flex: 1;
+}
+
+.mic-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--bg-main);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  transition: all 0.2s;
+}
+
+.mic-btn.active {
+  background: #ef5b74;
+  color: white;
+  border-color: #ef5b74;
+  animation: pulse-mic 1.5s infinite;
+}
+
+@keyframes pulse-mic {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
 }
 
 .helper-text {
