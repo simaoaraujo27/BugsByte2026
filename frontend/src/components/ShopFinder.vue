@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, watch, nextTick } from 'vue';
-import { auth } from '@/auth';
+import { auth, API_URL } from '@/auth';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -175,7 +175,7 @@ const findShops = async () => {
       mode: searchMode.value
     };
 
-    const response = await fetch('' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/shops/find', {
+    const response = await fetch(`${API_URL}/shops/find`, {
       method: 'POST',
       headers: auth.getAuthHeaders(),
       body: JSON.stringify(payload),
@@ -239,7 +239,7 @@ const saveRestaurant = async (shop) => {
       phone: "N/A"
     };
     
-    const createRes = await fetch('' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/restaurants/', {
+    const createRes = await fetch(`${API_URL}/restaurants/`, {
       method: 'POST',
       headers: auth.getAuthHeaders(),
       body: JSON.stringify(restaurantData)
@@ -249,7 +249,7 @@ const saveRestaurant = async (shop) => {
     const createdRestaurant = await createRes.json();
     
     // 2. Add to Favorites
-    const favRes = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/users/me/favorites/restaurants/${createdRestaurant.id}`, {
+    const favRes = await fetch(`${API_URL}/users/me/favorites/restaurants/${createdRestaurant.id}`, {
       method: 'POST',
       headers: auth.getAuthHeaders()
     });

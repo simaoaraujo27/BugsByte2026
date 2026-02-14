@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch } from 'vue';
-import { auth } from '@/auth';
+import { auth, API_URL } from '@/auth';
 import { addRecipeToHistory } from '@/utils/recipeHistory';
 
 const props = defineProps({
@@ -147,7 +147,7 @@ const generateTextRecipe = async () => {
   error.value = null;
 
   try {
-    const response = await fetch('' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/negotiator/negotiate', {
+    const response = await fetch(`${API_URL}/negotiator/negotiate`, {
       method: 'POST',
       headers: auth.getAuthHeaders(),
       body: JSON.stringify({ craving: craving.value, target_calories: 600 })
@@ -177,7 +177,7 @@ const selectMood = async (moodId) => {
   error.value = null;
 
   try {
-    const response = await fetch('' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/negotiator/analyze-mood', {
+    const response = await fetch(`${API_URL}/negotiator/analyze-mood`, {
       method: 'POST',
       headers: auth.getAuthHeaders(),
       body: JSON.stringify({ mood: moodId, craving: 'geral' })
@@ -198,7 +198,7 @@ const generateMoodRecipe = async () => {
   error.value = null;
 
   try {
-    const response = await fetch('' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/negotiator/negotiate', {
+    const response = await fetch(`${API_URL}/negotiator/negotiate`, {
       method: 'POST',
       headers: auth.getAuthHeaders(),
       body: JSON.stringify({ craving: 'Menu Saudável', mood: selectedMood.value })
@@ -237,10 +237,7 @@ const uploadAndAnalyze = async (file) => {
   formData.append('file', file);
 
   try {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-    console.log("Sending POST request to:", `${apiUrl}/vision/analyze`);
-    
-    const response = await fetch(`${apiUrl}/vision/analyze`, {
+    const response = await fetch(`${API_URL}/vision/analyze`, {
       method: 'POST',
       headers: auth.getAuthHeaders(false),
       body: formData,
@@ -286,7 +283,7 @@ const saveRecipe = async () => {
       instructions: recipeResult.value.recipe.steps.join('\n')
     };
 
-    const createResponse = await fetch('' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/recipes/', {
+    const createResponse = await fetch(`${API_URL}/recipes/`, {
       method: 'POST',
       headers: auth.getAuthHeaders(),
       body: JSON.stringify(recipeData)
@@ -295,7 +292,7 @@ const saveRecipe = async () => {
     if (!createResponse.ok) throw new Error('Falha ao criar receita');
     const createdRecipe = await createResponse.json();
 
-    const favResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/users/me/favorites/recipes/${createdRecipe.id}`, {
+    const favResponse = await fetch(`${API_URL}/users/me/favorites/recipes/${createdRecipe.id}`, {
       method: 'POST',
       headers: auth.getAuthHeaders()
     });

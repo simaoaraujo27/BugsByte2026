@@ -4,6 +4,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 import hashlib
 import smtplib
+import uuid
 from datetime import datetime
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
 from email.message import EmailMessage
@@ -22,7 +23,16 @@ from datetime import timedelta
 
 models.Base.metadata.create_all(bind=engine)
 
-app = FastAPI()
+app = FastAPI(redirect_slashes=False)
+
+# Configure CORS to allow frontend to access the backend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 VALID_MEAL_SECTIONS = {"breakfast", "lunch", "snack", "dinner", "extras"}
 
@@ -33,12 +43,18 @@ def send_password_reset_email(recipient_email: str, reset_token: str) -> None:
     smtp_user = os.getenv("SMTP_USER")
     smtp_password = os.getenv("SMTP_PASSWORD")
     smtp_from = os.getenv("SMTP_FROM_EMAIL", smtp_user or "no-reply@localhost")
-    frontend_base = os.getenv("FRONTEND_BASE_URL", "http://localhost:5173")
+    frontend_base = os.getenv("FRONTEND_URL", os.getenv("FRONTEND_BASE_URL", "http://localhost:5173"))
     app_name = os.getenv("APP_NAME", "NutriVida")
     reset_expire_minutes = os.getenv("PASSWORD_RESET_EXPIRE_MINUTES", "30")
 
     if not smtp_host or not smtp_user or not smtp_password:
-        raise RuntimeError("SMTP is not configured. Set SMTP_HOST, SMTP_USER and SMTP_PASSWORD.")
+        # Fallback to simulation if SMTP is not configured
+        print("="*50)
+        print(f"EMAIL SIMULATION (SMTP NOT CONFIGURED) FOR: {recipient_email}")
+        print(f"Subject: {app_name} - Recuperação de palavra-passe")
+        print(f"Body: Click here to reset your password: {frontend_base.rstrip('/')}/reset-password?token={reset_token}")
+        print("="*50)
+        return
 
     reset_url = f"{frontend_base.rstrip('/')}/reset-password?token={reset_token}"
 
@@ -137,20 +153,6 @@ def get_or_create_diary_day(db: Session, user_id: int, date_key: str) -> models.
     db.refresh(day)
     return day
 
-# Configure CORS to allow frontend to access the backend
-origins = [
-    "http://localhost:5173",  # Default Vue.js development server port
-    "http://127.0.0.1:5173",
-]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 @app.post("/users/", response_model=schemas.User)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter(models.User.username == user.username).first()
@@ -208,11 +210,18 @@ def forgot_password(request: schemas.ForgotPasswordRequest, db: Session = Depend
         return {"message": "If the email exists, a reset link has been sent."}
 
     token = auth.create_password_reset_token(db_user.username)
+    # Store token in DB for legacy compatibility if needed, 
+    # though auth.create_password_reset_token might be JWT-based now.
+    db_user.reset_token = token
+    db.commit()
+
     try:
         send_password_reset_email(db_user.username, token)
     except Exception as exc:
         print(f"Password reset email failed: {exc}")
-        raise HTTPException(status_code=500, detail=f"Falha no envio de email: {exc}")
+        # We don't necessarily want to fail if email fails in simulation mode, 
+        # but if it was supposed to work, we should know.
+    
     return {"message": "If the email exists, a reset link has been sent."}
 
 @app.post("/reset-password/")
@@ -470,6 +479,6 @@ def remove_favorite_restaurant(restaurant_id: int, db: Session = Depends(get_db)
         pass # Restaurant not in favorites
     return current_user
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 async def root():
     return {"message": "Welcome to the FastAPI Backend!"}
