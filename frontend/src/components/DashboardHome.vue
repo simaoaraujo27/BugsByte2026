@@ -16,7 +16,8 @@ const dashboardData = ref({
   carbs: 0,
   fat: 0,
   streak_days: 0,
-  water_liters: 0
+  water_liters: 0,
+  weight_history: { labels: [], values: [] }
 })
 
 const nutritionCards = computed(() => [
@@ -251,7 +252,7 @@ onMounted(loadData)
         <div class="chart-head">
           <div>
             <h3>Evolução do Peso</h3>
-            <p>-2kg este mês 🎉</p>
+            <p>Acompanha o teu progresso real 🎉</p>
           </div>
           <div class="periods">
             <button

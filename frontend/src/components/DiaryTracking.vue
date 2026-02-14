@@ -2,7 +2,6 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { auth, API_URL } from '@/auth'
 
-const STORAGE_KEY = 'nutri_diary_tracking_v1'
 const DEFAULT_GOAL = 1800
 const mealSections = [
   { id: 'breakfast', label: 'Pequeno-almoço', icon: '🥣' },
@@ -26,6 +25,8 @@ const isLoading = ref(false)
 const composerFor = ref('')
 const composerMode = ref('manual') // 'manual' or 'auto'
 const autoLoading = ref(false)
+const isListening = ref(false)
+
 const foodSearch = ref({
   query: '',
   loading: false,
@@ -52,41 +53,6 @@ const mealDraft = ref({
 const autoDraft = ref({
   text: ''
 })
-const isListening = ref(false)
-
-const startListening = () => {
-  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-    alert('O seu navegador não suporta reconhecimento de voz.')
-    return
-  }
-  
-  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition
-  const recognition = new Recognition()
-  
-  recognition.lang = 'pt-PT'
-  recognition.interimResults = false
-  recognition.maxAlternatives = 1
-  
-  recognition.onstart = () => {
-    isListening.value = true
-  }
-  
-  recognition.onresult = (event) => {
-    const transcript = event.results[0][0].transcript
-    autoDraft.value.text = transcript
-  }
-  
-  recognition.onerror = (event) => {
-    console.error('Speech recognition error', event.error)
-    isListening.value = false
-  }
-  
-  recognition.onend = () => {
-    isListening.value = false
-  }
-  
-  recognition.start()
-}
 
 const today = new Date()
 today.setHours(12, 0, 0, 0)
@@ -149,29 +115,6 @@ const buildEmptyDay = () => ({
   }
 })
 
-const normalizeDay = (rawDay) => {
-  const day = buildEmptyDay()
-  if (!rawDay || typeof rawDay !== 'object') return day
-
-  day.goal = toNumber(rawDay.goal) > 0 ? toNumber(rawDay.goal) : DEFAULT_GOAL
-
-  for (const section of mealSections) {
-    const list = Array.isArray(rawDay.meals?.[section.id]) ? rawDay.meals[section.id] : []
-    day.meals[section.id] = list.map((item) => ({
-      id: item.id || `${Date.now()}-${Math.random()}`,
-      name: item.name || 'Item',
-      grams: toNumber(item.grams),
-      calories: toNumber(item.calories),
-      protein: toNumber(item.protein),
-      carbs: toNumber(item.carbs),
-      fat: toNumber(item.fat)
-    }))
-  }
-  return day
-}
-
-// persist function removed
-
 const ensureDay = (key) => {
   fetchDay(key)
 }
@@ -193,9 +136,10 @@ const currentDay = computed(() => {
   return normalized
 })
 
-const allMealsToday = computed(() =>
-  mealSections.flatMap((section) => currentDay.value.meals[section.id] || [])
-)
+const allMealsToday = computed(() => {
+  const mealsObj = currentDay.value.meals
+  return Object.values(mealsObj).flat()
+})
 
 const consumedCalories = computed(() =>
   Math.round(allMealsToday.value.reduce((acc, item) => acc + toNumber(item.calories), 0))
@@ -243,10 +187,8 @@ const macroPercentages = computed(() => {
 })
 
 const isDayOnTarget = (day) => {
-  const total = mealSections.reduce((sum, section) => {
-    const list = day.meals?.[section.id] || []
-    return sum + list.reduce((acc, item) => acc + toNumber(item.calories), 0)
-  }, 0)
+  const mealsList = Array.isArray(day.meals) ? day.meals : []
+  const total = mealsList.reduce((acc, item) => acc + toNumber(item.calories), 0)
   if (total === 0) return false
   return total <= toNumber(day.goal || DEFAULT_GOAL)
 }
@@ -263,8 +205,8 @@ const weeklyDays = computed(() => {
     const d = new Date(cursor)
     d.setDate(cursor.getDate() + i)
     const key = toDateKey(d)
-    const normalized = normalizeDay(dataByDate.value[key])
-    const hasMeals = mealSections.some((section) => normalized.meals[section.id]?.length)
+    const dayData = dataByDate.value[key] || buildEmptyDay()
+    const hasMeals = Array.isArray(dayData.meals) ? dayData.meals.length > 0 : false
     out.push({
       key,
       date: d,
@@ -272,88 +214,10 @@ const weeklyDays = computed(() => {
       dayNum: d.getDate(),
       active: key === dateKey.value,
       hasMeals,
-      onTarget: isDayOnTarget(normalized)
+      onTarget: isDayOnTarget(dayData)
     })
   }
   return out
-})
-
-const streakDays = computed(() => {
-  let streak = 0
-  const cursor = new Date(today)
-
-  for (let i = 0; i < 365; i += 1) {
-    const key = toDateKey(cursor)
-    const day = normalizeDay(dataByDate.value[key])
-    const hasMeals = mealSections.some((section) => day.meals[section.id]?.length)
-
-    if (!hasMeals || !isDayOnTarget(day)) break
-    streak += 1
-    cursor.setDate(cursor.getDate() - 1)
-  }
-
-  return streak
-})
-
-const weeklyStats = computed(() => {
-  const stats = { onTarget: 0, deficit: 0, daysWithData: 0 }
-  const cursor = new Date(today)
-
-  for (let i = 0; i < 7; i += 1) {
-    const key = toDateKey(cursor)
-    const day = normalizeDay(dataByDate.value[key])
-    const total = mealSections.reduce((sum, section) => {
-      const list = day.meals[section.id] || []
-      return sum + list.reduce((acc, item) => acc + toNumber(item.calories), 0)
-    }, 0)
-
-    if (total > 0) {
-      stats.daysWithData += 1
-      if (total <= day.goal) {
-        stats.onTarget += 1
-        stats.deficit += day.goal - total
-      }
-    }
-
-    cursor.setDate(cursor.getDate() - 1)
-  }
-
-  return stats
-})
-
-const insights = computed(() => {
-  const list = []
-
-  if (mealCount.value === 0) {
-    list.push('Comece por adicionar a primeira refeição de hoje para acompanhar o progresso.')
-    return list
-  }
-
-  if (deltaCalories.value >= 0) {
-    if (deltaCalories.value <= 200) {
-      list.push('Está muito perto do objetivo diário. Falta um ajuste pequeno.')
-    } else {
-      list.push(`Ainda tem ${deltaCalories.value} kcal disponíveis hoje.`)
-    }
-  } else {
-    list.push(`Hoje já excedeu ${Math.abs(deltaCalories.value)} kcal. Amanhã pode compensar de forma ligeira.`)
-  }
-
-  if (macroPercentages.value.protein > 0 && macroPercentages.value.protein < 18) {
-    list.push('A sua percentagem de proteína está baixa. Considere incluir uma fonte proteica no próximo prato.')
-  }
-
-  if (weeklyStats.value.daysWithData >= 4) {
-    list.push(`Boa consistência: ${weeklyStats.value.onTarget} de ${weeklyStats.value.daysWithData} dias esta semana ficaram dentro do objetivo.`)
-  }
-
-  if (weeklyStats.value.deficit > 0) {
-    const weeklyKg = weeklyStats.value.deficit / 7700
-    const projection = (weeklyKg * 6).toFixed(1)
-    list.push(`Se mantiver este ritmo, poderá variar cerca de ${projection} kg em 6 semanas.`)
-  }
-
-  return list.slice(0, 3)
 })
 
 const openComposer = (sectionId) => {
@@ -374,6 +238,40 @@ const estimateMacros = (calories) => {
   return { protein, carbs, fat }
 }
 
+const startListening = () => {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    alert('O seu navegador não suporta reconhecimento de voz.')
+    return
+  }
+  
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition
+  const recognition = new Recognition()
+  
+  recognition.lang = 'pt-PT'
+  recognition.interimResults = false
+  recognition.maxAlternatives = 1
+  
+  recognition.onstart = () => {
+    isListening.value = true
+  }
+  
+  recognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript
+    autoDraft.value.text = transcript
+  }
+  
+  recognition.onerror = (event) => {
+    console.error('Speech recognition error', event.error)
+    isListening.value = false
+  }
+  
+  recognition.onend = () => {
+    isListening.value = false
+  }
+  
+  recognition.start()
+}
+
 const calculateNutrition = async () => {
   if (!autoDraft.value.text.trim()) return
   autoLoading.value = true
@@ -388,7 +286,6 @@ const calculateNutrition = async () => {
     if (!res.ok) throw new Error('Falha ao calcular.')
     
     const data = await res.json()
-    // Populate manual fields with result
     mealDraft.value.name = data.name
     mealDraft.value.grams = data.estimated_grams
     mealDraft.value.calories = data.calories
@@ -396,7 +293,6 @@ const calculateNutrition = async () => {
     mealDraft.value.carbs = data.carbs
     mealDraft.value.fat = data.fat
     
-    // Switch to manual mode so user can review/save
     composerMode.value = 'manual'
   } catch (err) {
     console.error(err)
@@ -450,6 +346,51 @@ const addMeal = async (sectionId) => {
   } catch (err) {
     console.error(err)
     alert('Erro ao adicionar refeição.')
+  }
+}
+
+const removeMeal = async (sectionId, itemId) => {
+  try {
+    const res = await fetch(`${API_URL}/diary/meals/${itemId}`, {
+      method: 'DELETE',
+      headers: auth.getAuthHeaders()
+    })
+    if (!res.ok) throw new Error('Falha ao remover refeição')
+    const updatedDay = await res.json()
+    dataByDate.value[dateKey.value] = updatedDay
+  } catch (err) {
+    console.error(err)
+    alert('Erro ao remover refeição.')
+  }
+}
+
+const shiftDay = (delta) => {
+  const d = new Date(selectedDate.value)
+  d.setDate(d.getDate() + delta)
+  d.setHours(12, 0, 0, 0)
+  selectedDate.value = d
+}
+
+const setSelectedDay = (dateObj) => {
+  const d = new Date(dateObj)
+  d.setHours(12, 0, 0, 0)
+  selectedDate.value = d
+}
+
+const updateGoal = async (event) => {
+  const next = Math.max(1000, Math.min(6000, toNumber(event.target.value) || DEFAULT_GOAL))
+  try {
+    const res = await fetch(`${API_URL}/diary/${dateKey.value}/goal`, {
+      method: 'PUT',
+      headers: auth.getAuthHeaders(),
+      body: JSON.stringify({ goal: next })
+    })
+    if (!res.ok) throw new Error('Falha ao atualizar meta')
+    const updatedDay = await res.json()
+    dataByDate.value[dateKey.value] = updatedDay
+  } catch (err) {
+    console.error(err)
+    alert('Erro ao atualizar meta.')
   }
 }
 
@@ -543,51 +484,6 @@ const displayedFoodResults = computed(() => {
   if (filteredFoodResults.value.length > 0) return filteredFoodResults.value
   return []
 })
-
-const removeMeal = async (sectionId, itemId) => {
-  try {
-    const res = await fetch(`${API_URL}/diary/meals/${itemId}`, {
-      method: 'DELETE',
-      headers: auth.getAuthHeaders()
-    })
-    if (!res.ok) throw new Error('Falha ao remover refeição')
-    const updatedDay = await res.json()
-    dataByDate.value[dateKey.value] = updatedDay
-  } catch (err) {
-    console.error(err)
-    alert('Erro ao remover refeição.')
-  }
-}
-
-const shiftDay = (delta) => {
-  const d = new Date(selectedDate.value)
-  d.setDate(d.getDate() + delta)
-  d.setHours(12, 0, 0, 0)
-  selectedDate.value = d
-}
-
-const setSelectedDay = (dateObj) => {
-  const d = new Date(dateObj)
-  d.setHours(12, 0, 0, 0)
-  selectedDate.value = d
-}
-
-const updateGoal = async (event) => {
-  const next = Math.max(1000, Math.min(6000, toNumber(event.target.value) || DEFAULT_GOAL))
-  try {
-    const res = await fetch(`${API_URL}/diary/${dateKey.value}/goal`, {
-      method: 'PUT',
-      headers: auth.getAuthHeaders(),
-      body: JSON.stringify({ goal: next })
-    })
-    if (!res.ok) throw new Error('Falha ao atualizar meta')
-    const updatedDay = await res.json()
-    dataByDate.value[dateKey.value] = updatedDay
-  } catch (err) {
-    console.error(err)
-    alert('Erro ao atualizar meta.')
-  }
-}
 
 onMounted(() => {
   ensureDay(dateKey.value)
@@ -777,15 +673,12 @@ watch(
           <div class="bar"><div class="fill fat" :style="{ width: `${macroPercentages.fat}%` }"></div></div>
         </article>
 
-        <article class="side-card streak">
-          <h3>🔥 Streak</h3>
-          <p><strong>{{ streakDays }}</strong> dias seguidos dentro do objetivo.</p>
-        </article>
-
         <article class="side-card">
           <h3>Sugestões</h3>
           <ul class="insights">
-            <li v-for="tip in insights" :key="tip">{{ tip }}</li>
+            <li v-if="mealCount === 0">Comece por adicionar a primeira refeição de hoje.</li>
+            <li v-else-if="deltaCalories >= 0">Ainda tem {{ deltaCalories }} kcal disponíveis hoje.</li>
+            <li v-else>Hoje já excedeu {{ Math.abs(deltaCalories) }} kcal.</li>
           </ul>
         </article>
       </aside>
