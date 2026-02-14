@@ -4,7 +4,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 import hashlib
 import uuid
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 
@@ -117,6 +117,11 @@ def forgot_password(request: schemas.ForgotPasswordRequest, db: Session = Depend
 @app.post("/negotiator/negotiate", response_model=schemas.NegotiatorResponse)
 def negotiate_craving(request: schemas.NegotiatorRequest, current_user: models.User = Depends(auth.get_current_user)):
     return negotiator.negotiate_craving(request.craving, request.target_calories)
+
+@app.post("/vision/analyze", response_model=schemas.VisionResponse)
+async def analyze_ingredients_photo(file: UploadFile = File(...)):
+    contents = await file.read()
+    return vision.analyze_image_ingredients(contents)
 
 @app.get("/users/", response_model=list[schemas.User])
 def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
