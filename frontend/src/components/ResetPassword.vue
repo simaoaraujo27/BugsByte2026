@@ -121,6 +121,8 @@ const submitForm = async () => {
 }
 
 .auth-form-container {
+  --text-main: #13293d;
+  --text-muted: #3b566d;
   --line: #d7e7e0;
   --accent: #0f766e;
   --accent-hover: #0b5c56;
@@ -138,17 +140,19 @@ const submitForm = async () => {
   border-radius: 20px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
   font-family: Sora, 'Segoe UI', Tahoma, sans-serif;
+  color: var(--text-main);
 }
 
 .form-title {
   margin: 0 0 8px;
   font-size: 1.8rem;
   text-align: center;
+  color: var(--text-main);
 }
 
 .form-subtitle {
   margin: 0 0 24px;
-  color: #3b566d;
+  color: var(--text-muted);
   text-align: center;
 }
 
@@ -164,7 +168,7 @@ const submitForm = async () => {
 .message.success { background-color: #f0fff4; color: var(--success); border: 1px solid #9ae6b4; }
 
 .form-group { display: flex; flex-direction: column; margin-bottom: 16px; }
-.form-group label { margin-bottom: 8px; font-weight: 600; }
+.form-group label { margin-bottom: 8px; font-weight: 600; color: var(--text-main); }
 
 .form-group input {
   width: 100%;
@@ -173,6 +177,11 @@ const submitForm = async () => {
   border-radius: 8px;
   background: #fdfdfd;
   font-size: 1rem;
+  color: var(--text-main);
+}
+
+.form-group input::placeholder {
+  color: #6b7f92;
 }
 
 .form-group input:focus {
