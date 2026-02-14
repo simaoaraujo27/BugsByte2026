@@ -7,11 +7,13 @@ import ShopFinder from './ShopFinder.vue'
 import ProfilePanel from './ProfilePanel.vue'
 import DiaryTracking from './DiaryTracking.vue'
 import VisionRecipe from './VisionRecipe.vue'
+import VolumeComparison from './VolumeComparison.vue'
 
 const sections = [
   { id: 'inicio', label: 'Início', icon: '🏠' },
   { id: 'gerar-receita', label: 'Gerar Receita', icon: '🍽️' },
   { id: 'tenho-fome', label: 'Tenho Fome', icon: '🍔' },
+  { id: 'visualizador', label: 'Volume das Calorias', icon: '🥗' },
   { id: 'supermercados', label: 'Supermercados & Compras', icon: '🛒' },
   { id: 'diario', label: 'Diário / Tracking', icon: '📊' },
   { id: 'favoritos', label: 'Favoritos', icon: '❤️' },
@@ -115,6 +117,10 @@ watch(isDarkMode, (value) => {
       
       <div v-else-if="activeSection === 'gerar-receita'">
         <VisionRecipe />
+      </div>
+
+      <div v-else-if="activeSection === 'visualizador'" class="full-height-section">
+        <VolumeComparison :is-dark-mode="isDarkMode" />
       </div>
 
       <div v-else-if="activeSection === 'supermercados'">
@@ -222,6 +228,13 @@ watch(isDarkMode, (value) => {
   max-width: 60ch;
   color: var(--text-muted);
   font-size: 1.02rem;
+}
+
+.full-height-section {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  flex: 1;
 }
 
 .settings-panel {

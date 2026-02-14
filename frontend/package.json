@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "leaflet": "^1.9.4",
+    "three": "^0.182.0",
     "vue": "^3.5.27",
     "vue-router": "^4.6.4"
   },

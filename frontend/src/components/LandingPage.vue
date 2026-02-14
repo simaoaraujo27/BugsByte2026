@@ -1,7 +1,13 @@
 <script setup>
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
+const isDark = ref(true)
+
+const toggleDarkMode = () => {
+  isDark.value = !isDark.value
+}
 
 const goToLogin = () => {
   router.push('/login')
@@ -9,10 +15,16 @@ const goToLogin = () => {
 </script>
 
 <template>
-  <div class="page">
+  <div :class="['page', { 'dark-mode': isDark }]">
     <header class="topbar">
-      <img alt="Logo" class="logo" src="../assets/logo.png" />
-      <p class="hackathon-badge">Desenvolvido para o Hackathon 2026</p>
+      <div class="logo-group">
+        <img alt="Logo" class="logo" src="../assets/logo.png" />
+        <p class="hackathon-badge">Desenvolvido para o Hackathon Bugsbyte 2026</p>
+      </div>
+      <button class="theme-toggle" @click="toggleDarkMode" :title="isDark ? 'Ativar modo claro' : 'Ativar modo escuro'">
+        <svg v-if="isDark" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+        <svg v-else xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+      </button>
     </header>
 
     <main>
@@ -122,6 +134,10 @@ const goToLogin = () => {
   --accent: #0f766e;
   --accent-hover: #0b5c56;
   --line: #d7e7e0;
+  --card-bg: rgba(255, 255, 255, 0.8);
+  --badge-bg: rgba(255, 255, 255, 0.75);
+  --pill-bg: #ddf4ef;
+  --pill-text: #0f5258;
 
   min-height: 100vh;
   width: 100%;
@@ -132,6 +148,26 @@ const goToLogin = () => {
     linear-gradient(160deg, #f8fcff 0%, var(--bg-main) 100%);
   color: var(--text-main);
   font-family: Sora, 'Segoe UI', Tahoma, sans-serif;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+.page.dark-mode {
+  --bg-main: #0f172a;
+  --bg-soft: #1e293b;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --accent: #2dd4bf;
+  --accent-hover: #14b8a6;
+  --line: #334155;
+  --card-bg: rgba(30, 41, 59, 0.7);
+  --badge-bg: rgba(30, 41, 59, 0.8);
+  --pill-bg: #134e4a;
+  --pill-text: #2dd4bf;
+
+  background:
+    radial-gradient(circle at 15% 10%, rgba(45, 212, 191, 0.15), transparent 30%),
+    radial-gradient(circle at 86% 18%, rgba(56, 189, 248, 0.1), transparent 26%),
+    linear-gradient(160deg, #020617 0%, var(--bg-main) 100%);
 }
 
 .topbar {
@@ -139,6 +175,31 @@ const goToLogin = () => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.logo-group {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.theme-toggle {
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  color: var(--text-main);
+  padding: 8px;
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.theme-toggle:hover {
+  background: var(--line);
+  transform: translateY(-1px);
 }
 
 .logo {
@@ -154,7 +215,7 @@ const goToLogin = () => {
   font-size: 0.82rem;
   font-weight: 600;
   color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.75);
+  background: var(--badge-bg);
 }
 
 .eyebrow {
@@ -206,6 +267,7 @@ const goToLogin = () => {
   font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .btn-primary {
@@ -217,6 +279,7 @@ const goToLogin = () => {
 
 .btn-primary:hover {
   background: var(--accent-hover);
+  transform: translateY(-2px);
 }
 
 .btn-secondary {
@@ -225,12 +288,16 @@ const goToLogin = () => {
   color: var(--text-main);
 }
 
+.btn-secondary:hover {
+  background: var(--line);
+}
+
 .hero-card {
   border: 1px solid var(--line);
   border-radius: 20px;
   padding: 22px;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(2px);
+  background: var(--card-bg);
+  backdrop-filter: blur(8px);
 }
 
 .hero-card h2 {
@@ -250,7 +317,7 @@ const goToLogin = () => {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #2f5668;
+  color: var(--accent);
 }
 
 .card-pill {
@@ -260,8 +327,8 @@ const goToLogin = () => {
   padding: 7px 11px;
   font-size: 0.8rem;
   font-weight: 700;
-  color: #0f5258;
-  background: #ddf4ef;
+  color: var(--pill-text);
+  background: var(--pill-bg);
 }
 
 .split {
@@ -275,7 +342,8 @@ const goToLogin = () => {
   border: 1px solid var(--line);
   border-radius: 16px;
   padding: 20px;
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--card-bg);
+  backdrop-filter: blur(4px);
 }
 
 .panel h3 {
@@ -309,6 +377,11 @@ const goToLogin = () => {
   border-radius: 16px;
   padding: 18px;
   background: var(--bg-soft);
+  transition: transform 0.2s ease;
+}
+
+.step-card:hover {
+  transform: translateY(-4px);
 }
 
 .step-index {
@@ -318,8 +391,8 @@ const goToLogin = () => {
   border-radius: 999px;
   align-items: center;
   justify-content: center;
-  background: #ddf4ef;
-  color: #0c5f5d;
+  background: var(--pill-bg);
+  color: var(--pill-text);
   font-weight: 700;
   font-size: 0.9rem;
 }
@@ -348,6 +421,11 @@ const goToLogin = () => {
   border-radius: 16px;
   padding: 18px;
   background: var(--bg-soft);
+  transition: transform 0.2s ease;
+}
+
+.feature-card:hover {
+  transform: translateY(-4px);
 }
 
 .feature-icon {
@@ -355,7 +433,7 @@ const goToLogin = () => {
   font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.06em;
-  color: #0f6d65;
+  color: var(--accent);
 }
 
 .cta-final {
@@ -365,7 +443,8 @@ const goToLogin = () => {
   border-radius: 18px;
   padding: 28px;
   text-align: center;
-  background: rgba(255, 255, 255, 0.86);
+  background: var(--card-bg);
+  backdrop-filter: blur(8px);
 }
 
 .cta-final h3 {
