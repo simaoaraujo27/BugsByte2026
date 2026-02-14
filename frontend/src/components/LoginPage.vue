@@ -257,19 +257,19 @@ const handleLogin = async () => {
 
 .header-section {
   text-align: center;
-  margin-bottom: 40px;
+  margin-bottom: 24px;
 }
 
 .logo-container {
-  width: 72px;
-  height: 72px;
+  width: 64px;
+  height: 64px;
   background: white;
-  border-radius: 20px;
-  margin: 0 auto 20px;
+  border-radius: 18px;
+  margin: 0 auto 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 12px;
+  padding: 10px;
   box-shadow: 0 8px 20px rgba(0,0,0,0.06);
 }
 
@@ -280,7 +280,7 @@ const handleLogin = async () => {
 }
 
 .auth-title {
-  font-size: 2.25rem;
+  font-size: 2.15rem;
   font-weight: 800;
   margin: 0;
   letter-spacing: -0.03em;
@@ -289,14 +289,14 @@ const handleLogin = async () => {
 
 .auth-subtitle {
   color: var(--text-muted);
-  font-size: 1rem;
-  margin-top: 8px;
+  font-size: 0.95rem;
+  margin-top: 6px;
   font-weight: 500;
 }
 
 .message-container {
-  min-height: 2.5rem;
-  margin-bottom: 24px;
+  min-height: 1.5rem;
+  margin-bottom: 16px;
 }
 
 .form-group {
