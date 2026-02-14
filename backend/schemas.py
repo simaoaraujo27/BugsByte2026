@@ -136,6 +136,7 @@ class NegotiatorRecipe(BaseModel):
     calories: int
     time_minutes: int
     ingredients: list[str]
+    ingredients_en: Optional[list[str]] = None
     steps: list[str]
 
 class NegotiatorRequest(BaseModel):

@@ -4,29 +4,19 @@ import base64
 from typing import List, Optional
 from openai import OpenAI
 import schemas
-import food_data
 from fastapi import HTTPException
+from llm_client import get_client_config
 
 def analyze_image_ingredients(image_bytes: bytes, mode: str = "ingredients", api_key: Optional[str] = None, favorite_recipes: List[schemas.Recipe] = []) -> schemas.VisionResponse:
-    final_api_key = api_key or os.getenv("OPENAI_API_KEY")
-    if final_api_key:
-        final_api_key = final_api_key.strip()
-        
-    base_url = os.getenv("OPENAI_BASE_URL")
+    client, model = get_client_config()
     
-    # Se for Groq, precisamos de usar um modelo que suporte Visão
-    is_groq = final_api_key and final_api_key.startswith("gsk_")
+    # Check if we are using Groq
+    is_groq = "groq" in str(client.base_url)
+    
+    # Override model for Groq Vision if needed
     if is_groq:
-        model = "meta-llama/llama-4-scout-17b-16e-instruct"
-        if not base_url or "openai.com" in base_url:
-            base_url = "https://api.groq.com/openai/v1"
-    else:
-        # Para OpenAI, o gpt-4o-mini já suporta visão
-        model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-        if "llama" in model.lower(): # Se o utilizador pôs um modelo llama na config geral da OpenAI (via Groq/Azure)
-            model = "gpt-4o-mini" # Forçamos um modelo com visão
+         model = "meta-llama/llama-4-scout-17b-16e-instruct"
 
-    client = OpenAI(api_key=final_api_key, base_url=base_url)
     base64_image = base64.b64encode(image_bytes).decode('utf-8')
 
     # FAVORITES: subtle style reference
@@ -40,11 +30,12 @@ def analyze_image_ingredients(image_bytes: bytes, mode: str = "ingredients", api
             f"{fav_header}"
             "Analisa esta imagem de um prato já cozinhado. "
             "1. Identifica o nome do prato (ex: Lasanha, Sushi, Hambúrguer). "
-            "2. Cria uma RECRIAÇÃO SAUDÁVEL desse exato prato. Não inventes uma receita aleatória; foca-te em tornar o prato da imagem mais nutritivo (ex: trocar massa normal por integral, reduzir gorduras saturadas, aumentar vegetais), mantendo a essência do prato original. "
-            "3. Usa a lista de 'REFERÊNCIA DE ESTILO' acima apenas como inspiração subtil, mas foca-te na fidelidade ao prato da imagem. "
-            "4. Responde em PT-PT. "
-            "IMPORTANTE: Responde APENAS com um objeto JSON válido. Define SEMPRE 'calories' como 0. "
-            "\nEstrutura JSON esperada: { \"detected_ingredients\": [\"nome do prato detetado\"], \"message\": \"Explicação de como tornaste este prato mais saudável...\", \"recipe\": { \"title\": \"Versão Saudável de [Nome do Prato]\", \"calories\": 0, \"time_minutes\": 25, \"ingredients\": [], \"steps\": [] } }"
+            "2. Cria uma RECRIAÇÃO SAUDÁVEL desse exato prato. Não inventes uma receita aleatória; foca-te em tornar o prato da imagem mais nutritivo. "
+            "3. Usa a lista de 'REFERÊNCIA DE ESTILO' apenas como inspiração. "
+            "4. Responde sempre em PORTUGUÊS DE PORTUGAL (PT-PT). "
+            "IMPORTANTE: Responde APENAS com um objeto JSON válido. "
+            "ESTIMA AS CALORIAS TOTAIS da receita com base nos ingredientes. Não uses 0. "
+            "\nEstrutura JSON esperada: { \"detected_ingredients\": [\"nome do prato\"], \"message\": \"...\", \"recipe\": { \"title\": \"Versão Saudável de...\", \"calories\": 550, \"time_minutes\": 25, \"ingredients\": [\"200g massa\", \"100g carne\"], \"steps\": [] } }"
         )
     else:
         prompt = (
@@ -52,15 +43,16 @@ def analyze_image_ingredients(image_bytes: bytes, mode: str = "ingredients", api
             "Analisa esta imagem de ingredientes. "
             "1. Identifica os ingredientes presentes. "
             "2. Cria uma receita saudável que combine estes ingredientes. "
-            "3. Usa a lista de 'REFERÊNCIA DE ESTILO' acima APENAS como base para o perfil de sabor, mas foca-te em ser VARIADO e ORIGINAL. "
+            "3. Usa a lista de 'REFERÊNCIA DE ESTILO' APENAS como base para o perfil de sabor, mas foca-te em ser VARIADO e ORIGINAL. "
             "4. Responde em PT-PT. "
-            "IMPORTANTE: Responde APENAS com um objeto JSON válido. Define SEMPRE 'calories' como 0. "
-            "\nEstrutura JSON esperada: { \"detected_ingredients\": [], \"message\": \"...\", \"recipe\": { \"title\": \"...\", \"calories\": 0, \"time_minutes\": 25, \"ingredients\": [], \"steps\": [] } }"
+            "IMPORTANTE: Responde APENAS com um objeto JSON válido. "
+            "ESTIMA AS CALORIAS TOTAIS da receita com base nos ingredientes. Não uses 0. "
+            "\nEstrutura JSON esperada: { \"detected_ingredients\": [], \"message\": \"...\", \"recipe\": { \"title\": \"...\", \"calories\": 450, \"time_minutes\": 25, \"ingredients\": [\"200g de arroz\", \"1 tomate\"], \"steps\": [] } }"
         )
 
     try:
         # Groq might have issues with response_format={"type": "json_object"} for some vision models
-        # We'll rely on the prompt instruction for Groq
+        # We'll rely on the prompt instruction for Groq if needed, but let's try strict mode if not Groq
         extra_args = {}
         if not is_groq:
             extra_args["response_format"] = {"type": "json_object"}
@@ -68,18 +60,20 @@ def analyze_image_ingredients(image_bytes: bytes, mode: str = "ingredients", api
         response = client.chat.completions.create(
             model=model,
             messages=[
-                {"role": "system", "content": "És um Chef Michelin e Nutricionista que adora variedade. Cria receitas novas e surpreendentes, usando as preferências do utilizador apenas como guia de estilo."},
+                {"role": "system", "content": "És um Chef Michelin e Nutricionista PT-PT que adora variedade. Cria receitas novas e surpreendentes."},
                 {"role": "user", "content": [
                     {"type": "text", "text": prompt},
                     {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
                 ]}
             ],
-            temperature=0.8,
+            temperature=0.9,
+            presence_penalty=0.6,
+            frequency_penalty=0.5,
             **extra_args
         )
         
         content = response.choices[0].message.content
-        # Clean up possible markdown code blocks if the model included them
+        # Clean up possible markdown code blocks
         if content.startswith("```json"):
             content = content.replace("```json", "", 1).replace("```", "", 1).strip()
         elif content.startswith("```"):
@@ -87,12 +81,8 @@ def analyze_image_ingredients(image_bytes: bytes, mode: str = "ingredients", api
             
         data = json.loads(content)
         
-        # Integrar FatSecret para calorias mais precisas se possível
+        # Use calories directly from AI
         raw_recipe = data.get('recipe', {})
-        if raw_recipe and raw_recipe.get('ingredients'):
-            fs_nutrition = food_data.get_nutrition_for_recipe(raw_recipe['ingredients'])
-            if fs_nutrition['calories'] > 0:
-                raw_recipe['calories'] = int(fs_nutrition['calories'])
 
         return schemas.VisionResponse(
             detected_ingredients=data.get('detected_ingredients', []),
