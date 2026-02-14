@@ -117,23 +117,59 @@ let handlePointerMove
 let handlePointerLeave
 let handlePointerDown
 
+const isVertical = ref(false)
+
+const updateCameraFrames = () => {
+  if (!junkCamera || !healthyCamera || !canvasContainer.value) return
+  
+  const width = canvasContainer.value.clientWidth
+  const height = canvasContainer.value.clientHeight
+  isVertical.value = width < 768
+
+  const aspect = isVertical.value 
+    ? width / (height / 2)
+    : (width / 2) / height
+
+  junkCamera.aspect = aspect
+  healthyCamera.aspect = aspect
+
+  // Optimized camera distance and angle for each orientation
+  if (isVertical.value) {
+    junkCamera.position.set(0, 7, 10)
+    healthyCamera.position.set(0, 7, 10)
+  } else {
+    junkCamera.position.set(0, 5, 8)
+    healthyCamera.position.set(0, 5, 8)
+  }
+  
+  const targetY = CONFIG.plate.y
+  junkCamera.lookAt(0, targetY, 0)
+  healthyCamera.lookAt(0, targetY, 0)
+  
+  if (junkControls) junkControls.target.set(0, targetY, 0)
+  if (healthyControls) healthyControls.target.set(0, targetY, 0)
+  
+  junkCamera.updateProjectionMatrix()
+  healthyCamera.updateProjectionMatrix()
+}
+
 const initScene = () => {
+  if (!canvasContainer.value) return
+  
   junkScene = new THREE.Scene()
   healthyScene = new THREE.Scene()
 
-  const aspect = (canvasContainer.value.clientWidth / 2) / canvasContainer.value.clientHeight
+  const width = canvasContainer.value.clientWidth
+  const height = canvasContainer.value.clientHeight
   
-  junkCamera = new THREE.PerspectiveCamera(40, aspect, 0.1, 1000)
-  junkCamera.position.set(0, 5, 8)
-  junkCamera.lookAt(0, 0, 0)
+  junkCamera = new THREE.PerspectiveCamera(40, 1, 0.1, 1000)
+  healthyCamera = new THREE.PerspectiveCamera(40, 1, 0.1, 1000)
   
-  healthyCamera = new THREE.PerspectiveCamera(40, aspect, 0.1, 1000)
-  healthyCamera.position.set(0, 5, 8)
-  healthyCamera.lookAt(0, 0, 0)
+  updateCameraFrames()
 
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
-  renderer.setSize(canvasContainer.value.clientWidth, canvasContainer.value.clientHeight)
-  renderer.setPixelRatio(window.devicePixelRatio)
+  renderer.setSize(width, height)
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
   renderer.shadowMap.enabled = true
   canvasContainer.value.appendChild(renderer.domElement)
 
@@ -143,7 +179,7 @@ const initScene = () => {
   junkControls.enablePan = false
   junkControls.minDistance = 4
   junkControls.maxDistance = 14
-  junkControls.target.set(0, 0, 0)
+  junkControls.target.set(0, CONFIG.plate.y, 0)
   junkControls.enabled = false
 
   healthyControls = new OrbitControls(healthyCamera, renderer.domElement)
@@ -152,15 +188,24 @@ const initScene = () => {
   healthyControls.enablePan = false
   healthyControls.minDistance = 4
   healthyControls.maxDistance = 14
-  healthyControls.target.set(0, 0, 0)
+  healthyControls.target.set(0, CONFIG.plate.y, 0)
   healthyControls.enabled = false
 
   handlePointerMove = (event) => {
+    if (!renderer) return
     const rect = renderer.domElement.getBoundingClientRect()
     const x = event.clientX - rect.left
-    const leftHalf = x < rect.width / 2
-    junkControls.enabled = leftHalf
-    healthyControls.enabled = !leftHalf
+    const y = event.clientY - rect.top
+    
+    if (isVertical.value) {
+      const topHalf = y < rect.height / 2
+      junkControls.enabled = topHalf
+      healthyControls.enabled = !topHalf
+    } else {
+      const leftHalf = x < rect.width / 2
+      junkControls.enabled = leftHalf
+      healthyControls.enabled = !leftHalf
+    }
   }
 
   handlePointerLeave = () => {
@@ -177,9 +222,9 @@ const initScene = () => {
   renderer.domElement.addEventListener('pointerdown', handlePointerDown)
 
   const setupLights = (scene) => {
-    const ambient = new THREE.AmbientLight(0xffffff, 2.0)
+    const ambient = new THREE.AmbientLight(0xffffff, 1.2)
     scene.add(ambient)
-    const sun = new THREE.DirectionalLight(0xffffff, 1.5)
+    const sun = new THREE.DirectionalLight(0xffffff, 1.0)
     sun.position.set(5, 10, 5)
     scene.add(sun)
   }
@@ -188,7 +233,11 @@ const initScene = () => {
   setupLights(healthyScene)
 
   const plateGeometry = new THREE.CylinderGeometry(2, 2, 0.1, 32)
-  const plateMaterial = new THREE.MeshStandardMaterial({ color: 0xf8f8f8 })
+  const plateMaterial = new THREE.MeshStandardMaterial({ 
+    color: 0xf0f0f0,
+    roughness: 0.3,
+    metalness: 0.1
+  })
   
   junkPlate = new THREE.Mesh(plateGeometry, plateMaterial)
   junkPlate.position.y = CONFIG.plate.y
@@ -336,18 +385,33 @@ const animate = () => {
   if (junkControls) junkControls.update()
   if (healthyControls) healthyControls.update()
   
-  if (renderer) {
-    const width = canvasContainer.value.clientWidth
-    const height = canvasContainer.value.clientHeight
+  if (renderer && canvasContainer.value) {
+    const width = renderer.domElement.clientWidth
+    const height = renderer.domElement.clientHeight
     
-    renderer.setViewport(0, 0, width / 2, height)
-    renderer.setScissor(0, 0, width / 2, height)
-    renderer.setScissorTest(true)
-    renderer.render(junkScene, junkCamera)
-    
-    renderer.setViewport(width / 2, 0, width / 2, height)
-    renderer.setScissor(width / 2, 0, width / 2, height)
-    renderer.render(healthyScene, healthyCamera)
+    if (isVertical.value) {
+      // Top half (Junk)
+      renderer.setViewport(0, height / 2, width, height / 2)
+      renderer.setScissor(0, height / 2, width, height / 2)
+      renderer.setScissorTest(true)
+      renderer.render(junkScene, junkCamera)
+      
+      // Bottom half (Healthy)
+      renderer.setViewport(0, 0, width, height / 2)
+      renderer.setScissor(0, 0, width, height / 2)
+      renderer.render(healthyScene, healthyCamera)
+    } else {
+      // Left half (Junk)
+      renderer.setViewport(0, 0, width / 2, height)
+      renderer.setScissor(0, 0, width / 2, height)
+      renderer.setScissorTest(true)
+      renderer.render(junkScene, junkCamera)
+      
+      // Right half (Healthy)
+      renderer.setViewport(width / 2, 0, width / 2, height)
+      renderer.setScissor(width / 2, 0, width / 2, height)
+      renderer.render(healthyScene, healthyCamera)
+    }
     
     renderer.setScissorTest(false)
   }
@@ -362,21 +426,17 @@ onMounted(() => {
   animate()
   
   handleWindowResize = () => {
-    if (!canvasContainer.value) return
+    if (!canvasContainer.value || !renderer) return
     const width = canvasContainer.value.clientWidth
     const height = canvasContainer.value.clientHeight
-    const aspect = (width / 2) / height
-    
-    junkCamera.aspect = aspect
-    junkCamera.updateProjectionMatrix()
-    
-    healthyCamera.aspect = aspect
-    healthyCamera.updateProjectionMatrix()
     
     renderer.setSize(width, height)
+    updateCameraFrames()
   }
 
   window.addEventListener('resize', handleWindowResize)
+  // Ensure initial frame is perfect
+  setTimeout(handleWindowResize, 100)
 })
 
 onBeforeUnmount(() => {
@@ -395,59 +455,60 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="flex flex-col h-full max-h-[calc(100vh-120px)] overflow-hidden">
+  <div class="flex flex-col h-full max-h-[calc(100vh-80px)] md:max-h-[calc(100vh-120px)] overflow-hidden">
     <!-- Header: Minimal & Clean -->
-    <header class="mb-6 text-center">
-      <span class="px-4 py-1 text-[10px] font-extrabold tracking-[0.2em] text-white uppercase bg-blue-600 rounded-full shadow-lg shadow-blue-500/20">
+    <header class="mb-4 text-center md:mb-6">
+      <span class="px-3 py-1 md:px-4 text-[9px] md:text-[10px] font-extrabold tracking-[0.2em] text-white uppercase bg-blue-600 rounded-full shadow-lg shadow-blue-500/20">
         Laboratório de Saciedade
       </span>
-      <h1 class="mt-4 text-3xl font-black tracking-tight md:text-4xl" :class="uiTheme.title">
+      <h1 class="mt-2 text-2xl font-black tracking-tight md:mt-4 md:text-4xl" :class="uiTheme.title">
         A Ilusão das Calorias
       </h1>
-      <p class="mt-1 text-sm font-semibold" :class="uiTheme.subtitle">
+      <p class="mt-1 text-xs font-semibold md:text-sm" :class="uiTheme.subtitle">
         Visualize como <span class="font-bold underline decoration-2 underline-offset-4" :class="props.isDarkMode ? 'text-blue-400' : 'text-blue-600'">{{ calorieBudget }} kcal</span> ocupam o espaço real.
-      </p>
-      <p class="mt-2 text-xs" :class="uiTheme.subtitle">
-        Arrasta para rodar e usa scroll para zoom.
       </p>
     </header>
 
-    <!-- Main Stage: Unified Dashboard Card (Apple Health / Clinical Look) -->
-    <div class="relative flex-1 min-h-0 rounded-[2.5rem] border flex flex-col overflow-hidden" :class="uiTheme.stage">
+    <!-- Main Stage -->
+    <div class="relative flex-1 min-h-0 rounded-[2rem] md:rounded-[2.5rem] border flex flex-col overflow-hidden" :class="uiTheme.stage">
       
-      <!-- 3D Viewport with Contrast-Enhancing Radial Gradient -->
+      <!-- 3D Viewport -->
       <div class="relative flex-1 w-full min-h-0 cursor-grab active:cursor-grabbing bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))]" :class="uiTheme.viewport" ref="canvasContainer">
         
-        <!-- Overlays: Left Food Info (Glassmorphism Pill) -->
-        <div class="absolute z-20 flex flex-col items-center p-4 transition-all transform top-6 left-6 rounded-[1.5rem] backdrop-blur-sm shadow-lg border min-w-[140px]" :class="uiTheme.card">
-          <span class="text-[9px] font-black text-rose-500 uppercase tracking-widest mb-1.5">Ultra-Processado</span>
-          <div class="text-base font-extrabold" :class="uiTheme.cardTitle">{{ currentJunkConfig.name }}</div>
-          <div class="mt-1 text-[11px] font-semibold" :class="uiTheme.cardMeta">
+        <!-- Overlays: Junk Food Info -->
+        <div class="absolute z-20 flex flex-col items-center p-3 md:p-4 transition-all transform rounded-[1.2rem] md:rounded-[1.5rem] backdrop-blur-sm shadow-lg border min-w-[120px] md:min-w-[140px]" 
+             :class="[uiTheme.card, isVertical ? 'top-4 left-4' : 'top-6 left-6']">
+          <span class="text-[8px] md:text-[9px] font-black text-rose-500 uppercase tracking-widest mb-1">Ultra-Processado</span>
+          <div class="text-sm md:text-base font-extrabold" :class="uiTheme.cardTitle">{{ currentJunkConfig.name }}</div>
+          <div class="mt-0.5 text-[10px] md:text-[11px] font-semibold" :class="uiTheme.cardMeta">
             {{ junkGrams }}g<span v-if="junkUnits > 0"> · {{ junkUnits }} un.</span>
           </div>
-          <button @click="cycle('junk')" class="mt-3 px-4 py-2 text-[11px] font-bold rounded-xl transition-all flex items-center gap-2 border" :class="uiTheme.cardBtn">
+          <button @click="cycle('junk')" class="mt-2 md:mt-3 px-3 py-1.5 md:px-4 md:py-2 text-[10px] md:text-[11px] font-bold rounded-xl transition-all flex items-center gap-2 border" :class="uiTheme.cardBtn">
             <span>Trocar</span>
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 opacity-60" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" /></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3 md:w-3.5 h-3 md:h-3.5 opacity-60" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" /></svg>
           </button>
         </div>
 
         <!-- VS Badge Center -->
         <div class="absolute z-20 transform -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2">
-           <div class="flex items-center justify-center w-12 h-12 font-black text-white rounded-full shadow-2xl outline outline-[6px] text-xs italic tracking-tighter" :class="uiTheme.vs">VS</div>
+           <div class="flex items-center justify-center w-10 h-10 md:w-12 md:h-12 font-black text-white rounded-full shadow-2xl outline outline-[4px] md:outline-[6px] text-[10px] md:text-xs italic tracking-tighter" :class="uiTheme.vs">VS</div>
         </div>
 
-        <div class="absolute inset-y-0 z-10 hidden border-l border-dashed left-1/2 md:block" :class="uiTheme.divider"></div>
+        <!-- Split Lines -->
+        <div v-if="!isVertical" class="absolute inset-y-0 z-10 hidden border-l border-dashed left-1/2 md:block" :class="uiTheme.divider"></div>
+        <div v-else class="absolute inset-x-0 z-10 border-t border-dashed top-1/2" :class="uiTheme.divider"></div>
 
-        <!-- Overlays: Right Food Info (Glassmorphism Pill) -->
-        <div class="absolute z-20 flex flex-col items-center p-4 transition-all transform top-6 right-6 rounded-[1.5rem] backdrop-blur-sm shadow-lg border min-w-[140px]" :class="uiTheme.card">
-          <span class="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-1.5">Densidade Baixa</span>
-          <div class="text-base font-extrabold" :class="uiTheme.cardTitle">{{ currentHealthyConfig.name }}</div>
-          <div class="mt-1 text-[11px] font-semibold" :class="uiTheme.cardMeta">
+        <!-- Overlays: Healthy Food Info -->
+        <div class="absolute z-20 flex flex-col items-center p-3 md:p-4 transition-all transform rounded-[1.2rem] md:rounded-[1.5rem] backdrop-blur-sm shadow-lg border min-w-[120px] md:min-w-[140px]" 
+             :class="[uiTheme.card, isVertical ? 'bottom-4 right-4' : 'top-6 right-6']">
+          <span class="text-[8px] md:text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-1">Densidade Baixa</span>
+          <div class="text-sm md:text-base font-extrabold" :class="uiTheme.cardTitle">{{ currentHealthyConfig.name }}</div>
+          <div class="mt-0.5 text-[10px] md:text-[11px] font-semibold" :class="uiTheme.cardMeta">
             {{ healthyGrams }}g<span v-if="healthyUnits > 0"> · {{ healthyUnits }} un.</span>
           </div>
-          <button @click="cycle('healthy')" class="mt-3 px-4 py-2 text-[11px] font-bold rounded-xl transition-all flex items-center gap-2 border" :class="uiTheme.cardBtn">
+          <button @click="cycle('healthy')" class="mt-2 md:mt-3 px-3 py-1.5 md:px-4 md:py-2 text-[10px] md:text-[11px] font-bold rounded-xl transition-all flex items-center gap-2 border" :class="uiTheme.cardBtn">
             <span>Trocar</span>
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 opacity-60" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" /></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3 md:w-3.5 h-3 md:h-3.5 opacity-60" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" /></svg>
           </button>
         </div>
 
@@ -458,33 +519,33 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <!-- Anchored Footer Controls (Dark Slate for Contrast) -->
-      <footer class="p-8 border-t rounded-b-3xl" :class="uiTheme.footer">
-        <div class="flex flex-col items-center gap-8 md:flex-row md:justify-between">
+      <!-- Anchored Footer Controls -->
+      <footer class="p-4 border-t md:p-8 rounded-b-3xl" :class="uiTheme.footer">
+        <div class="flex flex-col items-center gap-4 md:gap-8 md:flex-row md:justify-between">
           
           <!-- Slider Control -->
           <div class="flex-1 w-full max-w-xl">
-            <div class="flex items-center justify-between mb-4">
-              <label class="text-[10px] font-black tracking-[0.2em] uppercase" :class="uiTheme.sliderHint">Ajuste de Orçamento</label>
+            <div class="flex items-center justify-between mb-2 md:mb-4">
+              <label class="text-[9px] md:text-[10px] font-black tracking-[0.2em] uppercase" :class="uiTheme.sliderHint">Orçamento de Calorias</label>
               <div class="flex items-baseline gap-1.5">
-                <span class="text-3xl font-black tabular-nums" :class="uiTheme.satietyText">{{ calorieBudget }}</span>
-                <span class="text-xs font-bold uppercase" :class="uiTheme.sliderHint">kcal</span>
+                <span class="text-2xl font-black md:text-3xl tabular-nums" :class="uiTheme.satietyText">{{ calorieBudget }}</span>
+                <span class="text-[10px] md:text-xs font-bold uppercase" :class="uiTheme.sliderHint">kcal</span>
               </div>
             </div>
             <input type="range" v-model.number="calorieBudget" min="100" max="2000" step="50" class="w-full h-2 rounded-lg appearance-none cursor-pointer accent-blue-500 focus:outline-none" :class="uiTheme.sliderTrack">
-            <div class="flex justify-between mt-2 text-[10px] font-semibold" :class="uiTheme.sliderHint">
+            <div class="flex justify-between mt-1 md:mt-2 text-[9px] md:text-[10px] font-semibold" :class="uiTheme.sliderHint">
               <span>100 kcal</span>
               <span>2000 kcal</span>
             </div>
           </div>
 
           <!-- Satiety Insight Badge -->
-          <div class="flex items-center gap-5 px-6 py-5 rounded-[2rem] border md:max-w-xs transition-all" :class="uiTheme.satietyBadge">
-            <div class="flex items-center justify-center w-12 h-12 text-2xl rounded-2xl bg-emerald-500/20 shadow-inner">🥗</div>
+          <div class="flex items-center w-full gap-4 px-4 py-3 border md:w-auto md:gap-5 md:px-6 md:py-5 rounded-2xl md:rounded-[2rem] transition-all" :class="uiTheme.satietyBadge">
+            <div class="flex items-center justify-center w-10 h-10 text-xl rounded-xl md:w-12 md:h-12 md:text-2xl md:rounded-2xl bg-emerald-500/20 shadow-inner">🥗</div>
             <div>
-              <div class="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-0.5">Fator de Saciedade</div>
-              <div class="text-xl font-black" :class="uiTheme.satietyText">
-                {{ satietyMultiplier.toFixed(1) }}x <span class="text-sm font-medium" :class="uiTheme.satietySub">mais volume</span>
+              <div class="text-[9px] md:text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-0.5">Fator de Saciedade</div>
+              <div class="text-lg font-black md:text-xl" :class="uiTheme.satietyText">
+                {{ satietyMultiplier.toFixed(1) }}x <span class="text-xs md:text-sm font-medium" :class="uiTheme.satietySub">mais volume</span>
               </div>
             </div>
           </div>
@@ -494,6 +555,7 @@ onBeforeUnmount(() => {
     </div>
   </div>
 </template>
+
 
 <style scoped>
 /* High-End Range Input Styling */
