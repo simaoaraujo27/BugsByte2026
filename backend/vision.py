@@ -12,11 +12,17 @@ def analyze_image_ingredients(image_bytes: bytes, api_key: Optional[str] = None,
         final_api_key = final_api_key.strip()
         
     base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
-    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-
-    if final_api_key.startswith("gsk_") and ("openai.com" in base_url):
-        base_url = "https://api.groq.com/openai/v1"
-        model = "meta-llama/llama-4-scout-17b-16e-instruct"
+    
+    # Se for Groq, precisamos de usar um modelo que suporte Visão
+    if final_api_key and final_api_key.startswith("gsk_"):
+        model = "llama-3.2-11b-vision-preview"
+        if "openai.com" in base_url:
+            base_url = "https://api.groq.com/openai/v1"
+    else:
+        # Para OpenAI, o gpt-4o-mini já suporta visão
+        model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+        if "llama" in model.lower(): # Se o utilizador pôs um modelo llama na config geral da OpenAI (via Groq/Azure)
+            model = "gpt-4o-mini" # Forçamos um modelo com visão
 
     client = OpenAI(api_key=final_api_key, base_url=base_url)
     base64_image = base64.b64encode(image_bytes).decode('utf-8')
