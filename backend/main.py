@@ -21,18 +21,44 @@ from datetime import timedelta
 
 models.Base.metadata.create_all(bind=engine)
 
-app = FastAPI(redirect_slashes=False)
+app = FastAPI()
+
+VALID_MEAL_SECTIONS = {"breakfast", "lunch", "snack", "dinner", "extras"}
+
+
+def validate_date_key(date_key: str) -> str:
+    try:
+        datetime.strptime(date_key, "%Y-%m-%d")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="date_key must use YYYY-MM-DD format") from exc
+    return date_key
+
+
+def get_or_create_diary_day(db: Session, user_id: int, date_key: str) -> models.DiaryDay:
+    day = (
+        db.query(models.DiaryDay)
+        .filter(models.DiaryDay.user_id == user_id, models.DiaryDay.date_key == date_key)
+        .first()
+    )
+    if day:
+        return day
+
+    day = models.DiaryDay(user_id=user_id, date_key=date_key, goal=1800)
+    db.add(day)
+    db.commit()
+    db.refresh(day)
+    return day
 
 # Configure CORS to allow frontend to access the backend
+origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=origins,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-VALID_MEAL_SECTIONS = {"breakfast", "lunch", "snack", "dinner", "extras"}
 
 @app.post("/users/", response_model=schemas.User)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
