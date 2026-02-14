@@ -85,7 +85,7 @@ class NegotiatorRequest(BaseModel):
 class NegotiatorResponse(BaseModel):
     original_craving: str
     message: str
-    recipe: Recipe
+    recipe: Recipe | None = None
     restaurant_search_term: str
 
 
@@ -140,3 +140,14 @@ class DiaryDay(BaseModel):
 
     class ConfigDict:
         from_attributes = True
+class VisionResponse(BaseModel):
+    detected_ingredients: list[str]
+    message: str
+    recipe: Recipe
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    username: str | None = None

@@ -24,6 +24,7 @@ print("="*30)
 import models, schemas, shops, negotiator, food_data
 from database import SessionLocal, engine, get_db
 from fastapi.middleware.cors import CORSMiddleware
+from datetime import timedelta
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -78,7 +79,7 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     if db_user:
         raise HTTPException(status_code=400, detail="Username already registered")
     
-    hashed_password = get_password_hash(user.password)
+    hashed_password = auth.get_password_hash(user.password)
     
     # Create user instance without allergens first
     new_user = models.User(
@@ -106,13 +107,21 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db.refresh(new_user)
     return new_user
 
-@app.post("/login/")
+@app.post("/login/", response_model=schemas.Token)
 def login(request: schemas.LoginRequest, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter(models.User.username == request.username).first()
-    if not db_user or db_user.hashed_password != get_password_hash(request.password):
+    if not db_user or not auth.verify_password(request.password, db_user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid username or password")
     
-    return {"message": "Login successful", "user_id": db_user.id}
+    access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = auth.create_access_token(
+        data={"sub": db_user.username}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@app.get("/users/me", response_model=schemas.User)
+def read_user_me(current_user: models.User = Depends(auth.get_current_user)):
+    return current_user
 
 @app.post("/forgot-password/")
 def forgot_password(request: schemas.ForgotPasswordRequest, db: Session = Depends(get_db)):
@@ -136,11 +145,16 @@ def forgot_password(request: schemas.ForgotPasswordRequest, db: Session = Depend
     return {"message": "If the email exists, a reset link has been sent."}
 
 @app.post("/negotiator/negotiate", response_model=schemas.NegotiatorResponse)
-def negotiate_craving(request: schemas.NegotiatorRequest):
+def negotiate_craving(request: schemas.NegotiatorRequest, current_user: models.User = Depends(auth.get_current_user)):
     return negotiator.negotiate_craving(request.craving, request.target_calories)
 
+@app.post("/vision/analyze", response_model=schemas.VisionResponse)
+async def analyze_ingredients_photo(file: UploadFile = File(...), current_user: models.User = Depends(auth.get_current_user)):
+    contents = await file.read()
+    return vision.analyze_image_ingredients(contents)
+
 @app.get("/users/", response_model=list[schemas.User])
-def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     users = db.query(models.User).offset(skip).limit(limit).all()
     return users
 
@@ -236,24 +250,31 @@ def delete_diary_meal(meal_id: int, db: Session = Depends(get_db)):
     return day
 
 @app.post("/shops/find", response_model=list[schemas.Shop])
-def find_shops(request: schemas.ShopSearchRequest):
+def find_shops(request: schemas.ShopSearchRequest, current_user: models.User = Depends(auth.get_current_user)):
     if request.mode == "restaurant":
-        # Search for restaurants
+        # Search for restaurants matching the ingredients (which acts as term here)
         search_val = "restaurant"
         key = "amenity"
+        # Use the first item as a search term (e.g. "Pizza", "Italiano")
+        search_term = request.ingredients[0] if request.ingredients else None
         
         found_shops = shops.find_nearby_shops(
             search_val, 
             request.lat, 
             request.lon, 
             request.radius,
-            key=key
+            key=key,
+            search_term=search_term
         )
     else:
         # 1. Determine the shop type using OpenAI
         shop_tag = shops.get_shop_type(request.ingredients)
         
+        if shop_tag == "invalid":
+            raise HTTPException(status_code=400, detail="A pesquisa contém termos inválidos ou não relacionados com alimentação.")
+
         # 2. Find nearby shops using Overpass API
+        # We don't filter by name here because we want any shop that sells the ingredients
         found_shops = shops.find_nearby_shops(
             shop_tag, 
             request.lat, 
@@ -270,7 +291,7 @@ def search_foods(q: str, page_size: int = 10):
     return food_data.search_foods(q, page_size=page_size)
 
 @app.post("/items/", response_model=schemas.Item)
-def create_item(item: schemas.ItemCreate, db: Session = Depends(get_db)):
+def create_item(item: schemas.ItemCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     db_item = models.Item(**item.model_dump())
     db.add(db_item)
     db.commit()
@@ -278,12 +299,12 @@ def create_item(item: schemas.ItemCreate, db: Session = Depends(get_db)):
     return db_item
 
 @app.get("/items/", response_model=list[schemas.Item])
-def read_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def read_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     items = db.query(models.Item).offset(skip).limit(limit).all()
     return items
 
 @app.get("/items/{item_id}", response_model=schemas.Item)
-def read_item(item_id: int, db: Session = Depends(get_db)):
+def read_item(item_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     item = db.query(models.Item).filter(models.Item.id == item_id).first()
     if item is None:
         raise HTTPException(status_code=404, detail="Item not found")

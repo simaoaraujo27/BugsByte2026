@@ -7,6 +7,9 @@ from fastapi import HTTPException
 
 def negotiate_craving(craving: str, target_calories: int = 600, api_key: Optional[str] = None) -> schemas.NegotiatorResponse:
     final_api_key = api_key or os.getenv("OPENAI_API_KEY")
+    if final_api_key:
+        final_api_key = final_api_key.strip()
+        
     base_url = os.getenv("OPENAI_BASE_URL")
     model = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
 
@@ -14,10 +17,11 @@ def negotiate_craving(craving: str, target_calories: int = 600, api_key: Optiona
         raise ValueError("A chave da API OpenAI/Groq não foi configurada no ficheiro .env")
 
     # Auto-detect Groq key
-    if final_api_key.startswith("gsk_") and not base_url:
-        print("Auto-detected Groq key. Switching to Groq API.")
-        base_url = "https://api.groq.com/openai/v1"
-        model = "llama-3.3-70b-versatile"
+    if final_api_key.startswith("gsk_"):
+        if not base_url or "openai.com" in base_url:
+            print("Auto-detected Groq key. Forcing Groq API configuration.")
+            base_url = "https://api.groq.com/openai/v1"
+            model = "llama-3.3-70b-versatile"
 
     client = OpenAI(
         api_key=final_api_key,
@@ -25,24 +29,22 @@ def negotiate_craving(craving: str, target_calories: int = 600, api_key: Optiona
     )
 
     prompt = (
-        f"O utilizador está com um desejo incontrolável de '{craving}'. O teu objetivo é negociar uma versão saudável de cerca de {target_calories} kcal. "
-        "Atua como um Chef de Cozinha e Nutricionista de renome em Portugal (PT-PT). "
-        "A receita deve ser EXTREMAMENTE detalhada e profissional. "
-        "1. Cria uma versão 'Gourmet Saudável' do prato (DIY). "
-        "2. Divide a resposta em secções claras: 'Ingredientes Necessários' (com quantidades precisas), 'Preparação dos Alimentos' e 'Instruções de Confeção Passo-a-Passo'. "
-        "3. Adiciona uma secção de 'Dicas de Chef' para tornar o prato mais saboroso sem somar calorias. "
-        "4. O tom deve ser motivador e sofisticado. "
-        "Retorna um objeto JSON com esta estrutura: "
+        f"O utilizador está com um desejo de '{craving}'. "
+        "REGRAS CRÍTICAS DE SEGURANÇA E VALIDAÇÃO: "
+        "1. Se o pedido NÃO for comida real, ou se for ofensivo, sexual, perigoso, gíria inapropriada ou sem sentido, DEVES RECUSAR terminantemente. "
+        "2. Se recusares, define 'recipe' como null e escreve uma mensagem educada em PT-PT explicando que apenas aceitas pedidos de alimentação saudável. "
+        "3. Se for comida, atua como um Chef e Nutricionista de elite em Portugal (PT-PT). "
+        "4. A resposta deve seguir RIGOROSAMENTE esta estrutura JSON (NUNCA traduzas as chaves/keys): "
         "{ "
-        "  'message': 'Uma resposta carismática e motivadora em PT-PT sobre como esta versão é superior ao desejo original', "
+        "  'message': 'Mensagem carismática em PT-PT', "
         "  'recipe': { "
-        "    'title': 'Nome sofisticado da versão saudável', "
+        "    'title': 'Nome da versão saudável', "
         "    'calories': 550, "
         "    'time_minutes': 35, "
-        "    'ingredients': ['Lista exaustiva e detalhada com quantidades (ex: 200g de peito de frango)'], "
-        "    'steps': ['Passo 1: Preparação detalhada...', 'Passo 2: Técnica de confeção...', 'Passo 3: Finalização e empratamento...', 'Dica Pro: ...'] "
+        "    'ingredients': ['lista detalhada com quantidades'], "
+        "    'steps': ['passos detalhados'] "
         "  }, "
-        "  'restaurant_search_term': 'termo de pesquisa para o mapa' "
+        "  'restaurant_search_term': 'termo para mapa' "
         "}"
     )
 
@@ -59,12 +61,21 @@ def negotiate_craving(craving: str, target_calories: int = 600, api_key: Optiona
         content = response.choices[0].message.content
         data = json.loads(content)
         
-        return schemas.NegotiatorResponse(
-            original_craving=craving,
-            message=data.get('message', 'Aqui está uma alternativa saudável!'),
-            recipe=schemas.Recipe(**data.get('recipe', {})),
-            restaurant_search_term=data.get('restaurant_search_term', craving)
-        )
+        try:
+            return schemas.NegotiatorResponse(
+                original_craving=craving,
+                message=data.get('message', 'Aqui está uma alternativa saudável!'),
+                recipe=schemas.Recipe(**data.get('recipe')) if data.get('recipe') else None,
+                restaurant_search_term=data.get('restaurant_search_term', craving)
+            )
+        except Exception as ve:
+            print(f"Erro de validação na resposta da AI: {ve}")
+            return schemas.NegotiatorResponse(
+                original_craving=craving,
+                message="Desculpa, não consegui processar esse pedido de forma segura. Por favor, tenta outro prato real.",
+                recipe=None,
+                restaurant_search_term=craving
+            )
     except Exception as e:
         print(f"Erro no negotiator: {e}")
         # Re-raise the exception to be handled by the API layer

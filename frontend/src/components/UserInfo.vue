@@ -335,6 +335,7 @@ const submitForm = async () => {
   align-items: center;
   justify-content: center;
   gap: 16px;
+  
   text-align: center;
 }
 
