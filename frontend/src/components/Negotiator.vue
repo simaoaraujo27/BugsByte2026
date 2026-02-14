@@ -149,7 +149,7 @@ const goToIngredients = () => {
 }
 
 .subtitle {
-  color: #54667e;
+  color: var(--text-muted);
   font-size: 1.2rem;
   max-width: 600px;
   margin: 0 auto 40px;
@@ -157,7 +157,7 @@ const goToIngredients = () => {
 
 .search-box-large {
   display: flex;
-  background: white;
+  background: var(--bg-elevated);
   padding: 8px;
   border-radius: 20px;
   box-shadow: 0 15px 40px rgba(0,0,0,0.08);
@@ -167,11 +167,13 @@ const goToIngredients = () => {
 
 .search-box-large input {
   flex: 1;
+  background: transparent;
   border: none;
   padding: 16px 24px;
   font-size: 1.1rem;
   border-radius: 16px;
   outline: none;
+  color: var(--text-main);
 }
 
 .btn-glow {
@@ -195,23 +197,24 @@ const goToIngredients = () => {
   gap: 12px;
   justify-content: center;
   align-items: center;
-  color: #a0aec0;
+  color: var(--text-muted);
   font-size: 0.9rem;
 }
 
 .suggestions-chips button {
-  background: #edf2f7;
-  border: none;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
   padding: 6px 16px;
   border-radius: 20px;
   cursor: pointer;
-  color: #4a5568;
+  color: var(--text-main);
   font-weight: 600;
 }
 
 /* Recipe Display */
 .recipe-display {
-  background: white;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
   border-radius: 32px;
   box-shadow: 0 20px 60px rgba(0,0,0,0.05);
   overflow: hidden;
@@ -224,10 +227,10 @@ const goToIngredients = () => {
 }
 
 .recipe-header {
-  background: linear-gradient(135deg, #fdf2f2 0%, #ffffff 100%);
+  background: linear-gradient(135deg, var(--bg-main) 0%, var(--bg-elevated) 100%);
   padding: 48px;
   text-align: center;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--line);
   position: relative;
 }
 
@@ -244,13 +247,13 @@ const goToIngredients = () => {
 .recipe-title {
   font-size: 2.5rem;
   font-weight: 800;
-  color: #11263f;
+  color: var(--text-main);
   margin-bottom: 12px;
 }
 
 .chef-message {
   font-style: italic;
-  color: #54667e;
+  color: var(--text-muted);
   font-size: 1.1rem;
   margin-bottom: 24px;
 }
@@ -259,7 +262,7 @@ const goToIngredients = () => {
   display: flex;
   justify-content: center;
   gap: 24px;
-  color: #718096;
+  color: var(--text-muted);
   font-weight: 600;
   font-size: 0.9rem;
 }
@@ -274,7 +277,7 @@ const goToIngredients = () => {
 .ingredients-card h3, .steps-card h3 {
   font-size: 1.4rem;
   margin-bottom: 24px;
-  color: #11263f;
+  color: var(--text-main);
 }
 
 .styled-list {
@@ -284,8 +287,8 @@ const goToIngredients = () => {
 
 .styled-list li {
   padding: 12px 0;
-  border-bottom: 1px solid #f1f5f9;
-  color: #4a5568;
+  border-bottom: 1px solid var(--line);
+  color: var(--text-main);
   display: flex;
   align-items: center;
   gap: 10px;
@@ -297,9 +300,9 @@ const goToIngredients = () => {
   width: 100%;
   margin-top: 24px;
   padding: 16px;
-  background: #e3f7f2;
-  color: #07a374;
-  border: 2px dashed #07a374;
+  background: var(--menu-active-bg);
+  color: var(--menu-active-text);
+  border: 2px dashed var(--menu-active-text);
   border-radius: 12px;
   font-weight: 700;
   cursor: pointer;
@@ -317,8 +320,8 @@ const goToIngredients = () => {
 }
 
 .step-number {
-  background: #11263f;
-  color: white;
+  background: var(--text-main);
+  color: var(--bg-main);
   width: 32px;
   height: 32px;
   border-radius: 50%;
@@ -330,21 +333,22 @@ const goToIngredients = () => {
 }
 
 .step-text {
-  color: #2d3748;
+  color: var(--text-main);
   line-height: 1.6;
   padding-top: 4px;
 }
 
 .recipe-actions {
   padding: 32px 48px;
-  background: #f8fafc;
+  background: var(--bg-main);
   display: flex;
   justify-content: space-between;
 }
 
 .btn-secondary {
-  background: none;
-  border: 1px solid #cbd5e0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  color: var(--text-main);
   padding: 12px 24px;
   border-radius: 12px;
   font-weight: 600;
@@ -352,8 +356,8 @@ const goToIngredients = () => {
 }
 
 .btn-refresh {
-  background: #11263f;
-  color: white;
+  background: var(--text-main);
+  color: var(--bg-main);
   border: none;
   padding: 12px 24px;
   border-radius: 12px;
@@ -372,14 +376,15 @@ const goToIngredients = () => {
 }
 
 .disclaimer {
-  color: #a0aec0;
+  color: var(--text-muted);
   font-size: 0.85rem;
   margin-top: -10px;
   margin-bottom: 30px;
 }
 
 .rejection-card {
-  background: white;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
   padding: 60px;
   border-radius: 32px;
   text-align: center;
@@ -394,12 +399,12 @@ const goToIngredients = () => {
 }
 
 .rejection-card h2 {
-  color: #11263f;
+  color: var(--text-main);
   margin-bottom: 16px;
 }
 
 .rejection-card p {
-  color: #54667e;
+  color: var(--text-muted);
   margin-bottom: 32px;
   line-height: 1.6;
 }
