@@ -35,7 +35,7 @@ const uploadAndAnalyze = async (file) => {
 
   try {
     // For file uploads, we must NOT set Content-Type manually so the browser can set the boundary.
-    const response = await fetch(`${API_URL} + '/vision/analyze', {
+    const response = await fetch(`${API_URL}/vision/analyze`, {
       method: 'POST',
       headers: auth.getAuthHeaders(false),
       body: formData,
@@ -67,7 +67,7 @@ const saveRecipe = async () => {
       instructions: result.value.recipe.steps.join('\n')
     };
 
-    const createResponse = await fetch(`${API_URL} + '/recipes/', {
+    const createResponse = await fetch(`${API_URL}/recipes/`, {
       method: 'POST',
       headers: auth.getAuthHeaders(),
       body: JSON.stringify(recipeData)
