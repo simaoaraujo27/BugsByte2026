@@ -91,9 +91,16 @@ def sync_database_schema() -> None:
 
 sync_database_schema()
 
-app = FastAPI(redirect_slashes=False)
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Request
 
-VALID_MEAL_SECTIONS = {"breakfast", "lunch", "snack", "dinner", "extras"}
+# ... after app definition ...
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    print(f"Incoming request: {request.method} {request.url.path}")
+    sys.stdout.flush()
+    response = await call_next(request)
+    return response
 
 
 def send_password_reset_email(recipient_email: str, reset_token: str) -> None:
@@ -113,6 +120,7 @@ def send_password_reset_email(recipient_email: str, reset_token: str) -> None:
         print(f"SMTP NOT CONFIGURED. Link for {recipient_email}:")
         print(f"URL: {reset_url}")
         print("="*50)
+        sys.stdout.flush()
         return
 
     message = EmailMessage()
@@ -352,8 +360,12 @@ def get_dashboard_summary(db: Session = Depends(get_db), current_user: models.Us
 
 @app.post("/forgot-password/")
 def forgot_password(request: schemas.ForgotPasswordRequest, db: Session = Depends(get_db)):
+    print(f"DEBUG: Forgot password requested for: {request.username}")
+    sys.stdout.flush()
     db_user = db.query(models.User).filter(models.User.username == request.username).first()
     if not db_user:
+        print(f"DEBUG: User {request.username} not found")
+        sys.stdout.flush()
         return {"message": "Se o email existir, um link de recuperação foi enviado."}
 
     token = auth.create_password_reset_token(db_user.username)
@@ -364,6 +376,7 @@ def forgot_password(request: schemas.ForgotPasswordRequest, db: Session = Depend
         send_password_reset_email(db_user.username, token)
     except Exception as exc:
         print(f"Password reset email failed: {exc}")
+        sys.stdout.flush()
     
     return {"message": "Se o email existir, um link de recuperação foi enviado."}
 
@@ -618,4 +631,6 @@ def remove_favorite_restaurant(restaurant_id: int, db: Session = Depends(get_db)
 
 @app.api_route("/", methods=["GET", "HEAD"])
 async def root():
+    print("ROOT ENDPOINT CALLED")
+    sys.stdout.flush()
     return {"message": "Welcome to the FastAPI Backend!"}
