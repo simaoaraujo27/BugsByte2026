@@ -461,7 +461,7 @@ const mergedHistory = computed(() => {
       if (!uniqueMap.has(key)) {
         uniqueMap.set(key, {
           name: meal.name,
-          source: 'histórico local',
+          source: 'recente',
           calories_per_100g: Math.round((toNumber(meal.calories) / grams) * 100),
           protein_per_100g: round1((toNumber(meal.protein) / grams) * 100),
           carbs_per_100g: round1((toNumber(meal.carbs) / grams) * 100),
@@ -876,15 +876,15 @@ watch(
               >
                 ✨ Automático (IA)
               </button>
+              <button type="button" class="search-food-btn" @click="openFoodSearchModal">
+                🔍 Histórico
+              </button>
             </div>
 
             <div v-if="composerMode === 'manual'" class="mode-manual">
               <div class="form-group-diary">
                 <label>Alimento</label>
                 <input v-model="mealDraft.name" type="text" placeholder="Ex: Frango Grelhado" />
-                <button type="button" class="search-food-btn" @click="openFoodSearchModal">
-                  Pesquisar na Base de Dados
-                </button>
               </div>
 
               <p v-if="selectedFoodPer100g" class="selected-food">
@@ -1040,7 +1040,7 @@ watch(
               <button type="button" @click="chooseFoodSuggestion(food)">
                 <div class="food-info">
                   <strong>{{ food.name }}</strong>
-                  <span class="food-source-badge">{{ food.source }}</span>
+                  <span class="food-source-badge">{{ food.source === 'manual' ? 'recente' : food.source }}</span>
                 </div>
                 <small>{{ food.calories_per_100g }} kcal · P {{ food.protein_per_100g }}g · H {{ food.carbs_per_100g }}g · G {{ food.fat_per_100g }}g (100g)</small>
               </button>
@@ -1280,21 +1280,6 @@ watch(
   padding: 8px 10px;
 }
 
-.search-food-btn {
-  border: 1px solid #14b8a6;
-  background: transparent;
-  color: #14b8a6;
-  border-radius: 8px;
-  padding: 8px 10px;
-  cursor: pointer;
-  font-weight: 700;
-}
-
-.search-food-btn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
 .selected-food {
   margin: 0;
   color: var(--text-muted);
@@ -1424,6 +1409,12 @@ watch(
 
 .composer-tabs button.active {
   background: rgba(20, 184, 166, 0.1);
+  border-color: #14b8a6;
+  color: #14b8a6;
+}
+
+.composer-tabs button.search-food-btn:hover {
+  background: rgba(20, 184, 166, 0.05);
   border-color: #14b8a6;
   color: #14b8a6;
 }

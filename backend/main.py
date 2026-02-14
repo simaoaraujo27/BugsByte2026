@@ -162,6 +162,8 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     
     new_user = models.User(
         username=user.username,
+        full_name=user.full_name,
+        profile_image=user.profile_image,
         hashed_password=hashed_password,
         peso=user.peso,
         altura=user.altura,
