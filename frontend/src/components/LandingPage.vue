@@ -1,16 +1,47 @@
 <script setup>
+import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import logo from '@/assets/logo.png'
 
 const router = useRouter()
 
+const getInitialTheme = () => {
+  if (typeof window === 'undefined') return false
+  try {
+    const savedTheme = localStorage.getItem('theme')
+    if (savedTheme) {
+      return savedTheme === 'dark'
+    }
+    return window.matchMedia('(prefers-color-scheme: dark)').matches
+  } catch (e) {
+    return false
+  }
+}
+
+const isDark = ref(getInitialTheme())
+
 const goToLogin = () => {
   router.push('/login')
 }
+
+const toggleDarkMode = (e) => {
+  e.preventDefault()
+  isDark.value = !isDark.value
+}
+
+watch(isDark, (val) => {
+  if (val) {
+    document.documentElement.classList.add('dark')
+    localStorage.setItem('theme', 'dark')
+  } else {
+    document.documentElement.classList.remove('dark')
+    localStorage.setItem('theme', 'light')
+  }
+}, { immediate: true })
 </script>
 
 <template>
-  <div class="landing">
+  <div class="landing" :class="{ dark: isDark }">
     <header class="topbar">
       <div class="container nav-inner">
         <div class="brand">
@@ -23,6 +54,14 @@ const goToLogin = () => {
           <a href="#beneficios">Benefícios</a>
           <a href="#testemunhos">Equipa</a>
         </nav>
+
+        <div class="header-actions">
+          <button @click="toggleDarkMode" type="button" class="theme-toggle" :aria-label="isDark ? 'Ativar modo claro' : 'Ativar modo escuro'" style="pointer-events: auto;">
+            <svg v-if="isDark" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sun"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+            <svg v-else xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-moon"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+          </button>
+          <button class="btn btn-main" type="button" @click="goToLogin">Agendar Consulta</button>
+        </div>
       </div>
     </header>
 
@@ -193,10 +232,30 @@ const goToLogin = () => {
   --green-dark: #087b57;
   --green-soft: #dff4ec;
   --nav-h: 74px;
+  --topbar-bg: rgba(255, 255, 255, 0.92);
+  --hero-shape: #b3ebd2;
+  --card-bg: rgba(255, 255, 255, 0.96);
+  --check-bg: #c8efdf;
 
   color: var(--text);
   background: var(--bg);
   font-family: Sora, 'Segoe UI', Tahoma, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.landing.dark {
+  --bg: #0f172a;
+  --bg-soft: #1e293b;
+  --text: #f8fafc;
+  --muted: #94a3b8;
+  --line: #334155;
+  --green: #10b981;
+  --green-dark: #059669;
+  --green-soft: #064e3b;
+  --topbar-bg: rgba(15, 23, 42, 0.92);
+  --hero-shape: #1e293b;
+  --card-bg: rgba(30, 41, 59, 0.96);
+  --check-bg: #064e3b;
 }
 
 .container {
@@ -209,9 +268,10 @@ const goToLogin = () => {
   top: 0;
   z-index: 50;
   height: var(--nav-h);
-  background: rgba(255, 255, 255, 0.92);
-  border-bottom: 1px solid #c9e7da;
+  background: var(--topbar-bg);
+  border-bottom: 1px solid var(--line);
   backdrop-filter: blur(8px);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .nav-inner {
@@ -234,6 +294,11 @@ const goToLogin = () => {
   border-radius: 12px;
   background: #fff;
   padding: 6px;
+  transition: background-color 0.3s;
+}
+
+.landing.dark .brand-logo {
+  background: var(--line);
 }
 
 .brand-name {
@@ -250,10 +315,36 @@ const goToLogin = () => {
   color: var(--muted);
   text-decoration: none;
   font-weight: 600;
+  transition: color 0.2s;
 }
 
 .menu-links a:hover {
   color: var(--text);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.theme-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 12px;
+  transition: background-color 0.2s, color 0.2s;
+  border: 1px solid var(--line);
+}
+
+.theme-toggle:hover {
+  background-color: var(--green-soft);
+  color: var(--green);
 }
 
 .btn {
@@ -267,6 +358,7 @@ const goToLogin = () => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.2s;
 }
 
 .btn-main {
@@ -280,8 +372,8 @@ const goToLogin = () => {
 }
 
 .btn-ghost {
-  background: #fff;
-  border: 1px solid #9fddc7;
+  background: var(--bg-soft);
+  border: 1px solid var(--green-soft);
   color: var(--green-dark);
 }
 
@@ -354,7 +446,7 @@ h2 {
   height: 34px;
   border-radius: 50%;
   background: #2ac082;
-  border: 2px solid #f4fbf8;
+  border: 2px solid var(--bg);
   margin-left: -6px;
 }
 
@@ -370,9 +462,10 @@ h2 {
 .hero-shape {
   position: absolute;
   inset: 24px -8px -18px 20px;
-  background: #b3ebd2;
+  background: var(--hero-shape);
   border-radius: 58px;
   transform: rotate(4deg);
+  transition: background-color 0.3s;
 }
 
 .hero-visual img {
@@ -388,11 +481,13 @@ h2 {
 .floating-card {
   position: absolute;
   z-index: 2;
-  background: rgba(255, 255, 255, 0.96);
+  background: var(--card-bg);
+  color: var(--text);
   border-radius: 16px;
   padding: 12px 16px;
   font-weight: 700;
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
+  transition: background-color 0.3s;
 }
 
 .floating-card.top {
@@ -412,7 +507,8 @@ h2 {
 }
 
 .section-light {
-  background: #fff;
+  background: var(--bg-soft);
+  transition: background-color 0.3s;
 }
 
 .section-light h2,
@@ -442,10 +538,11 @@ h2 {
   border-radius: 24px;
   padding: 26px;
   box-shadow: 0 12px 24px rgba(10, 33, 54, 0.09);
+  transition: all 0.3s;
 }
 
 .service-card {
-  background: #ffffff;
+  background: var(--bg-soft);
   border: 1px solid var(--line);
 }
 
@@ -498,10 +595,11 @@ h2 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #c8efdf;
+  background: var(--check-bg);
   color: var(--green-dark);
   font-weight: 800;
   font-size: 0.76rem;
+  transition: background-color 0.3s;
 }
 
 .mosaic {
@@ -557,7 +655,8 @@ h2 {
 }
 
 .final-cta {
-  background: #f6fbf8;
+  background: var(--bg);
+  transition: background-color 0.3s;
 }
 
 .final-cta-inner {

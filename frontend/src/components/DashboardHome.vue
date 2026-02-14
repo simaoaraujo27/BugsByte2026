@@ -1,5 +1,6 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { auth } from '@/auth'
 
 const emit = defineEmits(['navigate'])
 
@@ -7,7 +8,7 @@ const goToDiary = () => emit('navigate', 'diario')
 const goToHungryMode = () => emit('navigate', 'tenho-fome')
 const goToFridgeMode = () => emit('navigate', 'tenho-fome')
 
-const greetingName = 'João'
+const greetingName = ref('Utilizador')
 
 const nutritionCards = [
   {
@@ -34,7 +35,7 @@ const nutritionCards = [
     unit: 'g',
     goalLabel: 'Meta: 250g',
     percent: 60,
-    accent: '#f59e0b',
+    accent: '#14b8a6',
     icon: '🍎'
   },
   {
@@ -96,10 +97,12 @@ const chartPoints = computed(() => {
   const span = Math.max(0.001, max - min)
   const top = 10
   const bottom = 16
+  const left = 8
+  const right = 92
   const usableHeight = 100 - top - bottom
 
   return values.map((value, index) => {
-    const x = values.length === 1 ? 50 : (index / (values.length - 1)) * 100
+    const x = values.length === 1 ? 50 : left + (index / (values.length - 1)) * (right - left)
     const y = top + ((max - value) / span) * usableHeight
     return { x, y, value }
   })
@@ -115,7 +118,8 @@ const areaPath = computed(() => {
   if (!chartPoints.value.length) return ''
   const first = chartPoints.value[0]
   const last = chartPoints.value[chartPoints.value.length - 1]
-  return `${chartLinePath.value} L ${last.x} 88 L ${first.x} 88 Z`
+  const baselineY = 84
+  return `${chartLinePath.value} L ${last.x} ${baselineY} L ${first.x} ${baselineY} Z`
 })
 
 const yTicks = computed(() => {
@@ -134,6 +138,29 @@ const weeklyGoals = [
   { label: '5 refeições registadas', done: true },
   { label: 'Treinar 3x', done: false }
 ]
+
+const formatDisplayName = (email) => {
+  if (!email) return 'Utilizador'
+  const localPart = email.split('@')[0] || 'Utilizador'
+  return localPart
+    .replace(/[._-]+/g, ' ')
+    .trim()
+    .split(' ')
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
+const loadGreetingName = async () => {
+  try {
+    const me = await auth.getMe()
+    greetingName.value = formatDisplayName(me?.username)
+  } catch {
+    greetingName.value = 'Utilizador'
+  }
+}
+
+onMounted(loadGreetingName)
 </script>
 
 <template>
@@ -207,7 +234,7 @@ const weeklyGoals = [
               />
             </svg>
 
-            <div class="x-axis">
+            <div class="x-axis" :style="{ gridTemplateColumns: `repeat(${currentSeries.labels.length}, minmax(0, 1fr))` }">
               <span v-for="label in currentSeries.labels" :key="label">{{ label }}</span>
             </div>
           </div>
@@ -359,6 +386,7 @@ const weeklyGoals = [
 
 .chart-card {
   min-height: 430px;
+  overflow: hidden;
 }
 
 .chart-head {
@@ -423,6 +451,8 @@ const weeklyGoals = [
   position: relative;
   display: grid;
   grid-template-rows: 1fr auto;
+  overflow: hidden;
+  border-radius: 12px;
 }
 
 .grid-lines {
@@ -462,7 +492,6 @@ const weeklyGoals = [
 
 .x-axis {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
   gap: 6px;
   font-size: 0.85rem;
   color: var(--text-muted);
@@ -478,7 +507,7 @@ const weeklyGoals = [
 }
 
 .streak-card {
-  background: linear-gradient(135deg, #ff8a00, #f59e0b);
+  background: linear-gradient(135deg, #0d9488, #14b8a6);
   color: #fff;
 }
 
@@ -573,7 +602,7 @@ const weeklyGoals = [
 }
 
 .action-card.hungry {
-  background: linear-gradient(135deg, #ff8a00, #f59e0b);
+  background: linear-gradient(135deg, #0f766e, #14b8a6);
 }
 
 .action-card.fridge {

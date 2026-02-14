@@ -1,9 +1,16 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { auth } from '@/auth';
 import { addRecipeToHistory } from '@/utils/recipeHistory';
 
-const emit = defineEmits(['choice']);
+const props = defineProps({
+  routeMode: {
+    type: String,
+    default: ''
+  }
+});
+
+const emit = defineEmits(['choice', 'route-mode-change']);
 
 // Views: 'landing', 'text_input', 'vision_input', 'mood_select', 'mood_analysis', 'recipe', 'rejection'
 const activeView = ref('landing');
@@ -32,6 +39,27 @@ const moods = [
   { id: 'outro', label: 'Outro', icon: '✨' }
 ];
 
+const routeModeToView = {
+  '': 'landing',
+  desejo: 'text_input',
+  estadoalma: 'mood_select',
+  visaochef: 'vision_input'
+};
+
+const viewToRouteMode = {
+  landing: '',
+  text_input: 'desejo',
+  mood_select: 'estadoalma',
+  vision_input: 'visaochef'
+};
+
+const setActiveView = (view) => {
+  activeView.value = view;
+  if (viewToRouteMode[view] !== undefined) {
+    emit('route-mode-change', viewToRouteMode[view]);
+  }
+};
+
 const storeInHistory = (data, source) => {
   if (!data?.recipe) return;
   addRecipeToHistory({
@@ -51,7 +79,7 @@ const generateTextRecipe = async () => {
   error.value = null;
 
   try {
-    const response = await fetch('http://localhost:8000/negotiator/negotiate', {
+    const response = await fetch('' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/negotiator/negotiate', {
       method: 'POST',
       headers: auth.getAuthHeaders(),
       body: JSON.stringify({ craving: craving.value, target_calories: 600 })
@@ -81,7 +109,7 @@ const selectMood = async (moodId) => {
   error.value = null;
 
   try {
-    const response = await fetch('http://localhost:8000/negotiator/analyze-mood', {
+    const response = await fetch('' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/negotiator/analyze-mood', {
       method: 'POST',
       headers: auth.getAuthHeaders(),
       body: JSON.stringify({ mood: moodId, craving: 'geral' })
@@ -102,7 +130,7 @@ const generateMoodRecipe = async () => {
   error.value = null;
 
   try {
-    const response = await fetch('http://localhost:8000/negotiator/negotiate', {
+    const response = await fetch('' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/negotiator/negotiate', {
       method: 'POST',
       headers: auth.getAuthHeaders(),
       body: JSON.stringify({ craving: 'Menu Saudável', mood: selectedMood.value })
@@ -141,7 +169,7 @@ const uploadAndAnalyze = async (file) => {
   formData.append('file', file);
 
   try {
-    const response = await fetch('http://localhost:8000/vision/analyze', {
+    const response = await fetch('' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/vision/analyze', {
       method: 'POST',
       headers: auth.getAuthHeaders(false),
       body: formData,
@@ -179,7 +207,7 @@ const saveRecipe = async () => {
       instructions: recipeResult.value.recipe.steps.join('\n')
     };
 
-    const createResponse = await fetch('http://localhost:8000/recipes/', {
+    const createResponse = await fetch('' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/recipes/', {
       method: 'POST',
       headers: auth.getAuthHeaders(),
       body: JSON.stringify(recipeData)
@@ -188,7 +216,7 @@ const saveRecipe = async () => {
     if (!createResponse.ok) throw new Error('Falha ao criar receita');
     const createdRecipe = await createResponse.json();
 
-    const favResponse = await fetch(`http://localhost:8000/users/me/favorites/recipes/${createdRecipe.id}`, {
+    const favResponse = await fetch(`' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/users/me/favorites/recipes/${createdRecipe.id}`, {
       method: 'POST',
       headers: auth.getAuthHeaders()
     });
@@ -217,7 +245,7 @@ const closeFeedbackDialog = () => {
 };
 
 const reset = () => {
-  activeView.value = 'landing';
+  setActiveView('landing');
   craving.value = '';
   selectedMood.value = '';
   moodAnalysis.value = null;
@@ -226,6 +254,17 @@ const reset = () => {
   detectedIngredients.value = [];
   error.value = null;
 };
+
+watch(
+  () => props.routeMode,
+  (mode) => {
+    const targetView = routeModeToView[mode] || 'landing';
+    if (targetView !== activeView.value) {
+      activeView.value = targetView;
+    }
+  },
+  { immediate: true }
+);
 </script>
 
 <template>
@@ -239,21 +278,21 @@ const reset = () => {
       </div>
       
       <div class="premium-cards-grid">
-        <div class="p-card" @click="activeView = 'text_input'">
+        <div class="p-card" @click="setActiveView('text_input')">
           <div class="p-card-icon">✍️</div>
           <h3>Desejo Específico</h3>
           <p>Converte o que te apetece numa versão saudável e gourmet.</p>
           <button class="p-card-btn">Começar</button>
         </div>
 
-        <div class="p-card featured" @click="activeView = 'mood_select'">
+        <div class="p-card featured" @click="setActiveView('mood_select')">
           <div class="p-card-icon">🕯️</div>
           <h3>Estado de Alma</h3>
           <p>Sintoniza a tua nutrição com as tuas emoções do momento.</p>
           <button class="p-card-btn">Check-in</button>
         </div>
 
-        <div class="p-card" @click="activeView = 'vision_input'">
+        <div class="p-card" @click="setActiveView('vision_input')">
           <div class="p-card-icon">📸</div>
           <h3>Visão do Chef</h3>
           <p>Cria magia culinária a partir dos teus ingredientes atuais.</p>

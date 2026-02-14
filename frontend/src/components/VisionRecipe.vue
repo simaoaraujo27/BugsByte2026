@@ -35,7 +35,7 @@ const uploadAndAnalyze = async (file) => {
 
   try {
     // For file uploads, we must NOT set Content-Type manually so the browser can set the boundary.
-    const response = await fetch('http://localhost:8000/vision/analyze', {
+    const response = await fetch('' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/vision/analyze', {
       method: 'POST',
       headers: auth.getAuthHeaders(false),
       body: formData,
@@ -67,7 +67,7 @@ const saveRecipe = async () => {
       instructions: result.value.recipe.steps.join('\n')
     };
 
-    const createResponse = await fetch('http://localhost:8000/recipes/', {
+    const createResponse = await fetch('' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/recipes/', {
       method: 'POST',
       headers: auth.getAuthHeaders(),
       body: JSON.stringify(recipeData)
@@ -77,7 +77,7 @@ const saveRecipe = async () => {
     const createdRecipe = await createResponse.json();
 
     // 2. Add to favorites
-    const favResponse = await fetch(`http://localhost:8000/users/me/favorites/recipes/${createdRecipe.id}`, {
+    const favResponse = await fetch(`' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/users/me/favorites/recipes/${createdRecipe.id}`, {
       method: 'POST',
       headers: auth.getAuthHeaders()
     });

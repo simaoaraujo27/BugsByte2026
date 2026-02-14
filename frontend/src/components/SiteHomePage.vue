@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import SidebarNav from './SidebarNav.vue'
 import DashboardHome from './DashboardHome.vue'
 import Negotiator from './Negotiator.vue'
@@ -24,6 +25,9 @@ const sections = [
   { id: 'definicoes', label: 'Definições', icon: '⚙️' }
 ]
 
+const route = useRoute()
+const router = useRouter()
+
 const activeSection = ref('inicio')
 const isDarkMode = ref(false)
 const colorBlindnessMode = ref('none')
@@ -34,6 +38,52 @@ const shopParams = ref({
   mode: 'shop',
   term: ''
 })
+const negotiatorRouteMode = ref('')
+
+const sectionIdToSlug = {
+  inicio: 'inicio',
+  'tenho-fome': 'tenhofome',
+  'visualizador': 'volumecalorias',
+  supermercados: 'supermercados',
+  diario: 'diario',
+  favoritos: 'favoritos',
+  historico: 'historico',
+  perfil: 'perfil',
+  definicoes: 'definicoes',
+  'gerar-receita': 'gerarreceita'
+}
+
+const sectionSlugToId = Object.fromEntries(
+  Object.entries(sectionIdToSlug).map(([id, slug]) => [slug, id])
+)
+
+const negotiatorModeToSubSlug = {
+  '': '',
+  desejo: 'desejo',
+  estadoalma: 'estadoalma',
+  visaochef: 'visaochef'
+}
+
+const negotiatorSubSlugToMode = Object.fromEntries(
+  Object.entries(negotiatorModeToSubSlug).map(([mode, slug]) => [slug, mode])
+)
+
+const resolveSectionFromRoute = (routeSection) => {
+  if (!routeSection) return 'inicio'
+  return sectionSlugToId[routeSection] || 'inicio'
+}
+
+const syncRouteWithSection = (id, replace = false, subsection = '') => {
+  const slug = sectionIdToSlug[id] || sectionIdToSlug.inicio
+  const sub = id === 'tenho-fome' && subsection ? `/${subsection}` : ''
+  const target = `/dashboard/${slug}${sub}`
+  if (route.path === target) return
+  if (replace) {
+    router.replace(target)
+  } else {
+    router.push(target)
+  }
+}
 
 const handleNegotiationChoice = (choice) => {
   if (choice.type === 'diy') {
@@ -42,7 +92,7 @@ const handleNegotiationChoice = (choice) => {
       mode: 'shop',
       term: ''
     }
-    activeSection.value = 'supermercados'
+    selectSection('supermercados')
   }
 }
 
@@ -50,6 +100,17 @@ const handleNegotiationChoice = (choice) => {
 // Or keep them. Usually better to reset if not coming from Negotiator.
 const selectSection = (id) => {
   activeSection.value = id
+  if (id !== 'tenho-fome') {
+    negotiatorRouteMode.value = ''
+  }
+  syncRouteWithSection(id, false, id === 'tenho-fome' ? negotiatorModeToSubSlug[negotiatorRouteMode.value] : '')
+}
+
+const handleNegotiatorModeChange = (mode) => {
+  if (activeSection.value !== 'tenho-fome') return
+  const normalized = negotiatorModeToSubSlug[mode] !== undefined ? mode : ''
+  negotiatorRouteMode.value = normalized
+  syncRouteWithSection('tenho-fome', false, negotiatorModeToSubSlug[normalized])
 }
 
 const toggleTheme = () => {
@@ -102,7 +163,21 @@ const containerStyle = computed(() => {
 })
 
 onMounted(() => {
-  const savedTheme = localStorage.getItem('dashboardTheme')
+  const initialSection = resolveSectionFromRoute(route.params.section)
+  const initialSubsection = typeof route.params.subsection === 'string' ? route.params.subsection : ''
+  activeSection.value = initialSection
+  if (initialSection === 'tenho-fome') {
+    negotiatorRouteMode.value = negotiatorSubSlugToMode[initialSubsection] || ''
+  } else {
+    negotiatorRouteMode.value = ''
+  }
+  syncRouteWithSection(
+    initialSection,
+    true,
+    initialSection === 'tenho-fome' ? negotiatorModeToSubSlug[negotiatorRouteMode.value] : ''
+  )
+
+  const savedTheme = localStorage.getItem('theme')
   if (savedTheme) {
     isDarkMode.value = savedTheme === 'dark'
   } else {
@@ -116,8 +191,40 @@ onMounted(() => {
 })
 
 watch(isDarkMode, (value) => {
-  localStorage.setItem('dashboardTheme', value ? 'dark' : 'light')
+  localStorage.setItem('theme', value ? 'dark' : 'light')
+  if (value) {
+    document.documentElement.classList.add('dark')
+  } else {
+    document.documentElement.classList.remove('dark')
+  }
 })
+
+watch(
+  () => [route.params.section, route.params.subsection],
+  ([sectionSlug, subsection]) => {
+    const nextSection = resolveSectionFromRoute(sectionSlug)
+    const normalizedSubsection = typeof subsection === 'string' ? subsection : ''
+
+    if (nextSection !== activeSection.value) {
+      activeSection.value = nextSection
+    }
+
+    if (nextSection === 'tenho-fome') {
+      negotiatorRouteMode.value = negotiatorSubSlugToMode[normalizedSubsection] || ''
+    } else {
+      negotiatorRouteMode.value = ''
+    }
+
+    const expectedSection = sectionIdToSlug[nextSection]
+    const expectedSub = nextSection === 'tenho-fome'
+      ? negotiatorModeToSubSlug[negotiatorRouteMode.value]
+      : ''
+
+    if (sectionSlug !== expectedSection || normalizedSubsection !== expectedSub) {
+      syncRouteWithSection(nextSection, true, expectedSub)
+    }
+  }
+)
 </script>
 
 <template>
@@ -148,7 +255,11 @@ watch(isDarkMode, (value) => {
       </div>
 
       <div v-else-if="activeSection === 'tenho-fome'">
-        <Negotiator @choice="handleNegotiationChoice" />
+        <Negotiator
+          :route-mode="negotiatorRouteMode"
+          @choice="handleNegotiationChoice"
+          @route-mode-change="handleNegotiatorModeChange"
+        />
       </div>
       
       <div v-else-if="activeSection === 'gerar-receita'">
