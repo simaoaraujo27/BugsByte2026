@@ -1,14 +1,17 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { auth, API_URL } from '@/auth'
+import { useUser } from '@/store/userStore'
 
 const emit = defineEmits(['navigate'])
+
+const userStore = useUser()
+const displayName = computed(() => userStore.displayName.value)
 
 const goToDiary = () => emit('navigate', 'diario')
 const goToHungryMode = () => emit('navigate', 'tenho-fome')
 const goToFridgeMode = () => emit('navigate', 'tenho-fome')
 
-const greetingName = ref('Utilizador')
 const dashboardData = ref({
   consumed_calories: 0,
   calorie_goal: 2000,
@@ -23,7 +26,7 @@ const nutritionCards = computed(() => [
   {
     title: 'Calorias',
     value: String(dashboardData.value.consumed_calories),
-    unit: '',
+    unit: ' kcal',
     goalLabel: `Meta: ${dashboardData.value.calorie_goal} kcal`,
     percent: Math.min(100, Math.round((dashboardData.value.consumed_calories / (dashboardData.value.calorie_goal || 1)) * 100)),
     accent: '#16a34a',
@@ -50,7 +53,7 @@ const nutritionCards = computed(() => [
   {
     title: 'Água',
     value: String(dashboardData.value.water_liters),
-    unit: 'L',
+    unit: ' L',
     goalLabel: 'Meta: 2.5L',
     percent: Math.min(100, Math.round((dashboardData.value.water_liters / 2.5) * 100)),
     accent: '#0891b2',
@@ -164,20 +167,8 @@ const fetchDashboardData = async () => {
   }
 }
 
-const loadGreetingName = async () => {
-  try {
-    const me = await auth.getMe()
-    greetingName.value = formatDisplayName(me?.username)
-  } catch {
-    greetingName.value = 'Utilizador'
-  }
-}
-
 const loadData = async () => {
-  await Promise.all([
-    loadGreetingName(),
-    fetchDashboardData()
-  ])
+  await fetchDashboardData()
 }
 
 onMounted(loadData)
@@ -187,7 +178,7 @@ onMounted(loadData)
   <div class="dashboard-home">
     <header class="header-row">
       <div>
-        <h1>Olá, {{ greetingName }}! 👋</h1>
+        <h1>Olá, {{ displayName }}! 👋</h1>
         <p>Aqui está o resumo da sua jornada nutricional</p>
       </div>
       <button class="btn-register" @click="goToDiary">+ Registar Refeição</button>
@@ -199,7 +190,7 @@ onMounted(loadData)
           <div class="stat-icon" :style="{ backgroundColor: card.accent }">{{ card.icon }}</div>
           <div>
             <p class="stat-label">{{ card.title }}</p>
-            <h3>{{ card.value }}{{ card.unit }}</h3>
+            <h3>{{ card.value }}<span class="stat-unit">{{ card.unit }}</span></h3>
           </div>
         </div>
         <div class="stat-meta">
@@ -264,7 +255,7 @@ onMounted(loadData)
       <aside class="side-stack">
         <article class="card streak-card">
           <p class="streak-label">🔥 Dias Consecutivos</p>
-          <h3>{{ streakDays }}</h3>
+          <h3>{{ streakDays }} dias</h3>
           <p>Continue assim! 🔥</p>
         </article>
 
@@ -374,6 +365,15 @@ onMounted(loadData)
   margin: 3px 0 0;
   font-size: 2rem;
   line-height: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.stat-unit {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-muted);
 }
 
 .stat-meta {

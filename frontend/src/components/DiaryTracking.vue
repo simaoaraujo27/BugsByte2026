@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { auth, API_URL } from '@/auth'
 
 const STORAGE_KEY = 'nutri_diary_tracking_v1'
@@ -53,39 +53,97 @@ const autoDraft = ref({
   text: ''
 })
 const isListening = ref(false)
+let recognitionInstance = null
 
-const startListening = () => {
-  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-    alert('O seu navegador não suporta reconhecimento de voz.')
+const toggleListening = async () => {
+  if (isListening.value) {
+    if (recognitionInstance) {
+      recognitionInstance.stop()
+    }
     return
   }
-  
-  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition
-  const recognition = new Recognition()
-  
-  recognition.lang = 'pt-PT'
-  recognition.interimResults = false
-  recognition.maxAlternatives = 1
-  
-  recognition.onstart = () => {
-    isListening.value = true
+
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    alert('O seu navegador não suporta reconhecimento de voz. Use Chrome, Edge ou Safari.')
+    return
   }
-  
-  recognition.onresult = (event) => {
-    const transcript = event.results[0][0].transcript
-    autoDraft.value.text = transcript
+
+  try {
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    recognitionInstance = new Recognition()
+    
+    // Explicitly set language to Portuguese (Portugal)
+    recognitionInstance.lang = 'pt-PT'
+    recognitionInstance.continuous = false
+    recognitionInstance.interimResults = true
+    recognitionInstance.maxAlternatives = 1
+    
+    // Some browsers might need the lang property set on the prototype or early
+    if ('lang' in recognitionInstance) {
+      recognitionInstance.lang = 'pt-PT'
+    }
+    
+    recognitionInstance.onstart = () => {
+      console.log('Speech recognition started')
+      isListening.value = true
+    }
+    
+    recognitionInstance.onresult = (event) => {
+      console.log('Speech recognition onresult triggered', event)
+      let transcript = ''
+      
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i]
+        if (result.isFinal) {
+          transcript += result[0].transcript + ' '
+        } else {
+          transcript += result[0].transcript
+        }
+      }
+      
+      if (transcript.trim()) {
+        autoDraft.value.text = transcript.trim()
+      }
+    }
+    
+    recognitionInstance.onerror = (event) => {
+      console.error('Speech recognition error:', event.error, event)
+      
+      if (event.error === 'not-allowed' || event.error === 'permission-denied') {
+        alert('Permissão de microfone negada. Clique no ícone de cadeado na barra de endereço.')
+      } else if (event.error === 'audio-capture') {
+        alert('Erro ao capturar áudio. Verifique se o microfone correto está selecionado nas definições do sistema e do browser.')
+      } else if (event.error === 'no-speech') {
+        console.log('Nenhuma fala detectada')
+      } else if (event.error === 'network') {
+        alert('Erro de rede. O reconhecimento de voz requer conexão à internet.')
+      } else if (event.error !== 'aborted') {
+        alert('Erro: ' + event.error)
+      }
+      
+      stopListening()
+    }
+    
+    recognitionInstance.onend = () => {
+      console.log('Speech recognition ended')
+      stopListening()
+    }
+    
+    recognitionInstance.start()
+    console.log('Speech recognition start() called')
+  } catch (err) {
+    console.error('Failed to start speech recognition:', err)
+    stopListening()
+    alert('Erro ao iniciar: ' + err.message)
   }
-  
-  recognition.onerror = (event) => {
-    console.error('Speech recognition error', event.error)
-    isListening.value = false
+}
+
+const stopListening = () => {
+  isListening.value = false
+  if (recognitionInstance) {
+    try { recognitionInstance.stop() } catch (e) {}
+    recognitionInstance = null
   }
-  
-  recognition.onend = () => {
-    isListening.value = false
-  }
-  
-  recognition.start()
 }
 
 const today = new Date()
@@ -242,6 +300,21 @@ const macroPercentages = computed(() => {
   }
 })
 
+const macroGoals = computed(() => {
+  const total = calorieGoal.value
+  return {
+    protein: Math.round((total * 0.30) / 4),
+    carbs: Math.round((total * 0.45) / 4),
+    fat: Math.round((total * 0.25) / 9)
+  }
+})
+
+const macroProgress = computed(() => ({
+  protein: Math.min(100, Math.round((consumedProtein.value / (macroGoals.value.protein || 1)) * 100)),
+  carbs: Math.min(100, Math.round((consumedCarbs.value / (macroGoals.value.carbs || 1)) * 100)),
+  fat: Math.min(100, Math.round((consumedFat.value / (macroGoals.value.fat || 1)) * 100))
+}))
+
 const isDayOnTarget = (day) => {
   const total = mealSections.reduce((sum, section) => {
     const list = day.meals?.[section.id] || []
@@ -385,9 +458,9 @@ const calculateNutrition = async () => {
       body: JSON.stringify({ food_text: autoDraft.value.text })
     })
     
-    if (!res.ok) throw new Error('Falha ao calcular.')
-    
     const data = await res.json()
+    if (!res.ok) throw new Error(data.detail || 'Falha ao calcular.')
+    
     // Populate manual fields with result
     mealDraft.value.name = data.name
     mealDraft.value.grams = data.estimated_grams
@@ -400,7 +473,34 @@ const calculateNutrition = async () => {
     composerMode.value = 'manual'
   } catch (err) {
     console.error(err)
-    alert('Erro ao calcular macros. Tente novamente.')
+    alert(err.message)
+  } finally {
+    autoLoading.value = false
+  }
+}
+
+const estimateTypedFood = async () => {
+  if (!mealDraft.value.name.trim()) return
+  autoLoading.value = true
+  
+  try {
+    const res = await fetch(`${API_URL}/negotiator/nutrition`, {
+      method: 'POST',
+      headers: auth.getAuthHeaders(),
+      body: JSON.stringify({ food_text: mealDraft.value.name })
+    })
+    
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.detail || 'Falha ao calcular.')
+    
+    mealDraft.value.grams = data.estimated_grams
+    mealDraft.value.calories = data.calories
+    mealDraft.value.protein = data.protein
+    mealDraft.value.carbs = data.carbs
+    mealDraft.value.fat = data.fat
+  } catch (err) {
+    console.error(err)
+    alert(err.message)
   } finally {
     autoLoading.value = false
   }
@@ -411,7 +511,11 @@ const addMeal = async (sectionId) => {
   const grams = toNumber(mealDraft.value.grams)
   const calories = toNumber(mealDraft.value.calories)
 
-  if (!name || grams <= 0 || calories <= 0) return
+  // Only name and calories are strictly required now
+  if (!name || calories <= 0) {
+    alert('Por favor, preencha o nome e as calorias.')
+    return
+  }
 
   let protein = toNumber(mealDraft.value.protein)
   let carbs = toNumber(mealDraft.value.carbs)
@@ -593,6 +697,10 @@ onMounted(() => {
   ensureDay(dateKey.value)
 })
 
+onUnmounted(() => {
+  stopListening()
+})
+
 watch(dateKey, (key) => {
   ensureDay(key)
 })
@@ -692,22 +800,57 @@ watch(
             </div>
 
             <div v-if="composerMode === 'manual'" class="mode-manual">
-              <input v-model="mealDraft.name" type="text" placeholder="Nome da refeição" />
-              <button type="button" class="search-food-btn" @click="openFoodSearchModal">
-                Pesquisar alimento
-              </button>
-              <p v-if="selectedFoodPer100g" class="selected-food">
-                Selecionado: <strong>{{ selectedFoodPer100g.name }}</strong>
-              </p>
-              <input v-model="mealDraft.grams" type="number" min="1" placeholder="Quantidade (g)" />
-              <input v-model="mealDraft.calories" type="number" min="1" placeholder="kcal" />
-              <div class="macro-inputs">
-                <input v-model="mealDraft.protein" type="number" min="0" step="0.1" placeholder="Prot. g" />
-                <input v-model="mealDraft.carbs" type="number" min="0" step="0.1" placeholder="Hidr. g" />
-                <input v-model="mealDraft.fat" type="number" min="0" step="0.1" placeholder="Gord. g" />
+              <div class="form-group-diary">
+                <label>Alimento</label>
+                <div class="input-with-action">
+                  <input v-model="mealDraft.name" type="text" placeholder="Ex: Frango Grelhado" />
+                  <button 
+                    type="button" 
+                    class="ai-estimate-btn" 
+                    :disabled="autoLoading || !mealDraft.name.trim()"
+                    @click="estimateTypedFood"
+                    title="Pedir à IA para estimar macros deste alimento"
+                  >
+                    {{ autoLoading ? '...' : '✨ Estimar' }}
+                  </button>
+                </div>
+                <button type="button" class="search-food-btn" @click="openFoodSearchModal">
+                  Pesquisar na Base de Dados
+                </button>
               </div>
+
+              <p v-if="selectedFoodPer100g" class="selected-food">
+                ✅ Selecionado: <strong>{{ selectedFoodPer100g.name }}</strong>
+              </p>
+
+              <div class="manual-grid-diary">
+                <div class="form-group-diary">
+                  <label>Peso (g)</label>
+                  <input v-model="mealDraft.grams" type="number" min="1" placeholder="g" />
+                </div>
+                <div class="form-group-diary">
+                  <label>Calorias (kcal)</label>
+                  <input v-model="mealDraft.calories" type="number" min="1" placeholder="kcal" />
+                </div>
+              </div>
+
+              <div class="macro-inputs-diary">
+                <div class="form-group-diary">
+                  <label>Prot. (g)</label>
+                  <input v-model="mealDraft.protein" type="number" min="0" step="0.1" placeholder="g" />
+                </div>
+                <div class="form-group-diary">
+                  <label>Hidr. (g)</label>
+                  <input v-model="mealDraft.carbs" type="number" min="0" step="0.1" placeholder="g" />
+                </div>
+                <div class="form-group-diary">
+                  <label>Gord. (g)</label>
+                  <input v-model="mealDraft.fat" type="number" min="0" step="0.1" placeholder="g" />
+                </div>
+              </div>
+
               <div class="composer-actions">
-                <button type="button" class="save-btn" @click="addMeal(section.id)">Guardar</button>
+                <button type="button" class="save-btn" @click="addMeal(section.id)">Guardar Refeição</button>
                 <button type="button" class="cancel-btn" @click="openComposer('')">Cancelar</button>
               </div>
             </div>
@@ -725,7 +868,8 @@ watch(
                   type="button" 
                   class="mic-btn" 
                   :class="{ active: isListening }"
-                  @click="startListening"
+                  :title="isListening ? 'Clique para parar a gravação' : 'Clique para falar'"
+                  @click="toggleListening"
                 >
                   🎤
                 </button>
@@ -758,23 +902,38 @@ watch(
       </section>
 
       <aside class="stats-column">
-        <article class="side-card">
-          <h3>Macros</h3>
-          <div class="macro-row">
-            <span>Proteínas</span>
-            <strong>{{ consumedProtein }}g ({{ macroPercentages.protein }}%)</strong>
+        <article class="side-card macro-panel">
+          <h3>Metas de Macros</h3>
+          
+          <div class="macro-item">
+            <div class="macro-row">
+              <span class="macro-label">Proteínas</span>
+              <strong class="macro-val">{{ consumedProtein }}g <small>/ {{ macroGoals.protein }}g</small></strong>
+            </div>
+            <div class="bar-outer">
+              <div class="fill-inner protein" :style="{ width: `${macroProgress.protein}%` }"></div>
+            </div>
           </div>
-          <div class="bar"><div class="fill protein" :style="{ width: `${macroPercentages.protein}%` }"></div></div>
-          <div class="macro-row">
-            <span>Hidratos</span>
-            <strong>{{ consumedCarbs }}g ({{ macroPercentages.carbs }}%)</strong>
+
+          <div class="macro-item">
+            <div class="macro-row">
+              <span class="macro-label">Hidratos</span>
+              <strong class="macro-val">{{ consumedCarbs }}g <small>/ {{ macroGoals.carbs }}g</small></strong>
+            </div>
+            <div class="bar-outer">
+              <div class="fill-inner carbs" :style="{ width: `${macroProgress.carbs}%` }"></div>
+            </div>
           </div>
-          <div class="bar"><div class="fill carbs" :style="{ width: `${macroPercentages.carbs}%` }"></div></div>
-          <div class="macro-row">
-            <span>Gorduras</span>
-            <strong>{{ consumedFat }}g ({{ macroPercentages.fat }}%)</strong>
+
+          <div class="macro-item">
+            <div class="macro-row">
+              <span class="macro-label">Gorduras</span>
+              <strong class="macro-val">{{ consumedFat }}g <small>/ {{ macroGoals.fat }}g</small></strong>
+            </div>
+            <div class="bar-outer">
+              <div class="fill-inner fat" :style="{ width: `${macroProgress.fat}%` }"></div>
+            </div>
           </div>
-          <div class="bar"><div class="fill fat" :style="{ width: `${macroPercentages.fat}%` }"></div></div>
         </article>
 
         <article class="side-card streak">
@@ -1205,7 +1364,65 @@ watch(
 
 .mode-manual, .mode-auto {
   display: grid;
+  gap: 12px;
+}
+
+.input-with-action {
+  display: flex;
   gap: 8px;
+}
+
+.input-with-action input {
+  flex: 1;
+}
+
+.ai-estimate-btn {
+  background: rgba(20, 184, 166, 0.1);
+  border: 1px solid #14b8a6;
+  color: #14b8a6;
+  border-radius: 8px;
+  padding: 0 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.ai-estimate-btn:hover:not(:disabled) {
+  background: #14b8a6;
+  color: white;
+}
+
+.ai-estimate-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: var(--line);
+  color: var(--text-muted);
+}
+
+.form-group-diary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-group-diary label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.manual-grid-diary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.macro-inputs-diary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
 }
 
 .voice-input-wrapper {
@@ -1343,41 +1560,72 @@ watch(
   padding: 14px;
 }
 
-.side-card h3 {
-  margin: 0 0 10px;
+.macro-panel h3 {
+  margin: 0 0 16px;
+  font-size: 1.1rem;
+  letter-spacing: -0.02em;
+}
+
+.macro-item {
+  margin-bottom: 18px;
+}
+
+.macro-item:last-child {
+  margin-bottom: 6px;
 }
 
 .macro-row {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
-  margin-top: 8px;
+  margin-bottom: 6px;
 }
 
-.bar {
-  margin-top: 6px;
+.macro-label {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-main);
+}
+
+.macro-val {
+  font-size: 1rem;
+  color: var(--text-main);
+}
+
+.macro-val small {
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 0.85rem;
+}
+
+.bar-outer {
   width: 100%;
-  height: 8px;
-  background: rgba(148, 163, 184, 0.28);
+  height: 10px;
+  background: rgba(148, 163, 184, 0.15);
   border-radius: 999px;
   overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
 }
 
-.fill {
+.fill-inner {
   height: 100%;
+  border-radius: 999px;
+  transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.protein {
-  background: #14b8a6;
+.fill-inner.protein {
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
 }
 
-.carbs {
-  background: #3b82f6;
+.fill-inner.carbs {
+  background: linear-gradient(90deg, #10b981, #34d399);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
 }
 
-.fat {
-  background: #f59e0b;
+.fill-inner.fat {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.3);
 }
 
 .streak p {

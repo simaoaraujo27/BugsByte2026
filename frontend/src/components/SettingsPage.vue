@@ -36,34 +36,10 @@
         <option value="achromatopsia">Acromatopsia (Monocromático)</option>
       </select>
     </div>
-
-    <div class="settings-card profile-section">
-      <div style="width: 100%;">
-        <h3>Editar Perfil</h3>
-        <small>Altere o seu nome de utilizador ou palavra-passe.</small>
-        
-        <form @submit.prevent="updateProfile" class="profile-form">
-          <div class="form-group">
-            <label>Novo Nome de Utilizador</label>
-            <input v-model="profileData.username" type="text" placeholder="Utilizador" />
-          </div>
-          <div class="form-group">
-            <label>Nova Palavra-passe</label>
-            <input v-model="profileData.password" type="password" placeholder="••••••••" />
-          </div>
-          <button type="submit" class="save-btn" :disabled="isSaving">
-            {{ isSaving ? 'A guardar...' : 'Guardar Alterações' }}
-          </button>
-        </form>
-        <p v-if="message" :class="['message', message.type]">{{ message.text }}</p>
-      </div>
-    </div>
   </div>
 </template>
 
 <script>
-import { auth, API_URL } from '@/auth'
-
 export default {
   props: {
     isDarkMode: {
@@ -75,57 +51,7 @@ export default {
       default: 'none'
     }
   },
-  emits: ['toggle-theme', 'update-color-blindness'],
-  data() {
-    return {
-      profileData: {
-        username: '',
-        password: ''
-      },
-      isSaving: false,
-      message: null
-    }
-  },
-  methods: {
-    async updateProfile() {
-      if (!this.profileData.username && !this.profileData.password) return
-      
-      this.isSaving = true
-      this.message = null
-      
-      try {
-        const body = {}
-        if (this.profileData.username) body.username = this.profileData.username
-        if (this.profileData.password) body.password = this.profileData.password
-        
-        const res = await fetch(`${API_URL}/users/me`, {
-          method: 'PUT',
-          headers: auth.getAuthHeaders(),
-          body: JSON.stringify(body)
-        })
-        
-        if (!res.ok) {
-          const err = await res.json()
-          throw new Error(err.detail || 'Falha ao atualizar perfil')
-        }
-        
-        this.message = { type: 'success', text: 'Perfil atualizado com sucesso!' }
-        this.profileData.password = ''
-      } catch (err) {
-        this.message = { type: 'error', text: err.message }
-      } finally {
-        this.isSaving = false
-      }
-    }
-  },
-  async mounted() {
-    try {
-      const me = await auth.getMe()
-      if (me) this.profileData.username = me.username
-    } catch (err) {
-      console.error('Error loading profile:', err)
-    }
-  }
+  emits: ['toggle-theme', 'update-color-blindness']
 };
 </script>
 

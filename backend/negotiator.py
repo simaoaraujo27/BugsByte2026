@@ -89,8 +89,11 @@ def analyze_nutrition(food_text: str) -> schemas.NutritionAnalysisResponse:
         f"Analisa a informação nutricional para: '{food_text}'. "
         "Estima as calorias e macronutrientes totais para a quantidade indicada. "
         "Se a quantidade não for explícita, assume uma porção padrão média. "
+        "VALIDAÇÃO: Se o item indicado NÃO for um alimento ou for algo impossível de comer (ex: pedras, objetos), define 'is_food' como false e fornece uma 'error_message' explicativa em PT-PT. "
         "Responde APENAS com um objeto JSON com este formato (sem markdown): "
         "{ "
+        "  'is_food': true, "
+        "  'error_message': null, "
         "  'name': 'Nome curto e claro do alimento (PT-PT)', "
         "  'calories': 0, "
         "  'protein': 0.0, "
@@ -113,8 +116,12 @@ def analyze_nutrition(food_text: str) -> schemas.NutritionAnalysisResponse:
         content = response.choices[0].message.content
         data = json.loads(content)
         
+        if not data.get("is_food", True):
+            raise HTTPException(status_code=400, detail=data.get("error_message", "O item indicado não é um alimento válido."))
+        
         return schemas.NutritionAnalysisResponse(
             food_text=food_text,
+            is_food=True,
             name=data.get("name", food_text),
             calories=data.get("calories", 0),
             protein=data.get("protein", 0),

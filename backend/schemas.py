@@ -53,6 +53,8 @@ class Restaurant(RestaurantBase):
 
 class UserBase(BaseModel):
     username: str
+    full_name: Optional[str] = None
+    profile_image: Optional[str] = None
     peso: float
     altura: float
     sexo: str
@@ -75,13 +77,15 @@ class User(UserBase):
 
 class UserUpdate(BaseModel):
     username: Optional[str] = None
+    full_name: Optional[str] = None
+    profile_image: Optional[str] = None
     password: Optional[str] = None
     peso: Optional[float] = None
     altura: Optional[float] = None
     sexo: Optional[str] = None
     idade: Optional[int] = None
     goal: Optional[str] = None
-    activity_level: Optional[int] = None
+    activity_level: Optional[str] = None
 
 class DashboardResponse(BaseModel):
     consumed_calories: int
@@ -155,6 +159,8 @@ class NutritionAnalysisRequest(BaseModel):
 
 class NutritionAnalysisResponse(BaseModel):
     food_text: str
+    is_food: bool = True
+    error_message: Optional[str] = None
     name: str
     calories: int
     protein: float

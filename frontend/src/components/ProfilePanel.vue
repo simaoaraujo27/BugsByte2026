@@ -1,24 +1,96 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { auth, API_URL } from '@/auth'
+import { useUser } from '@/store/userStore'
 
-const loading = ref(true)
+const { user: userProfile, fetchUser, setUser, displayName } = useUser()
+
+const loading = ref(false)
 const errorMessage = ref('')
 const passwordMessage = ref('')
 const passwordLoading = ref(false)
-const userProfile = ref(null)
-
-const displayName = computed(() => {
-  const email = userProfile.value?.username || ''
-  const localPart = email.split('@')[0] || 'Utilizador'
-  return localPart
-    .replace(/[._-]+/g, ' ')
-    .trim()
-    .split(' ')
-    .filter(Boolean)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
+const isEditing = ref(false)
+const editForm = ref({
+  username: '',
+  full_name: '',
+  peso: 0,
+  altura: 0,
+  idade: 0,
+  sexo: '',
+  goal: '',
+  activity_level: ''
 })
+const isSaving = ref(false)
+const showImageMenu = ref(false)
+const profileImageInput = ref(null)
+const profileCameraInput = ref(null)
+const videoRef = ref(null)
+const canvasRef = ref(null)
+const isCameraActive = ref(false)
+const stream = ref(null)
+
+const startCamera = async () => {
+  showImageMenu.value = false
+  // On mobile, try to use native camera interface first for better reliability
+  if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+    profileCameraInput.value.click();
+    return;
+  }
+
+  isCameraActive.value = true
+  try {
+    stream.value = await navigator.mediaDevices.getUserMedia({ 
+      video: { facingMode: 'user' } 
+    });
+    if (videoRef.value) {
+      videoRef.value.srcObject = stream.value;
+    }
+  } catch (err) {
+    console.error("Error accessing camera:", err);
+    alert("Não foi possível aceder à câmara.");
+    isCameraActive.value = false;
+  }
+};
+
+const stopCamera = () => {
+  if (stream.value) {
+    stream.value.getTracks().forEach(track => track.stop());
+    stream.value = null;
+  }
+  isCameraActive.value = false;
+};
+
+const capturePhoto = () => {
+  const video = videoRef.value;
+  const canvas = canvasRef.value;
+  if (video && canvas) {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const context = canvas.getContext('2d');
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    const base64Image = canvas.toDataURL('image/jpeg', 0.8);
+    uploadProfileImage(base64Image);
+    stopCamera();
+  }
+};
+
+const uploadProfileImage = async (base64Image) => {
+  try {
+    const res = await fetch(`${API_URL}/users/me`, {
+      method: 'PUT',
+      headers: auth.getAuthHeaders(),
+      body: JSON.stringify({ profile_image: base64Image })
+    })
+
+    if (!res.ok) throw new Error('Falha ao carregar imagem')
+    
+    const updatedUser = await res.json()
+    setUser(updatedUser)
+  } catch (err) {
+    alert(err.message)
+  }
+};
 
 const formatGender = (value) => {
   const normalized = (value || '').toLowerCase()
@@ -68,15 +140,15 @@ const bmr = computed(() => {
 
 const activityFactor = computed(() => {
   const level = (userProfile.value?.activity_level || '').toLowerCase()
-  if (level === 'sedentary') return 1.0
-  if (level === 'light') return 1.175
-  if (level === 'moderate') return 1.35
-  if (level === 'high') return 1.525
-  return null
+  if (level === 'sedentary') return 1.2
+  if (level === 'light') return 1.375
+  if (level === 'moderate') return 1.55
+  if (level === 'high') return 1.725
+  return 1.2
 })
 
 const tdee = computed(() => {
-  if (!bmr.value || !activityFactor.value) return null
+  if (!bmr.value) return null
   return bmr.value * activityFactor.value
 })
 
@@ -93,25 +165,100 @@ const allergiesText = computed(() => {
   return userProfile.value.allergens.map((item) => item.name).join(', ')
 })
 
-const fetchProfile = async () => {
+const fetchProfileData = async () => {
+  if (userProfile.value) {
+    syncEditForm()
+    return
+  }
+  
   loading.value = true
   errorMessage.value = ''
 
   try {
-    userProfile.value = await auth.getMe()
+    await fetchUser()
     
     if (!userProfile.value) {
       errorMessage.value = 'Não existe nenhum perfil disponível.'
+    } else {
+      syncEditForm()
     }
   } catch (error) {
-    if (error instanceof TypeError) {
-      errorMessage.value = 'Não foi possível ligar ao servidor. Verifique se o backend está ativo.'
-    } else {
-      errorMessage.value = error.message || 'Erro ao obter o perfil.'
-    }
+    errorMessage.value = error.message || 'Erro ao obter o perfil.'
   } finally {
     loading.value = false
   }
+}
+
+const syncEditForm = () => {
+  if (!userProfile.value) return
+  editForm.value = {
+    username: userProfile.value.username,
+    full_name: userProfile.value.full_name || '',
+    peso: userProfile.value.peso,
+    altura: userProfile.value.altura,
+    idade: userProfile.value.idade,
+    sexo: userProfile.value.sexo,
+    goal: userProfile.value.goal,
+    activity_level: userProfile.value.activity_level
+  }
+}
+
+const toggleEdit = () => {
+  if (isEditing.value) {
+    syncEditForm()
+  }
+  isEditing.value = !isEditing.value
+}
+
+const saveProfile = async () => {
+  isSaving.value = true
+  try {
+    const res = await fetch(`${API_URL}/users/me`, {
+      method: 'PUT',
+      headers: auth.getAuthHeaders(),
+      body: JSON.stringify(editForm.value)
+    })
+
+    if (!res.ok) {
+      const err = await res.json()
+      throw new Error(err.detail || 'Falha ao atualizar perfil')
+    }
+
+    const updatedUser = await res.json()
+    setUser(updatedUser)
+    isEditing.value = false
+  } catch (err) {
+    alert(err.message)
+  } finally {
+    isSaving.value = false
+  }
+}
+
+const triggerImageUpload = () => {
+  showImageMenu.value = false
+  profileImageInput.value.click()
+}
+
+const handleImageUpload = async (event) => {
+  const file = event.target.files[0]
+  if (!file) return
+
+  // Basic validation
+  if (!file.type.startsWith('image/')) {
+    alert('Por favor, selecione uma imagem.')
+    return
+  }
+
+  if (file.size > 2 * 1024 * 1024) {
+    alert('A imagem deve ter no máximo 2MB.')
+    return
+  }
+
+  const reader = new FileReader()
+  reader.onload = async (e) => {
+    uploadProfileImage(e.target.result);
+  }
+  reader.readAsDataURL(file)
 }
 
 const requestPasswordChange = async () => {
@@ -142,23 +289,59 @@ const requestPasswordChange = async () => {
   }
 }
 
-onMounted(fetchProfile)
+onMounted(fetchProfileData)
 </script>
 
 <template>
   <section class="profile-panel">
     <header class="panel-header">
-      <h1>Perfil</h1>
-      <p>Informação da conta e métricas de saúde</p>
+      <div class="header-content">
+        <div>
+          <h1>Perfil</h1>
+          <p>Informação da conta e métricas de saúde</p>
+        </div>
+        <button class="edit-toggle-btn" @click="toggleEdit">
+          {{ isEditing ? 'Cancelar' : '📝 Editar Perfil' }}
+        </button>
+      </div>
     </header>
 
     <div v-if="loading" class="status-card">A carregar perfil...</div>
     <div v-else-if="errorMessage" class="status-card error">{{ errorMessage }}</div>
 
     <template v-else-if="userProfile">
+      <!-- Camera Modal/Overlay -->
+      <div v-if="isCameraActive" class="camera-overlay">
+        <div class="camera-modal">
+          <video ref="videoRef" autoplay playsinline class="profile-video"></video>
+          <canvas ref="canvasRef" style="display: none"></canvas>
+          <div class="camera-actions">
+            <button @click="stopCamera" class="btn-cancel-cam">Cancelar</button>
+            <button @click="capturePhoto" class="btn-capture-profile"></button>
+            <div style="width: 80px;"></div>
+          </div>
+        </div>
+      </div>
+
       <article class="hero-card">
         <div class="hero-content">
-          <div class="avatar-tile" aria-hidden="true">👤</div>
+          <div class="avatar-group">
+            <div class="avatar-container" @click="showImageMenu = !showImageMenu">
+              <img v-if="userProfile.profile_image" :src="userProfile.profile_image" class="avatar-img" />
+              <div v-else class="avatar-tile" aria-hidden="true">👤</div>
+              <div class="avatar-overlay">
+                <span>Mudar</span>
+              </div>
+            </div>
+            
+            <div v-if="showImageMenu" class="image-menu" v-click-outside="() => showImageMenu = false">
+              <button @click="triggerImageUpload">📁 Da Galeria</button>
+              <button @click="startCamera">📷 Usar Câmara</button>
+            </div>
+            
+            <input type="file" ref="profileImageInput" style="display: none" accept="image/*" @change="handleImageUpload" />
+            <input type="file" ref="profileCameraInput" style="display: none" accept="image/*" capture="user" @change="handleImageUpload" />
+          </div>
           <div>
             <h2>{{ displayName }}</h2>
             <p class="hero-email">✉ {{ userProfile.username }}</p>
@@ -168,8 +351,66 @@ onMounted(fetchProfile)
 
       <div class="grid">
         <article class="card details-card">
-          <h3><span class="badge green">●</span> Dados Pessoais</h3>
-          <ul class="detail-list">
+          <div class="card-header">
+            <h3><span class="badge green">●</span> Dados Pessoais</h3>
+          </div>
+          
+          <div v-if="isEditing" class="edit-grid">
+            <div class="form-group">
+              <label>Nome Completo</label>
+              <input v-model="editForm.full_name" type="text" placeholder="O seu nome" />
+            </div>
+            <div class="form-group">
+              <label>Utilizador (Email)</label>
+              <input v-model="editForm.username" type="text" />
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Idade</label>
+                <input v-model.number="editForm.idade" type="number" />
+              </div>
+              <div class="form-group">
+                <label>Género</label>
+                <select v-model="editForm.sexo">
+                  <option value="male">Masculino</option>
+                  <option value="female">Feminino</option>
+                  <option value="other">Outro</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Altura (cm)</label>
+                <input v-model.number="editForm.altura" type="number" />
+              </div>
+              <div class="form-group">
+                <label>Peso (kg)</label>
+                <input v-model.number="editForm.peso" type="number" step="0.1" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Objetivo</label>
+              <select v-model="editForm.goal">
+                <option value="lose">Perder Peso</option>
+                <option value="maintain">Manter Peso</option>
+                <option value="gain">Ganhar Massa Muscular</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Nível de Atividade</label>
+              <select v-model="editForm.activity_level">
+                <option value="sedentary">Sedentário</option>
+                <option value="light">Ligeiro</option>
+                <option value="moderate">Moderado</option>
+                <option value="high">Elevado</option>
+              </select>
+            </div>
+            <button class="save-btn" @click="saveProfile" :disabled="isSaving">
+              {{ isSaving ? 'A guardar...' : 'Guardar Alterações' }}
+            </button>
+          </div>
+
+          <ul v-else class="detail-list">
             <li>
               <span>Género</span>
               <strong>{{ formatGender(userProfile.sexo) }}</strong>
@@ -220,10 +461,10 @@ onMounted(fetchProfile)
         </article>
 
         <article class="card full">
-          <h3>Alterar Palavra-passe</h3>
-          <p class="muted">Envie um pedido de recuperação de palavra-passe para o seu e-mail.</p>
+          <h3>Segurança</h3>
+          <p class="muted">Altere a sua palavra-passe enviando um link de recuperação para o seu email.</p>
           <button type="button" class="btn" :disabled="passwordLoading" @click="requestPasswordChange">
-            {{ passwordLoading ? 'A enviar...' : 'Alterar Palavra-passe' }}
+            {{ passwordLoading ? 'A enviar...' : '📧 Enviar link de alteração' }}
           </button>
           <p v-if="passwordMessage" class="password-message">{{ passwordMessage }}</p>
         </article>
@@ -237,6 +478,17 @@ onMounted(fetchProfile)
   max-width: 980px;
 }
 
+.panel-header {
+  margin-bottom: 24px;
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+}
+
 .panel-header h1 {
   margin: 0;
   font-size: clamp(1.6rem, 3vw, 2.5rem);
@@ -247,6 +499,22 @@ onMounted(fetchProfile)
 .panel-header p {
   margin-top: 6px;
   color: var(--text-muted);
+}
+
+.edit-toggle-btn {
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-weight: 700;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.edit-toggle-btn:hover {
+  background: var(--bg-main);
+  border-color: #0ea5a0;
 }
 
 .status-card {
@@ -264,7 +532,6 @@ onMounted(fetchProfile)
 }
 
 .hero-card {
-  margin-top: 24px;
   background: linear-gradient(105deg, #19b88a 0%, #20c4b3 55%, #28a8cf 100%);
   border: 1px solid var(--line);
   border-radius: 16px;
@@ -273,34 +540,179 @@ onMounted(fetchProfile)
 }
 
 .hero-content {
-  padding: 20px;
+  padding: 24px;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 20px;
+}
+
+.avatar-group {
+  position: relative;
+}
+
+.image-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 100;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+  min-width: 190px;
+  white-space: nowrap;
+}
+
+.image-menu button {
+  background: transparent;
+  border: none;
+  padding: 10px 14px;
+  text-align: left;
+  color: var(--text-main);
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.image-menu button:hover {
+  background: var(--bg-main);
+}
+
+.camera-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.camera-modal {
+  width: 100%;
+  max-width: 500px;
+  background: #000;
+  border-radius: 32px;
+  overflow: hidden;
+  position: relative;
+  aspect-ratio: 1/1;
+}
+
+.profile-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.camera-actions {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 24px;
+  background: linear-gradient(transparent, rgba(0,0,0,0.7));
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.btn-cancel-cam {
+  background: rgba(255,255,255,0.2);
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+}
+
+.btn-capture-profile {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: white;
+  border: 4px solid rgba(255,255,255,0.3);
+  cursor: pointer;
+  position: relative;
+}
+
+.btn-capture-profile::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  border: 2px solid #000;
+}
+
+.avatar-container {
+  position: relative;
+  width: 90px;
+  height: 90px;
+  border-radius: 20px;
+  overflow: hidden;
+  cursor: pointer;
+  background: #f7fbff;
+  border: 2px solid rgba(255,255,255,0.3);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .avatar-tile {
-  width: 82px;
-  height: 82px;
-  border-radius: 14px;
-  background: #f7fbff;
-  border: 1px solid #dce9f5;
+  width: 100%;
+  height: 100%;
   display: grid;
   place-items: center;
-  font-size: 2rem;
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.12);
+  font-size: 2.5rem;
+}
+
+.avatar-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.avatar-overlay span {
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.avatar-container:hover .avatar-overlay {
+  opacity: 1;
 }
 
 .hero-content h2 {
   margin: 0;
-  font-size: 2rem;
+  font-size: 2.2rem;
   line-height: 1.15;
   color: #f6fffe;
+  font-weight: 800;
 }
 
 .hero-email {
   margin-top: 4px;
   color: rgba(236, 255, 252, 0.9);
+  font-weight: 500;
 }
 
 .grid {
@@ -314,7 +726,7 @@ onMounted(fetchProfile)
   border: 1px solid var(--line);
   background: var(--bg-elevated);
   border-radius: 14px;
-  padding: 18px;
+  padding: 20px;
   box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
 }
 
@@ -324,8 +736,8 @@ onMounted(fetchProfile)
 
 .card h3 {
   margin: 0;
-  font-size: 1.05rem;
-  font-weight: 700;
+  font-size: 1.1rem;
+  font-weight: 800;
   letter-spacing: -0.01em;
 }
 
@@ -335,20 +747,13 @@ onMounted(fetchProfile)
   margin-right: 8px;
 }
 
-.badge.green {
-  color: #10b981;
-}
-
-.badge.rose {
-  color: #f43f5e;
-}
+.badge.green { color: #10b981; }
+.badge.rose { color: #f43f5e; }
 
 .detail-list {
   margin: 14px 0 0;
   padding: 0;
   list-style: none;
-  display: grid;
-  gap: 0;
 }
 
 .detail-list li {
@@ -356,7 +761,7 @@ onMounted(fetchProfile)
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 12px 0;
+  padding: 14px 0;
   border-bottom: 1px solid var(--line);
 }
 
@@ -366,72 +771,138 @@ onMounted(fetchProfile)
 
 .detail-list li span {
   color: var(--text-muted);
+  font-weight: 500;
 }
 
 .detail-list li strong {
   color: var(--text-main);
   text-align: right;
+  font-weight: 700;
 }
 
 .metrics-card {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
 
 .metric-box {
   border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 14px 14px 12px;
-  background: rgba(148, 163, 184, 0.12);
+  border-radius: 14px;
+  padding: 16px;
+  background: rgba(148, 163, 184, 0.08);
+  transition: transform 0.2s;
+}
+
+.metric-box:hover {
+  transform: translateY(-2px);
 }
 
 .metric-box p {
   margin: 0;
   color: var(--text-muted);
   font-size: 0.95rem;
+  font-weight: 600;
 }
 
 .metric-box strong {
   display: block;
   margin-top: 8px;
-  font-size: 1.35rem;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-main);
 }
 
 .metric-box small {
   display: inline-block;
-  margin-top: 4px;
+  margin-top: 6px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* Edit Form Styles */
+.edit-grid {
+  display: grid;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.form-group label {
+  font-size: 0.85rem;
+  font-weight: 700;
   color: var(--text-muted);
 }
 
-.muted {
-  margin-top: 8px;
-  color: var(--text-muted);
+.form-group input, 
+.form-group select {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--bg-main);
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+
+.save-btn {
+  margin-top: 10px;
+  background: #0ea5a0;
+  color: white;
+  border: none;
+  padding: 14px;
+  border-radius: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.save-btn:hover {
+  background: #0b8f8b;
+  transform: translateY(-2px);
+}
+
+.save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .btn {
   margin-top: 12px;
-  border: 0;
+  border: 1px solid var(--line);
   border-radius: 10px;
-  background: #0ea5a0;
-  color: #f8fffe;
+  background: var(--bg-main);
+  color: var(--text-main);
   font-weight: 700;
-  padding: 10px 16px;
+  padding: 12px 20px;
   cursor: pointer;
+  transition: all 0.2s;
 }
 
-.btn:hover {
-  background: #0b8f8b;
-}
-
-.btn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
+.btn:hover:not(:disabled) {
+  background: var(--menu-hover-bg);
+  border-color: #0ea5a0;
 }
 
 .password-message {
-  margin-top: 10px;
-  color: var(--text-muted);
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--bg-main);
+  font-size: 0.9rem;
+  color: #0ea5a0;
+  font-weight: 600;
 }
 
 :global(.theme-dark) .hero-card,
@@ -439,7 +910,7 @@ onMounted(fetchProfile)
   box-shadow: 0 10px 22px rgba(3, 8, 18, 0.35);
 }
 
-:global(.theme-dark) .avatar-tile {
+:global(.theme-dark) .avatar-container {
   background: #0f1a2b;
   border-color: #30415e;
 }
@@ -454,7 +925,7 @@ onMounted(fetchProfile)
   }
 
   .hero-content h2 {
-    font-size: 1.6rem;
+    font-size: 1.8rem;
   }
 }
 </style>
