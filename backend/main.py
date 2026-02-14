@@ -142,9 +142,13 @@ def forgot_password(request: schemas.ForgotPasswordRequest, db: Session = Depend
     
     return {"message": "If the email exists, a reset link has been sent."}
 
+@app.post("/negotiator/analyze-mood", response_model=schemas.MoodAnalysisResponse)
+def analyze_mood(request: schemas.NegotiatorRequest, current_user: models.User = Depends(auth.get_current_user)):
+    return negotiator.analyze_mood(request.craving, request.mood)
+
 @app.post("/negotiator/negotiate", response_model=schemas.NegotiatorResponse)
 def negotiate_craving(request: schemas.NegotiatorRequest, current_user: models.User = Depends(auth.get_current_user)):
-    return negotiator.negotiate_craving(request.craving, request.target_calories)
+    return negotiator.negotiate_craving(request.craving, request.target_calories, request.mood)
 
 @app.post("/vision/analyze", response_model=schemas.VisionResponse)
 async def analyze_ingredients_photo(file: UploadFile = File(...), current_user: models.User = Depends(auth.get_current_user)):

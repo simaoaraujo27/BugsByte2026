@@ -5,8 +5,8 @@ from openai import OpenAI
 import schemas
 from fastapi import HTTPException
 
-def negotiate_craving(craving: str, target_calories: int = 600, api_key: Optional[str] = None) -> schemas.NegotiatorResponse:
-    final_api_key = api_key or os.getenv("OPENAI_API_KEY")
+def get_client_config():
+    final_api_key = os.getenv("OPENAI_API_KEY")
     if final_api_key:
         final_api_key = final_api_key.strip()
         
@@ -14,22 +14,58 @@ def negotiate_craving(craving: str, target_calories: int = 600, api_key: Optiona
     model = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
 
     if not final_api_key:
-        raise ValueError("A chave da API OpenAI/Groq não foi configurada no ficheiro .env")
+        raise ValueError("A chave da API não foi configurada.")
 
     # Auto-detect Groq key
     if final_api_key.startswith("gsk_"):
         if not base_url or "openai.com" in base_url:
-            print("Auto-detected Groq key. Forcing Groq API configuration.")
             base_url = "https://api.groq.com/openai/v1"
             model = "llama-3.3-70b-versatile"
+            
+    return OpenAI(api_key=final_api_key, base_url=base_url), model
 
-    client = OpenAI(
-        api_key=final_api_key,
-        base_url=base_url
-    )
+def analyze_mood(craving: str, mood: str) -> schemas.MoodAnalysisResponse:
+    client, model = get_client_config()
 
     prompt = (
-        f"O utilizador está com um desejo de '{craving}'. "
+        f"O utilizador está com desejo de '{craving}' e sente-se '{mood}'. "
+        "Atua como um assistente de decisão alimentar inteligente, empático e acolhedor (PT-PT). "
+        "1. Classifica o tipo de fome/impulso (emocional ou física). "
+        "2. Responde com empatia e sem julgamento. "
+        "3. Explica brevemente o que o corpo ou a mente está a procurar nesse estado emocional. "
+        "4. Sugere uma estratégia alimentar apropriada (ex: beber água, esperar 10 min, comer conscientemente). "
+        "Retorna um objeto JSON com esta estrutura: "
+        "{ "
+        "  'mood_type': 'impulso emocional / fome física / recompensa', "
+        "  'empathy_message': 'mensagem calorosa de apoio', "
+        "  'explanation': 'o que a mente procura (ex: dopamina, conforto)', "
+        "  'eating_strategy': 'estratégia personalizada' "
+        "}"
+    )
+
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": "És um assistente nutricional caloroso e não julgador. Responde sempre em Português de Portugal."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            response_format={"type": "json_object"}
+        )
+        data = json.loads(response.choices[0].message.content)
+        return schemas.MoodAnalysisResponse(**data)
+    except Exception as e:
+        print(f"Erro na análise emocional: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao processar estado emocional.")
+
+def negotiate_craving(craving: str, target_calories: int = 600, mood: Optional[str] = None) -> schemas.NegotiatorResponse:
+    client, model = get_client_config()
+
+    mood_context = f" O utilizador sente-se {mood}." if mood else ""
+    
+    prompt = (
+        f"O utilizador está com um desejo de '{craving}'.{mood_context} "
         "REGRAS CRÍTICAS DE SEGURANÇA E VALIDAÇÃO: "
         "1. Se o pedido NÃO for comida real, ou se for ofensivo, sexual, perigoso, gíria inapropriada ou sem sentido, DEVES RECUSAR terminantemente. "
         "2. Se recusares, define 'recipe' como null e escreve uma mensagem educada em PT-PT explicando que apenas aceitas pedidos de alimentação saudável. "
@@ -78,5 +114,4 @@ def negotiate_craving(craving: str, target_calories: int = 600, api_key: Optiona
             )
     except Exception as e:
         print(f"Erro no negotiator: {e}")
-        # Re-raise the exception to be handled by the API layer
         raise HTTPException(status_code=500, detail=f"Erro ao gerar receita: {str(e)}")
