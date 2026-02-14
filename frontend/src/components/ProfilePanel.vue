@@ -121,7 +121,7 @@ const requestPasswordChange = async () => {
   passwordMessage.value = ''
 
   try {
-    const response = await fetch('http://localhost:8000/forgot-password/', {
+    const response = await fetch('' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/forgot-password/', {
       method: 'POST',
       headers: auth.getAuthHeaders(),
       body: JSON.stringify({ username: userProfile.value.username })
