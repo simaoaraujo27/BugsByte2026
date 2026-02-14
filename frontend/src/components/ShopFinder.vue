@@ -323,9 +323,9 @@ onMounted(() => {
 .shop-finder-container {
   --primary: #07a374;
   --secondary: #e74c3c;
-  --bg-card: #ffffff;
-  --text-dark: #11263f;
-  --text-light: #54667e;
+  --bg-card: var(--bg-elevated);
+  --text-dark: var(--text-main);
+  --text-light: var(--text-muted);
   
   max-width: 1100px;
   margin: 0 auto;
@@ -346,8 +346,8 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: #e3f7f2;
-  color: var(--primary);
+  background: var(--menu-active-bg);
+  color: var(--menu-active-text);
   padding: 6px 12px;
   border-radius: 20px;
   font-size: 0.85rem;
@@ -367,7 +367,8 @@ onMounted(() => {
 
 /* Location Card */
 .location-card {
-  background: white;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
   padding: 48px;
   border-radius: 24px;
   text-align: center;
@@ -394,7 +395,7 @@ onMounted(() => {
 
 .divider {
   margin: 20px 0;
-  color: #ccc;
+  color: var(--text-muted);
   font-size: 0.8rem;
   text-transform: uppercase;
 }
@@ -403,7 +404,9 @@ onMounted(() => {
 .search-box input {
   width: 100%;
   padding: 14px;
-  border: 2px solid #edf2f7;
+  border: 2px solid var(--line);
+  background: var(--bg-main);
+  color: var(--text-main);
   border-radius: 12px;
   font-size: 1rem;
 }
@@ -411,7 +414,8 @@ onMounted(() => {
 .suggestions-list {
   position: absolute;
   top: 100%; left: 0; right: 0;
-  background: white;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
   border-radius: 12px;
   box-shadow: 0 10px 25px rgba(0,0,0,0.1);
   z-index: 1000;
@@ -425,15 +429,17 @@ onMounted(() => {
   border-radius: 8px;
   cursor: pointer;
   font-size: 0.9rem;
+  color: var(--text-main);
 }
 
-.suggestions-list li:hover { background: #f7fafc; }
+.suggestions-list li:hover { background: var(--menu-hover-bg); }
 
 /* Main Interface */
 .control-panel {
   display: flex;
   gap: 24px;
-  background: white;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
   padding: 20px;
   border-radius: 16px;
   margin-bottom: 24px;
@@ -444,7 +450,8 @@ onMounted(() => {
 .search-input-group {
   flex: 1;
   display: flex;
-  background: #f7fafc;
+  background: var(--bg-main);
+  border: 1px solid var(--line);
   border-radius: 12px;
   padding: 4px;
 }
@@ -455,6 +462,7 @@ onMounted(() => {
   border: none;
   padding: 12px 16px;
   font-size: 1rem;
+  color: var(--text-main);
 }
 
 .btn-search {
@@ -476,6 +484,7 @@ onMounted(() => {
   display: block;
   font-size: 0.8rem;
   margin-bottom: 8px;
+  color: var(--text-muted);
 }
 
 .radius-slider input {
@@ -492,37 +501,38 @@ onMounted(() => {
 
 #map {
   border-radius: 20px;
-  border: 1px solid #edf2f7;
+  border: 1px solid var(--line);
   z-index: 1;
 }
 
 .results-panel {
-  background: white;
+  background: var(--bg-elevated);
   border-radius: 20px;
   overflow-y: auto;
   padding: 16px;
-  border: 1px solid #edf2f7;
+  border: 1px solid var(--line);
 }
 
 .shop-card {
   padding: 16px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--line);
   display: flex;
   flex-direction: column;
   gap: 12px;
   transition: transform 0.2s;
+  background: var(--bg-elevated);
 }
 
-.shop-card:hover { background: #fafcfe; }
+.shop-card:hover { background: var(--menu-hover-bg); }
 
 .shop-info { display: flex; gap: 12px; }
 .shop-icon { font-size: 1.5rem; }
-.shop-name { margin: 0; font-size: 1rem; color: var(--text-dark); }
-.shop-dist { margin: 2px 0 0; font-size: 0.8rem; color: var(--text-light); }
+.shop-name { margin: 0; font-size: 1rem; color: var(--text-main); }
+.shop-dist { margin: 2px 0 0; font-size: 0.8rem; color: var(--text-muted); }
 
 .btn-maps {
-  background: #edf2f7;
-  border: none;
+  background: var(--bg-main);
+  border: 1px solid var(--line);
   padding: 8px;
   border-radius: 8px;
   font-size: 0.8rem;
@@ -531,7 +541,7 @@ onMounted(() => {
   cursor: pointer;
 }
 
-.btn-maps:hover { background: #e2e8f0; }
+.btn-maps:hover { background: var(--line); }
 
 .error-msg {
   background: #fff5f5;
@@ -549,7 +559,7 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #a0aec0;
+  color: var(--text-muted);
   text-align: center;
   padding: 20px;
 }
