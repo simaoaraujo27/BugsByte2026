@@ -16,26 +16,16 @@ const canvasContainer = ref(null)
 const calorieBudget = ref(500)
 const isLoading = ref(false)
 
-/**
- * CALORIC DENSITY (kcal per 100g):
- * At 500 kcal reference point:
- * Burger: 270 kcal/100g -> 185g (REFERENCE: scale = 1.0)
- * Pizza: 265 kcal/100g -> 189g (1.02x burger)
- * Soda: 42 kcal/100ml -> 1190g (6.4x burger)
- * Salad: 20 kcal/100g -> 2500g (13.5x burger → ∛13.5 = 2.38x visual scale)
- * Broccoli: 34 kcal/100g -> 1470g (7.9x burger → ∛13.5 = 2.0x visual scale)
- * Apple: 52 kcal/100g -> 960g (5.2x burger → ∛13.5 = 1.73x visual scale)
- */
 const junkModels = [
-  { name: 'Hambúrguer', file: 'burger.glb', baseScale: 0.15, caloriesPerGram: 2.7 },
-  { name: 'Pizza', file: 'pizza.glb', baseScale: 0.23, caloriesPerGram: 2.65 },
-  { name: 'Refrigerante', file: 'soda.glb', baseScale: 0.08, caloriesPerGram: 0.42 }
+  { name: 'Hambúrguer', file: 'burger.glb', baseScale: 0.15, caloriesPerGram: 2.5, unitGrams: 180 },
+  { name: 'Pizza', file: 'pizza.glb', baseScale: 0.23, caloriesPerGram: 2.7, unitGrams: 120 },
+  { name: 'Refrigerante', file: 'soda.glb', baseScale: 0.08, caloriesPerGram: 0.41, unitGrams: 330 }
 ]
 
 const healthyModels = [
-  { name: 'Salada', file: 'salad.glb', baseScale: 1.2, caloriesPerGram: 0.20 },
-  { name: 'Brócolos', file: 'broccoli.glb', baseScale: 0.8, caloriesPerGram: 0.34 },
-  { name: 'Maçã', file: 'apple.glb', baseScale: 0.20, caloriesPerGram: 0.52 }
+  { name: 'Salada', file: 'salad.glb', baseScale: 1.2, caloriesPerGram: 0.45, unitGrams: 250 },
+  { name: 'Brócolos', file: 'broccoli.glb', baseScale: 0.8, caloriesPerGram: 0.34, unitGrams: 90 },
+  { name: 'Maçã', file: 'apple.glb', baseScale: 0.10, caloriesPerGram: 0.52, unitGrams: 150 }
 ]
 
 const CONFIG = {
@@ -48,17 +38,76 @@ const CONFIG = {
 const currentJunkIndex = ref(0)
 const currentHealthyIndex = ref(0)
 
+const currentJunkConfig = computed(() => junkModels[currentJunkIndex.value])
+const currentHealthyConfig = computed(() => healthyModels[currentHealthyIndex.value])
+
+const junkGrams = computed(() => {
+  const grams = calorieBudget.value / currentJunkConfig.value.caloriesPerGram
+  return Number.isFinite(grams) ? Math.round(grams) : 0
+})
+
+const healthyGrams = computed(() => {
+  const grams = calorieBudget.value / currentHealthyConfig.value.caloriesPerGram
+  return Number.isFinite(grams) ? Math.round(grams) : 0
+})
+
+const junkUnits = computed(() => getItemCount(junkGrams.value, currentJunkConfig.value.unitGrams))
+const healthyUnits = computed(() => getItemCount(healthyGrams.value, currentHealthyConfig.value.unitGrams))
+
 const satietyMultiplier = computed(() => {
-  const junkConfig = junkModels[currentJunkIndex.value]
-  const healthyConfig = healthyModels[currentHealthyIndex.value]
+  const junkConfig = currentJunkConfig.value
+  const healthyConfig = currentHealthyConfig.value
   const junkGrams = calorieBudget.value / junkConfig.caloriesPerGram
   const healthyGrams = calorieBudget.value / healthyConfig.caloriesPerGram
   const ratio = healthyGrams / junkGrams
   return isNaN(ratio) ? 1.0 : ratio
 })
 
+const uiTheme = computed(() => {
+  if (props.isDarkMode) {
+    return {
+      title: 'text-white',
+      subtitle: 'text-slate-400',
+      stage: 'bg-slate-900 border-slate-800 shadow-none',
+      viewport: 'from-gray-900 via-slate-900 to-black',
+      card: 'bg-slate-800/90 border-slate-700/50',
+      cardTitle: 'text-white',
+      cardMeta: 'text-slate-300',
+      cardBtn: 'text-slate-200 bg-slate-700/50 hover:bg-slate-700 border-slate-600',
+      divider: 'border-white/10',
+      vs: 'bg-slate-700 outline-slate-800/50',
+      footer: 'bg-slate-950 border-slate-900',
+      sliderTrack: 'bg-slate-800',
+      sliderHint: 'text-slate-500',
+      satietyBadge: 'bg-emerald-500/10 border-emerald-500/20 hover:bg-emerald-500/15',
+      satietySub: 'text-slate-400',
+      satietyText: 'text-white'
+    }
+  }
+
+  return {
+    title: 'text-slate-800',
+    subtitle: 'text-slate-600',
+    stage: 'bg-white border-slate-200 shadow-2xl shadow-slate-200/70',
+    viewport: 'from-slate-50 via-white to-slate-100',
+    card: 'bg-white/92 border-slate-200/80',
+    cardTitle: 'text-slate-800',
+    cardMeta: 'text-slate-500',
+    cardBtn: 'text-slate-600 bg-slate-50 hover:bg-slate-100 border-slate-200',
+    divider: 'border-slate-300/70',
+    vs: 'bg-slate-800 outline-slate-200',
+    footer: 'bg-white border-slate-200',
+    sliderTrack: 'bg-slate-200',
+    sliderHint: 'text-slate-500',
+    satietyBadge: 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100/60',
+    satietySub: 'text-slate-500',
+    satietyText: 'text-slate-800'
+  }
+})
+
 let junkScene, healthyScene, junkCamera, healthyCamera, renderer
-let junkModel, healthyModel
+let junkTemplate, healthyTemplate
+let junkGroup, healthyGroup
 let junkPlate, healthyPlate
 
 const initScene = () => {
@@ -102,6 +151,63 @@ const initScene = () => {
   healthyPlate = new THREE.Mesh(plateGeometry, plateMaterial.clone())
   healthyPlate.position.y = CONFIG.plate.y
   healthyScene.add(healthyPlate)
+
+  junkGroup = new THREE.Group()
+  healthyGroup = new THREE.Group()
+  junkScene.add(junkGroup)
+  healthyScene.add(healthyGroup)
+}
+
+const getItemCount = (grams, unitGrams) => {
+  if (!grams || !unitGrams) return 1
+  return Math.max(1, Math.min(12, Math.round(grams / unitGrams)))
+}
+
+const clearGroup = (group) => {
+  if (!group) return
+  while (group.children.length) {
+    const child = group.children.pop()
+    if (child) group.remove(child)
+  }
+}
+
+const getSlotPosition = (index, total) => {
+  if (total <= 1) return { x: 0, z: 0 }
+  if (total <= 4) {
+    const spacing = 1.1
+    const row = Math.floor(index / 2)
+    const col = index % 2
+    return { x: (col - 0.5) * spacing, z: (row - 0.5) * spacing }
+  }
+
+  const ringIndex = index % 6
+  const ring = index < 6 ? 1 : 2
+  const radius = ring === 1 ? 1.0 : 1.5
+  const angle = (Math.PI * 2 * ringIndex) / 6
+  return { x: Math.cos(angle) * radius, z: Math.sin(angle) * radius }
+}
+
+const renderFoodCopies = (type) => {
+  const isJunk = type === 'junk'
+  const template = isJunk ? junkTemplate : healthyTemplate
+  const group = isJunk ? junkGroup : healthyGroup
+  const config = isJunk ? currentJunkConfig.value : currentHealthyConfig.value
+  const grams = isJunk ? junkGrams.value : healthyGrams.value
+
+  if (!template || !group || !config) return
+
+  const copies = getItemCount(grams, config.unitGrams)
+  clearGroup(group)
+
+  for (let i = 0; i < copies; i += 1) {
+    const copy = template.clone(true)
+    const { x, z } = getSlotPosition(i, copies)
+    const yOffset = copies > 7 ? (i % 2) * 0.08 : 0
+    copy.position.set(x, yOffset, z)
+    copy.rotation.y = Math.PI / 4 + i * 0.25
+    copy.scale.setScalar(config.baseScale)
+    group.add(copy)
+  }
 }
 
 const loadFood = async (type) => {
@@ -117,17 +223,13 @@ const loadFood = async (type) => {
     })
     
     const model = gltf.scene
-    model.rotation.y = Math.PI / 4
-    model.position.set(0, 0, 0)
 
     if (type === 'junk') {
-      if (junkModel) junkScene.remove(junkModel)
-      junkModel = model
-      junkScene.add(junkModel)
+      junkTemplate = model
+      renderFoodCopies('junk')
     } else {
-      if (healthyModel) healthyScene.remove(healthyModel)
-      healthyModel = model
-      healthyScene.add(healthyModel)
+      healthyTemplate = model
+      renderFoodCopies('healthy')
     }
   } catch (err) {
     console.error("Load error:", filename)
@@ -138,27 +240,8 @@ const loadFood = async (type) => {
 }
 
 const updateScales = () => {
-  const referenceGrams = 185
-  
-  if (junkModel) {
-    const config = junkModels[currentJunkIndex.value]
-    const grams = calorieBudget.value / config.caloriesPerGram
-    const volumeRatio = grams / referenceGrams
-    const linearScale = Math.pow(volumeRatio, 1/3)
-    const s = config.baseScale * linearScale
-    junkModel.scale.set(s, s, s)
-    junkModel.position.set(0, 0, 0)
-  }
-  
-  if (healthyModel) {
-    const config = healthyModels[currentHealthyIndex.value]
-    const grams = calorieBudget.value / config.caloriesPerGram
-    const volumeRatio = grams / referenceGrams
-    const linearScale = Math.pow(volumeRatio, 1/3)
-    const s = config.baseScale * linearScale
-    healthyModel.scale.set(s, s, s)
-    healthyModel.position.set(0, 0, 0)
-  }
+  renderFoodCopies('junk')
+  renderFoodCopies('healthy')
 }
 
 const cycle = (type) => {
@@ -169,8 +252,8 @@ const cycle = (type) => {
 
 const animate = () => {
   requestAnimationFrame(animate)
-  if (junkModel) junkModel.rotation.y += 0.005
-  if (healthyModel) healthyModel.rotation.y += 0.005
+  if (junkGroup) junkGroup.rotation.y += 0.0035
+  if (healthyGroup) healthyGroup.rotation.y += 0.0035
   
   if (renderer) {
     const width = canvasContainer.value.clientWidth
@@ -215,31 +298,34 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="flex flex-col h-full max-h-[calc(100vh-120px)] overflow-hidden" :class="{ 'dark': isDarkMode }">
+  <div class="flex flex-col h-full max-h-[calc(100vh-120px)] overflow-hidden">
     <!-- Header: Minimal & Clean -->
     <header class="mb-6 text-center">
       <span class="px-4 py-1 text-[10px] font-extrabold tracking-[0.2em] text-white uppercase bg-blue-600 rounded-full shadow-lg shadow-blue-500/20">
         Laboratório de Saciedade
       </span>
-      <h1 class="mt-4 text-3xl font-black tracking-tight text-slate-800 dark:text-white md:text-4xl">
+      <h1 class="mt-4 text-3xl font-black tracking-tight md:text-4xl" :class="uiTheme.title">
         A Ilusão das Calorias
       </h1>
-      <p class="mt-1 text-sm font-semibold text-slate-500 dark:text-slate-400">
-        Visualize como <span class="text-blue-600 dark:text-blue-400 font-bold underline decoration-2 underline-offset-4">{{ calorieBudget }} kcal</span> ocupam o espaço real.
+      <p class="mt-1 text-sm font-semibold" :class="uiTheme.subtitle">
+        Visualize como <span class="font-bold underline decoration-2 underline-offset-4" :class="props.isDarkMode ? 'text-blue-400' : 'text-blue-600'">{{ calorieBudget }} kcal</span> ocupam o espaço real.
       </p>
     </header>
 
     <!-- Main Stage: Unified Dashboard Card (Apple Health / Clinical Look) -->
-    <div class="relative flex-1 min-h-0 bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-2xl shadow-slate-200/50 dark:shadow-none flex flex-col overflow-hidden">
+    <div class="relative flex-1 min-h-0 rounded-[2.5rem] border flex flex-col overflow-hidden" :class="uiTheme.stage">
       
       <!-- 3D Viewport with Contrast-Enhancing Radial Gradient -->
-      <div class="relative flex-1 w-full min-h-0 cursor-grab active:cursor-grabbing bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white via-slate-50 to-slate-200 dark:from-gray-900 dark:to-black" ref="canvasContainer">
+      <div class="relative flex-1 w-full min-h-0 cursor-grab active:cursor-grabbing bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))]" :class="uiTheme.viewport" ref="canvasContainer">
         
         <!-- Overlays: Left Food Info (Glassmorphism Pill) -->
-        <div class="absolute z-20 flex flex-col items-center p-4 transition-all transform top-6 left-6 rounded-[1.5rem] bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm shadow-lg border border-white/50 dark:border-slate-700/50 min-w-[140px]">
+        <div class="absolute z-20 flex flex-col items-center p-4 transition-all transform top-6 left-6 rounded-[1.5rem] backdrop-blur-sm shadow-lg border min-w-[140px]" :class="uiTheme.card">
           <span class="text-[9px] font-black text-rose-500 uppercase tracking-widest mb-1.5">Ultra-Processado</span>
-          <div class="text-base font-extrabold text-slate-800 dark:text-white">{{ junkModels[currentJunkIndex].name }}</div>
-          <button @click="cycle('junk')" class="mt-3 px-4 py-2 text-[11px] font-bold text-slate-600 dark:text-slate-200 bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-all flex items-center gap-2 border border-slate-100 dark:border-slate-600">
+          <div class="text-base font-extrabold" :class="uiTheme.cardTitle">{{ currentJunkConfig.name }}</div>
+          <div class="mt-1 text-[11px] font-semibold" :class="uiTheme.cardMeta">
+            {{ junkGrams }}g · {{ junkUnits }} un.
+          </div>
+          <button @click="cycle('junk')" class="mt-3 px-4 py-2 text-[11px] font-bold rounded-xl transition-all flex items-center gap-2 border" :class="uiTheme.cardBtn">
             <span>Trocar</span>
             <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 opacity-60" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" /></svg>
           </button>
@@ -247,43 +333,58 @@ onMounted(() => {
 
         <!-- VS Badge Center -->
         <div class="absolute z-20 transform -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2">
-           <div class="flex items-center justify-center w-12 h-12 font-black text-white rounded-full shadow-2xl bg-slate-900 dark:bg-slate-700 outline outline-[6px] outline-white/30 dark:outline-slate-800/50 text-xs italic tracking-tighter">VS</div>
+           <div class="flex items-center justify-center w-12 h-12 font-black text-white rounded-full shadow-2xl outline outline-[6px] text-xs italic tracking-tighter" :class="uiTheme.vs">VS</div>
         </div>
 
+        <div class="absolute inset-y-0 z-10 hidden border-l border-dashed left-1/2 md:block" :class="uiTheme.divider"></div>
+
         <!-- Overlays: Right Food Info (Glassmorphism Pill) -->
-        <div class="absolute z-20 flex flex-col items-center p-4 transition-all transform top-6 right-6 rounded-[1.5rem] bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm shadow-lg border border-white/50 dark:border-slate-700/50 min-w-[140px]">
+        <div class="absolute z-20 flex flex-col items-center p-4 transition-all transform top-6 right-6 rounded-[1.5rem] backdrop-blur-sm shadow-lg border min-w-[140px]" :class="uiTheme.card">
           <span class="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-1.5">Densidade Baixa</span>
-          <div class="text-base font-extrabold text-slate-800 dark:text-white">{{ healthyModels[currentHealthyIndex].name }}</div>
-          <button @click="cycle('healthy')" class="mt-3 px-4 py-2 text-[11px] font-bold text-slate-600 dark:text-slate-200 bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-all flex items-center gap-2 border border-slate-100 dark:border-slate-600">
+          <div class="text-base font-extrabold" :class="uiTheme.cardTitle">{{ currentHealthyConfig.name }}</div>
+          <div class="mt-1 text-[11px] font-semibold" :class="uiTheme.cardMeta">
+            {{ healthyGrams }}g · {{ healthyUnits }} un.
+          </div>
+          <button @click="cycle('healthy')" class="mt-3 px-4 py-2 text-[11px] font-bold rounded-xl transition-all flex items-center gap-2 border" :class="uiTheme.cardBtn">
             <span>Trocar</span>
             <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 opacity-60" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" /></svg>
           </button>
         </div>
+
+        <div v-if="isLoading" class="absolute inset-0 z-30 grid place-items-center bg-slate-950/25 backdrop-blur-[2px]">
+          <div class="px-4 py-2 text-xs font-bold text-white rounded-xl bg-slate-900/80">
+            A carregar modelo...
+          </div>
+        </div>
       </div>
 
       <!-- Anchored Footer Controls (Dark Slate for Contrast) -->
-      <footer class="p-8 bg-slate-900 dark:bg-slate-950 border-t border-slate-800 dark:border-slate-900 rounded-b-3xl">
+      <footer class="p-8 border-t rounded-b-3xl" :class="uiTheme.footer">
         <div class="flex flex-col items-center gap-8 md:flex-row md:justify-between">
           
           <!-- Slider Control -->
           <div class="flex-1 w-full max-w-xl">
             <div class="flex items-center justify-between mb-4">
-              <label class="text-[10px] font-black tracking-[0.2em] uppercase text-slate-400">Ajuste de Orçamento</label>
+              <label class="text-[10px] font-black tracking-[0.2em] uppercase" :class="uiTheme.sliderHint">Ajuste de Orçamento</label>
               <div class="flex items-baseline gap-1.5">
-                <span class="text-3xl font-black text-white tabular-nums">{{ calorieBudget }}</span>
-                <span class="text-xs font-bold text-slate-500 uppercase">kcal</span>
+                <span class="text-3xl font-black tabular-nums" :class="uiTheme.satietyText">{{ calorieBudget }}</span>
+                <span class="text-xs font-bold uppercase" :class="uiTheme.sliderHint">kcal</span>
               </div>
             </div>
-            <input type="range" v-model.number="calorieBudget" min="100" max="2000" step="50" class="w-full h-2 rounded-lg appearance-none cursor-pointer bg-slate-800 accent-blue-500 focus:outline-none">
+            <input type="range" v-model.number="calorieBudget" min="100" max="2000" step="50" class="w-full h-2 rounded-lg appearance-none cursor-pointer accent-blue-500 focus:outline-none" :class="uiTheme.sliderTrack">
+            <div class="flex justify-between mt-2 text-[10px] font-semibold" :class="uiTheme.sliderHint">
+              <span>100 kcal</span>
+              <span>2000 kcal</span>
+            </div>
           </div>
 
           <!-- Satiety Insight Badge -->
-          <div class="flex items-center gap-5 px-6 py-5 bg-white/5 dark:bg-emerald-500/10 rounded-[2rem] border border-white/10 dark:border-emerald-500/20 md:max-w-xs transition-all hover:bg-white/10">
+          <div class="flex items-center gap-5 px-6 py-5 rounded-[2rem] border md:max-w-xs transition-all" :class="uiTheme.satietyBadge">
             <div class="flex items-center justify-center w-12 h-12 text-2xl rounded-2xl bg-emerald-500/20 shadow-inner">🥗</div>
             <div>
               <div class="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-0.5">Fator de Saciedade</div>
-              <div class="text-xl font-black text-white">
-                {{ satietyMultiplier.toFixed(1) }}x <span class="text-sm font-medium text-slate-400">mais volume</span>
+              <div class="text-xl font-black" :class="uiTheme.satietyText">
+                {{ satietyMultiplier.toFixed(1) }}x <span class="text-sm font-medium" :class="uiTheme.satietySub">mais volume</span>
               </div>
             </div>
           </div>
