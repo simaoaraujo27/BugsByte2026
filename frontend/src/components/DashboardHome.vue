@@ -134,11 +134,44 @@ const yTicks = computed(() => {
 })
 
 const streakDays = computed(() => dashboardData.value.streak_days)
-const weeklyGoals = [
-  { label: 'Beber 2.5L água/dia', done: true },
-  { label: '5 refeições registadas', done: true },
-  { label: 'Treinar 3x', done: false }
-]
+const WEEKLY_GOALS_KEY = 'nutri_weekly_goals_v1'
+const weeklyGoals = ref([
+  { id: 1, label: 'Beber 2.5L água/dia', done: true },
+  { id: 2, label: '5 refeições registadas', done: true },
+  { id: 3, label: 'Treinar 3x', done: false }
+])
+
+const persistWeeklyGoals = () => {
+  localStorage.setItem(WEEKLY_GOALS_KEY, JSON.stringify(weeklyGoals.value))
+}
+
+const loadWeeklyGoals = () => {
+  try {
+    const raw = localStorage.getItem(WEEKLY_GOALS_KEY)
+    if (!raw) return
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return
+    weeklyGoals.value = parsed
+      .filter((goal) => goal && typeof goal.label === 'string')
+      .map((goal, index) => ({
+        id: Number(goal.id) || (index + 1),
+        label: goal.label,
+        done: Boolean(goal.done)
+      }))
+  } catch {
+    // fallback silently to defaults
+  }
+}
+
+const updateGoalLabel = (goal, value) => {
+  goal.label = value
+  persistWeeklyGoals()
+}
+
+const toggleGoalDone = (goal) => {
+  goal.done = !goal.done
+  persistWeeklyGoals()
+}
 
 const formatDisplayName = (email) => {
   if (!email) return 'Utilizador'
@@ -175,6 +208,7 @@ const loadGreetingName = async () => {
 }
 
 const loadData = async () => {
+  loadWeeklyGoals()
   await Promise.all([
     loadGreetingName(),
     fetchDashboardData()
@@ -272,9 +306,21 @@ onMounted(loadData)
         <article class="card goals-card">
           <h3>Metas da Semana</h3>
           <ul>
-            <li v-for="goal in weeklyGoals" :key="goal.label" :class="{ done: goal.done }">
-              <span class="dot-goal">{{ goal.done ? '✓' : '•' }}</span>
-              {{ goal.label }}
+            <li v-for="goal in weeklyGoals" :key="goal.id" :class="{ done: goal.done }">
+              <label class="goal-check" :class="{ checked: goal.done }">
+                <input
+                  type="checkbox"
+                  :checked="goal.done"
+                  @change="toggleGoalDone(goal)"
+                />
+                <span class="checkmark" aria-hidden="true"></span>
+              </label>
+              <input
+                class="goal-input"
+                :value="goal.label"
+                @input="updateGoalLabel(goal, $event.target.value)"
+                placeholder="Escreve uma meta..."
+              />
             </li>
           </ul>
         </article>
@@ -567,27 +613,74 @@ onMounted(loadData)
   gap: 10px;
 }
 
+.goal-check {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  position: relative;
+}
+
+.goal-check input[type='checkbox'] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.checkmark {
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  border: 1.6px solid color-mix(in srgb, var(--line), #fff 10%);
+  background: color-mix(in srgb, var(--bg-main), transparent 20%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.checkmark::after {
+  content: '';
+  width: 6px;
+  height: 12px;
+  border-right: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: rotate(45deg) scale(0);
+  transition: transform 0.16s ease;
+  margin-top: -1px;
+}
+
 .goals-card li.done {
   color: var(--text-main);
 }
 
-.dot-goal {
-  width: 24px;
-  height: 24px;
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: #dcfce7;
-  color: #15803d;
-  font-size: 0.82rem;
-  font-weight: 800;
-  flex-shrink: 0;
+.goal-check:hover .checkmark {
+  border-color: color-mix(in srgb, var(--menu-active-text), #fff 20%);
 }
 
-.goals-card li:not(.done) .dot-goal {
-  background: #e5e7eb;
-  color: #9ca3af;
+.goal-check.checked .checkmark {
+  background: linear-gradient(135deg, #0d9488, #14b8a6);
+  border-color: transparent;
+  box-shadow: 0 8px 14px rgba(20, 184, 166, 0.28);
+}
+
+.goal-check.checked .checkmark::after {
+  transform: rotate(45deg) scale(1);
+}
+
+.goal-input {
+  flex: 1;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg-main), transparent 30%);
+  color: var(--text-main);
+  padding: 9px 11px;
+  font: inherit;
+}
+
+.goal-input:focus {
+  outline: none;
+  border-color: var(--menu-active-text);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--menu-active-text), transparent 80%);
 }
 
 .action-grid {
