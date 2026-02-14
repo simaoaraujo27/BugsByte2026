@@ -38,18 +38,26 @@ const stream = ref(null)
 const vClickOutside = {
   mounted(el, binding) {
     el.clickOutsideEvent = (event) => {
+      // Check if the click was outside the element AND its children
       if (!(el === event.target || el.contains(event.target))) {
         binding.value()
       }
     }
-    document.addEventListener('click', el.clickOutsideEvent)
+    document.addEventListener('mousedown', el.clickOutsideEvent)
   },
   unmounted(el) {
-    document.removeEventListener('click', el.clickOutsideEvent)
+    document.removeEventListener('mousedown', el.clickOutsideEvent)
   }
 }
 
+const toggleImageMenu = (e) => {
+  e.stopPropagation();
+  showImageMenu.value = !showImageMenu.value;
+  console.log('Menu toggled:', showImageMenu.value);
+};
+
 const startCamera = async () => {
+  console.log('Starting camera...');
   showImageMenu.value = false
   // On mobile, try to use native camera interface first for better reliability
   if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
@@ -73,6 +81,7 @@ const startCamera = async () => {
 };
 
 const stopCamera = () => {
+  console.log('Stopping camera...');
   if (stream.value) {
     stream.value.getTracks().forEach(track => track.stop());
     stream.value = null;
@@ -81,6 +90,7 @@ const stopCamera = () => {
 };
 
 const capturePhoto = () => {
+  console.log('Capturing photo...');
   const video = videoRef.value;
   const canvas = canvasRef.value;
   if (video && canvas) {
@@ -96,6 +106,7 @@ const capturePhoto = () => {
 };
 
 const uploadProfileImage = async (base64Image) => {
+  console.log('Uploading image (base64 length):', base64Image.length);
   try {
     const res = await fetch(`${API_URL}/users/me`, {
       method: 'PUT',
@@ -103,11 +114,17 @@ const uploadProfileImage = async (base64Image) => {
       body: JSON.stringify({ profile_image: base64Image })
     })
 
-    if (!res.ok) throw new Error('Falha ao carregar imagem')
+    if (!res.ok) {
+      const errorData = await res.json();
+      console.error('Upload failed:', errorData);
+      throw new Error('Falha ao carregar imagem')
+    }
     
     const updatedUser = await res.json()
+    console.log('Upload success, updated user');
     setUser(updatedUser)
   } catch (err) {
+    console.error('Upload error:', err);
     alert(err.message)
   }
 };
@@ -353,7 +370,7 @@ onMounted(fetchProfileData)
       <article class="hero-card">
         <div class="hero-content">
           <div class="avatar-group">
-            <div class="avatar-container" @click="showImageMenu = !showImageMenu">
+            <div class="avatar-container" @click="toggleImageMenu">
               <img v-if="userProfile.profile_image" :src="userProfile.profile_image" class="avatar-img" />
               <div v-else class="avatar-tile" aria-hidden="true">👤</div>
               <div class="avatar-overlay">
