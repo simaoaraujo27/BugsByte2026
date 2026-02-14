@@ -97,10 +97,12 @@ const chartPoints = computed(() => {
   const span = Math.max(0.001, max - min)
   const top = 10
   const bottom = 16
+  const left = 8
+  const right = 92
   const usableHeight = 100 - top - bottom
 
   return values.map((value, index) => {
-    const x = values.length === 1 ? 50 : (index / (values.length - 1)) * 100
+    const x = values.length === 1 ? 50 : left + (index / (values.length - 1)) * (right - left)
     const y = top + ((max - value) / span) * usableHeight
     return { x, y, value }
   })
@@ -116,7 +118,8 @@ const areaPath = computed(() => {
   if (!chartPoints.value.length) return ''
   const first = chartPoints.value[0]
   const last = chartPoints.value[chartPoints.value.length - 1]
-  return `${chartLinePath.value} L ${last.x} 88 L ${first.x} 88 Z`
+  const baselineY = 84
+  return `${chartLinePath.value} L ${last.x} ${baselineY} L ${first.x} ${baselineY} Z`
 })
 
 const yTicks = computed(() => {

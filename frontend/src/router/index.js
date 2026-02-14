@@ -39,6 +39,16 @@ const routes = [
     component: SiteHomePage
   },
   {
+    path: '/dashboard/:section',
+    name: 'DashboardSection',
+    component: SiteHomePage
+  },
+  {
+    path: '/dashboard/:section/:subsection',
+    name: 'DashboardSubsection',
+    component: SiteHomePage
+  },
+  {
     path: '/favorites',
     name: 'Favorites',
     component: FavoritesPage
