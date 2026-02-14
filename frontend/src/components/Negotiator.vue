@@ -7,6 +7,7 @@ const emit = defineEmits(['choice']);
 // Views: 'landing', 'text_input', 'vision_input', 'mood_select', 'mood_analysis', 'recipe', 'rejection'
 const activeView = ref('landing');
 const loading = ref(false);
+const saving = ref(false);
 const error = ref(null);
 
 const craving = ref('');
@@ -145,6 +146,42 @@ const goToIngredients = () => {
   });
 };
 
+const saveRecipe = async () => {
+  if (!result.value || !result.value.recipe) return;
+  saving.value = true;
+
+  try {
+    // 1. Create the recipe
+    const recipeData = {
+      name: result.value.recipe.title,
+      ingredients: result.value.recipe.ingredients.join(', '),
+      instructions: result.value.recipe.steps.join('\n')
+    };
+
+    const createResponse = await fetch('http://localhost:8000/recipes/', {
+      method: 'POST',
+      headers: auth.getAuthHeaders(),
+      body: JSON.stringify(recipeData)
+    });
+
+    if (!createResponse.ok) throw new Error('Failed to create recipe');
+    const createdRecipe = await createResponse.json();
+
+    // 2. Add to favorites
+    const favResponse = await fetch(`http://localhost:8000/users/me/favorites/recipes/${createdRecipe.id}`, {
+      method: 'POST',
+      headers: auth.getAuthHeaders()
+    });
+
+    if (!favResponse.ok) throw new Error('Failed to add to favorites');
+
+    alert('Receita guardada com sucesso!');
+  } catch (err) {
+    console.error('Error saving recipe:', err);
+    alert('Erro ao guardar a receita.');
+  } finally {
+    saving.value = false;
+  }
 const reset = () => {
   activeView.value = 'landing';
   craving.value = '';
@@ -181,6 +218,40 @@ const reset = () => {
           <p>Refeições alinhadas com o teu humor atual.</p>
           <button class="s-btn">Fazer Check-in</button>
         </div>
+      </header>
+
+      <div class="recipe-content-grid">
+        <!-- Ingredients Column -->
+        <section class="ingredients-card">
+          <h3>🛒 Ingredientes</h3>
+          <ul class="styled-list">
+            <li v-for="ing in result.recipe.ingredients" :key="ing">{{ ing }}</li>
+          </ul>
+          <button @click="goToIngredients" class="btn-shop-link">
+            Encontrar Ingredientes Perto 📍
+          </button>
+        </section>
+
+        <!-- Steps Column -->
+        <section class="steps-card">
+          <h3>👨‍🍳 Modo de Preparação</h3>
+          <div class="steps-timeline">
+            <div v-for="(step, index) in result.recipe.steps" :key="index" class="step-item">
+              <div class="step-number">{{ index + 1 }}</div>
+              <div class="step-text">{{ step }}</div>
+            </div>
+          </div>
+        </section>
+      </div>
+      
+      <footer class="recipe-actions">
+        <button @click="result = null" class="btn-secondary">🔙 Outro Desejo</button>
+        <button @click="saveRecipe" class="btn-save" :disabled="saving">
+          {{ saving ? '...' : '❤️ Guardar' }}
+        </button>
+        <button @click="negotiate" class="btn-refresh">🔄 Outra Receita</button>
+      </footer>
+    </div>
 
         <div class="slim-card" @click="activeView = 'vision_input'">
           <div class="s-icon">📸</div>
@@ -344,6 +415,131 @@ const reset = () => {
   min-height: 600px; 
   display: flex;
   flex-direction: column;
+  gap: 24px;
+}
+
+.step-item {
+  display: flex;
+  gap: 20px;
+}
+
+.step-number {
+  background: var(--text-main);
+  color: var(--bg-main);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-weight: 800;
+}
+
+.step-text {
+  color: var(--text-main);
+  line-height: 1.6;
+  padding-top: 4px;
+}
+
+.recipe-actions {
+  padding: 32px 48px;
+  background: var(--bg-main);
+  display: flex;
+  justify-content: space-between;
+}
+
+.btn-secondary {
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  color: var(--text-main);
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-refresh {
+  background: var(--text-main);
+  color: var(--bg-main);
+  border: none;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-save {
+  background: #ff5e5e;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-save:hover { opacity: 0.9; }
+.btn-save:disabled { opacity: 0.6; }
+
+
+.error-bubble {
+  background: #fff5f5;
+  color: #c53030;
+  padding: 12px 24px;
+  border-radius: 12px;
+  display: inline-block;
+  margin-bottom: 20px;
+  font-weight: 600;
+}
+
+.disclaimer {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-top: -10px;
+  margin-bottom: 30px;
+}
+
+.rejection-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  padding: 60px;
+  border-radius: 32px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.05);
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.rejection-card .icon {
+  font-size: 4rem;
+  margin-bottom: 20px;
+}
+
+.rejection-card h2 {
+  color: var(--text-main);
+  margin-bottom: 16px;
+}
+
+.rejection-card p {
+  color: var(--text-muted);
+  margin-bottom: 32px;
+  line-height: 1.6;
+}
+
+.btn-primary {
+  background: #07a374;
+  color: white;
+  padding: 12px 32px;
+  border: none;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media (max-width: 850px) {
+  .recipe-content-grid { grid-template-columns: 1fr; }
+  .recipe-header { padding: 32px 24px; }
+  .recipe-title { font-size: 1.8rem; }
 }
 .fade-in { animation: fadeIn 0.4s ease-out both; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }

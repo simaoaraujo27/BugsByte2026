@@ -101,7 +101,7 @@ def negotiate_craving(craving: str, target_calories: int = 600, mood: Optional[s
             return schemas.NegotiatorResponse(
                 original_craving=craving,
                 message=data.get('message', 'Aqui está uma alternativa saudável!'),
-                recipe=schemas.Recipe(**data.get('recipe')) if data.get('recipe') else None,
+                recipe=schemas.NegotiatorRecipe(**data.get('recipe')) if data.get('recipe') else None,
                 restaurant_search_term=data.get('restaurant_search_term', craving)
             )
         except Exception as ve:
