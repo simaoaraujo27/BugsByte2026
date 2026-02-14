@@ -1,6 +1,7 @@
 import os
 import math
 import requests
+import re
 from typing import List, Dict, Optional
 from openai import OpenAI
 
@@ -28,17 +29,20 @@ def get_shop_type(ingredients: List[str], api_key: Optional[str] = None) -> str:
     Uses OpenAI API (or compatible like Groq) to determine the best OpenStreetMap shop tag.
     """
     final_api_key = api_key or os.getenv("OPENAI_API_KEY")
+    if final_api_key:
+        final_api_key = final_api_key.strip()
+
     base_url = os.getenv("OPENAI_BASE_URL")
     model = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
 
     if not final_api_key:
-        raise ValueError("OpenAI API key is required but was not provided or found in environment variables.")
+        return "supermarket"
 
     # Auto-detect Groq key
-    if final_api_key.startswith("gsk_") and not base_url:
-        print("Auto-detected Groq key. Switching to Groq API.")
-        base_url = "https://api.groq.com/openai/v1"
-        model = "llama-3.3-70b-versatile"
+    if final_api_key.startswith("gsk_"):
+        if not base_url or "openai.com" in base_url:
+            base_url = "https://api.groq.com/openai/v1"
+            model = "llama-3.3-70b-versatile"
 
     client = OpenAI(
         api_key=final_api_key,
@@ -47,10 +51,11 @@ def get_shop_type(ingredients: List[str], api_key: Optional[str] = None) -> str:
 
     ingredients_str = ", ".join(ingredients)
     prompt = (
-        f"Analyze this list of ingredients: {ingredients_str}. "
-        "Determine the single best OpenStreetMap 'shop' tag key to find them. "
+        f"Analyze this list of ingredients/terms: {ingredients_str}. "
+        "1. If the terms are nonsensical, inappropriate, offensive, or have absolutely nothing to do with food or valid retail categories, return exactly the word 'invalid'. "
+        "2. Otherwise, determine the single best OpenStreetMap 'shop' tag key to find them. "
         "Examples: 'supermarket', 'convenience', 'greengrocer', 'butcher', 'health_food', 'delicatessen'. "
-        "Return ONLY the clean string of the tag with no punctuation or extra text."
+        "Return ONLY the clean string of the tag (or 'invalid') with no punctuation or extra text."
     )
 
     try:
@@ -61,55 +66,66 @@ def get_shop_type(ingredients: List[str], api_key: Optional[str] = None) -> str:
                 {"role": "user", "content": prompt}
             ],
             temperature=0.3,
-            max_tokens=10
+            max_tokens=10,
+            timeout=10
         )
-        tag = response.choices[0].message.content.strip()
+        tag = response.choices[0].message.content.strip().lower()
         return tag
-    except Exception as e:
-        print(f"Error communicating with OpenAI: {e}")
-        # No more hardcoded fallback
-        raise e
+    except Exception:
+        return "supermarket"
 
-def find_nearby_shops(tag_value: str, lat: float, lon: float, radius: int = 3000, key: str = "shop") -> List[Dict]:
+def find_nearby_shops(tag_value: str, lat: float, lon: float, radius: int = 3000, key: str = "shop", search_term: Optional[str] = None) -> List[Dict]:
     """
     Queries the Overpass API for nodes/ways/relations with key=tag_value around the given coordinates.
+    Filtering by search_term is done in Python to avoid expensive/slow Overpass regex queries (preventing 504s).
     """
-    # Switching to an alternative reliable mirror
-    overpass_url = "https://overpass.kumi.systems/api/interpreter"
+    # Use official endpoint
+    overpass_url = "https://overpass-api.de/api/interpreter"
     
-    # Flat query to avoid parsing issues
-    query = f'[out:json][timeout:90];nwr["{key}"="{tag_value}"](around:{radius},{lat},{lon});out center;'
+    # We fetch ALL nearby establishments of the category. 
+    # Removing the name filter from the query makes it MUCH faster and reliable.
+    query = f'[out:json][timeout:25];nwr["{key}"="{tag_value}"](around:{radius},{lat},{lon});out center;'
 
     try:
-        response = requests.get(overpass_url, params={'data': query}, timeout=100)
+        response = requests.get(overpass_url, params={'data': query}, timeout=30)
         response.raise_for_status()
         data = response.json()
         
         shops = []
+        # Pre-compile regex for faster filtering if term is present
+        pattern = None
+        if search_term and search_term.strip():
+            # Use word boundaries or just a safer substring match to avoid "supermercado" matching "sperm"
+            # Here we use a case-insensitive search for the term as a whole word or significant part
+            pattern = re.compile(rf'\b{re.escape(search_term.strip())}', re.IGNORECASE)
+
         for element in data.get('elements', []):
-            shop_lat = element.get('lat')
-            shop_lon = element.get('lon')
+            shop_lat = element.get('lat') or element.get('center', {}).get('lat')
+            shop_lon = element.get('lon') or element.get('center', {}).get('lon')
             
             if shop_lat is None or shop_lon is None:
-                if 'center' in element:
-                    shop_lat = element['center']['lat']
-                    shop_lon = element['center']['lon']
-                else:
+                continue
+
+            name = element.get('tags', {}).get('name', 'Desconhecido')
+            
+            # If we have a search term (like "Pizza" for restaurants), we filter here
+            if pattern:
+                if not pattern.search(name):
                     continue
 
             distance = haversine_distance(lat, lon, shop_lat, shop_lon)
             
-            shop_info = {
-                'name': element.get('tags', {}).get('name', 'Desconhecido'),
+            shops.append({
+                'name': name,
                 'lat': shop_lat,
                 'lon': shop_lon,
                 'distance': round(distance, 2)
-            }
-            shops.append(shop_info)
+            })
             
         shops.sort(key=lambda x: x['distance'])
-        return shops
+        # Return top 50 results to keep frontend snappy
+        return shops[:50]
 
-    except requests.exceptions.RequestException as e:
-        print(f"Error querying Overpass API: {e}")
+    except Exception as e:
+        print(f"Error in find_nearby_shops: {e}")
         return []
