@@ -33,9 +33,14 @@ const uploadAndAnalyze = async (file) => {
   formData.append('file', file);
 
   try {
+    // We get the auth token but DON'T use getAuthHeaders() because it includes 'Content-Type: application/json'
+    // which breaks FormData/File uploads.
+    const token = localStorage.getItem('token');
     const response = await fetch('http://localhost:8000/vision/analyze', {
       method: 'POST',
-      headers: auth.getAuthHeaders(),
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
       body: formData,
     });
 

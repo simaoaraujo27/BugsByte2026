@@ -17,10 +17,13 @@ export const auth = {
   // Obter cabeçalhos com o Token para as chamadas à API
   getAuthHeaders() {
     const token = localStorage.getItem('token');
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
+    const headers = {
+      'Content-Type': 'application/json'
     };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
   },
 
   // Verificar se está logado
