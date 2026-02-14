@@ -46,7 +46,7 @@ watch(isDark, (val) => {
       <div class="container nav-inner">
         <div class="brand">
           <img :src="logo" alt="NutriVentures" class="brand-logo" />
-          <span class="brand-name">NutriVida</span>
+          <span class="brand-name">NutriVentures</span>
         </div>
 
         <nav class="menu-links" aria-label="Navegação principal">
@@ -60,6 +60,7 @@ watch(isDark, (val) => {
             <svg v-if="isDark" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sun"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
             <svg v-else xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-moon"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
           </button>
+          <button class="btn btn-main" type="button" @click="goToLogin">Começar Agora</button>
         </div>
       </div>
     </header>
@@ -68,7 +69,7 @@ watch(isDark, (val) => {
       <section class="hero">
         <div class="container hero-grid">
           <div class="hero-copy">
-            <p class="tag">Nutrição & Tecnologia</p>
+            <p class="tag tech-tag">Nutrição & Tecnologia</p>
             <h1>A Revolução da IA na tua Alimentação</h1>
             <p>
               A tua assistente inteligente de bolso. Analisa ingredientes por foto, 
@@ -140,23 +141,33 @@ watch(isDark, (val) => {
 
       <section id="testemunhos" class="testimonials">
         <div class="container">
-          <p class="section-tag section-tag-light">Hackathon 2026</p>
+          <p class="section-tag section-tag-light">BugsByte 2026</p>
           <h2>A Visão dos Criadores</h2>
 
-          <div class="cards-grid">
+          <div class="cards-grid creators-grid">
             <article class="testimonial-card">
               <p>“Acreditamos que a Inteligência Artificial deve servir a saúde de forma intuitiva e imediata.”</p>
-              <strong>Pedro</strong>
+              <strong>Pedro Morais</strong>
               <span>Dev Team</span>
             </article>
             <article class="testimonial-card">
               <p>“O nosso objetivo é simplificar a decisão diária do 'o que comer' para todos.”</p>
-              <strong>Simão</strong>
+              <strong>Simão Araújo</strong>
               <span>Dev Team</span>
             </article>
             <article class="testimonial-card">
-              <p>“Criámos o NutriVida para demonstrar como a tecnologia pode quebrar barreiras na nutrição.”</p>
-              <strong>Francisco</strong>
+              <p>“Criámos o NutriVentures para demonstrar como a tecnologia pode quebrar barreiras na nutrição.”</p>
+              <strong>Francisco Barbosa</strong>
+              <span>Dev Team</span>
+            </article>
+            <article class="testimonial-card">
+              <p>“Focamo-nos em criar uma interface que torne a jornada saudável algo prazeroso e simples.”</p>
+              <strong>Simão Mendes</strong>
+              <span>Dev Team</span>
+            </article>
+            <article class="testimonial-card">
+              <p>“A robustez dos dados e a precisão da IA são o coração deste projeto inovador.”</p>
+              <strong>João Teixeira</strong>
               <span>Dev Team</span>
             </article>
           </div>
@@ -166,7 +177,7 @@ watch(isDark, (val) => {
       <section class="final-cta">
         <div class="container final-cta-inner">
           <h2>Pronto para testar o futuro da nutrição?</h2>
-          <p>Junta-te à NutriVida e experimenta todas as ferramentas de Inteligência Artificial agora.</p>
+          <p>Junta-te à NutriVentures e experimenta todas as ferramentas de Inteligência Artificial agora.</p>
           <button class="btn btn-main" type="button" @click="goToLogin">Começar Agora</button>
         </div>
       </section>
@@ -177,7 +188,7 @@ watch(isDark, (val) => {
         <div>
           <div class="brand">
             <img :src="logo" alt="NutriVentures" class="brand-logo" />
-            <span class="brand-name light">NutriVida</span>
+            <span class="brand-name light">NutriVentures</span>
           </div>
           <p>Inovação tecnológica aplicada à nutrição para simplificar decisões saudáveis.</p>
         </div>
@@ -185,7 +196,7 @@ watch(isDark, (val) => {
         <div>
           <h4>Projeto</h4>
           <ul>
-            <li>Hackathon 2026</li>
+            <li>BugsByte 2026</li>
             <li>Tecnologia</li>
             <li>Open Source</li>
           </ul>
@@ -214,7 +225,7 @@ watch(isDark, (val) => {
       </div>
 
       <div class="container footer-bottom">
-        © 2026 NutriVida. Desenvolvido com ❤️ na Hackathon.
+        © 2026 NutriVentures. Desenvolvido com 🥵 na BugsByte.
       </div>
     </footer>
   </div>
@@ -401,6 +412,19 @@ watch(isDark, (val) => {
   text-transform: uppercase;
 }
 
+.tech-tag {
+  background: linear-gradient(135deg, #0ea5e9 0%, #22c55e 100%);
+  color: #fff;
+  border: none;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.25);
+}
+
+.landing.dark .tech-tag {
+  background: linear-gradient(135deg, #38bdf8 0%, #4ade80 100%);
+  color: #064e3b;
+  box-shadow: 0 4px 12px rgba(56, 189, 248, 0.15);
+}
+
 .hero-copy h1,
 h2 {
   margin: 0;
@@ -530,6 +554,10 @@ h2 {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px;
+}
+
+.creators-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .service-card,
@@ -716,6 +744,7 @@ h2 {
   .hero-grid,
   .benefits-grid,
   .cards-grid,
+  .creators-grid,
   .footer-grid {
     grid-template-columns: 1fr;
   }
