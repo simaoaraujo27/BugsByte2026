@@ -64,15 +64,6 @@ class UserCreate(UserBase):
     password: str
     allergens: list[str] = []
 
-class User(UserBase):
-    id: int
-    allergens: list[Allergen] = []
-    favorite_recipes: List[Recipe] = []
-    favorite_restaurants: List[Restaurant] = []
-
-    class ConfigDict:
-        from_attributes = True
-
 class UserUpdate(BaseModel):
     username: Optional[str] = None
     password: Optional[str] = None
@@ -82,6 +73,15 @@ class UserUpdate(BaseModel):
     idade: Optional[int] = None
     goal: Optional[str] = None
     activity_level: Optional[int] = None
+
+class User(UserBase):
+    id: int
+    allergens: list[Allergen] = []
+    favorite_recipes: List[Recipe] = []
+    favorite_restaurants: List[Restaurant] = []
+
+    class ConfigDict:
+        from_attributes = True
 
 class DashboardResponse(BaseModel):
     consumed_calories: int

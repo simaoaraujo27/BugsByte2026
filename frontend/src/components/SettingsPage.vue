@@ -134,6 +134,75 @@ export default {
   max-width: 760px;
 }
 
+.settings-card {
+  margin-top: 26px;
+  border: 1px solid var(--line);
+  background: var(--bg-elevated);
+  border-radius: 14px;
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.settings-card h3 {
+  margin: 0;
+  font-size: 1.02rem;
+}
+
+.settings-card small {
+  display: block;
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.theme-toggle {
+  width: 56px;
+  height: 32px;
+  border-radius: 99px;
+  border: 1px solid var(--line);
+  background: #d6dee8;
+  padding: 3px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+:global(.theme-dark) .theme-toggle {
+  background: #23314a;
+}
+
+.theme-toggle.active {
+  background: #07a374;
+  border-color: #07a374;
+}
+
+.toggle-knob {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #ffffff;
+  transition: transform 0.2s ease;
+}
+
+.theme-toggle.active .toggle-knob {
+  transform: translateX(24px);
+}
+
+.mode-select {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--bg-main);
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
 .profile-section {
   flex-direction: column;
   align-items: flex-start;
@@ -190,74 +259,4 @@ export default {
 
 .message.success { color: #07a374; }
 .message.error { color: #e74c3c; }
-
-.settings-card {
-  margin-top: 26px;
-  border: 1px solid var(--line);
-  background: var(--bg-elevated);
-  border-radius: 14px;
-  padding: 18px 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.settings-card h3 {
-  margin: 0;
-  font-size: 1.02rem;
-}
-
-.settings-card small {
-  display: block;
-  margin-top: 6px;
-  color: var(--text-muted);
-  font-size: 0.9rem;
-}
-
-.theme-toggle {
-  width: 56px;
-  height: 32px;
-  border-radius: 99px;
-  border: 1px solid var(--line);
-  background: #d6dee8;
-  padding: 3px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  transition: background 0.2s ease, border-color 0.2s ease;
-}
-
-/* Note: Global theme styles are handled in SiteHomePage, but we can target specific local styles if needed */
-:global(.theme-dark) .theme-toggle {
-  background: #23314a;
-}
-
-.theme-toggle.active {
-  background: #07a374;
-  border-color: #07a374;
-}
-
-.toggle-knob {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: #ffffff;
-  transition: transform 0.2s ease;
-}
-
-.theme-toggle.active .toggle-knob {
-  transform: translateX(24px);
-}
-
-.mode-select {
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--line);
-  background: var(--bg-main);
-  color: var(--text-main);
-  font-family: inherit;
-  font-size: 0.95rem;
-  cursor: pointer;
-}
 </style>

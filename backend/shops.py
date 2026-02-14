@@ -69,7 +69,9 @@ def get_shop_type(ingredients: List[str], api_key: Optional[str] = None) -> str:
             max_tokens=10,
             timeout=10
         )
+        # Clean the response: lowercase, strip punctuation and extra spaces
         tag = response.choices[0].message.content.strip().lower()
+        tag = re.sub(r'[^a-z_]', '', tag)
         return tag
     except Exception:
         return "supermarket"
@@ -79,6 +81,10 @@ def find_nearby_shops(tag_value: str, lat: float, lon: float, radius: int = 3000
     Queries the Overpass API for nodes/ways/relations with key=tag_value around the given coordinates.
     Filtering by search_term is done in Python to avoid expensive/slow Overpass regex queries (preventing 504s).
     """
+    # Normalize tag and key for Overpass
+    tag_value = tag_value.lower().strip()
+    key = key.lower().strip()
+
     # Use official endpoint
     overpass_url = "https://overpass-api.de/api/interpreter"
     
@@ -95,9 +101,8 @@ def find_nearby_shops(tag_value: str, lat: float, lon: float, radius: int = 3000
         # Pre-compile regex for faster filtering if term is present
         pattern = None
         if search_term and search_term.strip():
-            # Use word boundaries or just a safer substring match to avoid "supermercado" matching "sperm"
-            # Here we use a case-insensitive search for the term as a whole word or significant part
-            pattern = re.compile(rf'\b{re.escape(search_term.strip())}', re.IGNORECASE)
+            # Case-insensitive search anywhere in the name
+            pattern = re.compile(re.escape(search_term.strip()), re.IGNORECASE)
 
         for element in data.get('elements', []):
             shop_lat = element.get('lat') or element.get('center', {}).get('lat')

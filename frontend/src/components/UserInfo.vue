@@ -1,5 +1,5 @@
 <template>
-  <div class="signup-page">
+  <div class="signup-page" :class="{ 'theme-dark': isDarkTheme }">
     <div class="user-info-form">
       <h2 class="form-title">Criar Conta</h2>
       <p class="form-subtitle">Precisamos de alguns detalhes para criar o seu perfil.</p>
@@ -113,7 +113,7 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue';
+import { reactive, ref, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { API_URL } from '@/auth';
 
@@ -121,6 +121,27 @@ const router = useRouter();
 const errorMessage = ref('');
 const successMessage = ref('');
 const allergiesInput = ref('');
+const isDarkTheme = ref(false);
+const handleThemeChange = (event) => {
+  const theme = event?.detail?.theme;
+  if (theme === 'dark' || theme === 'light') {
+    isDarkTheme.value = theme === 'dark';
+  } else {
+    isDarkTheme.value = document.documentElement.classList.contains('dark');
+  }
+};
+const handleStorageThemeChange = (event) => {
+  if (event.key !== 'theme') return;
+  isDarkTheme.value = event.newValue === 'dark';
+};
+
+const syncTheme = () => {
+  const savedTheme = localStorage.getItem('theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const shouldUseDark = savedTheme ? savedTheme === 'dark' : prefersDark;
+  document.documentElement.classList.toggle('dark', shouldUseDark);
+  isDarkTheme.value = shouldUseDark;
+};
 
 const form = reactive({
   username: '',
@@ -175,6 +196,17 @@ const submitForm = async () => {
     errorMessage.value = error.message;
   }
 };
+
+onMounted(() => {
+  syncTheme();
+  window.addEventListener('theme-change', handleThemeChange);
+  window.addEventListener('storage', handleStorageThemeChange);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('theme-change', handleThemeChange);
+  window.removeEventListener('storage', handleStorageThemeChange);
+});
 </script>
 
 <style scoped>
@@ -213,7 +245,7 @@ const submitForm = async () => {
   /* Remove margin auto since parent flex centers it */
   margin: 0; 
   padding: 28px;
-  background: rgba(255, 255, 255, 0.95); /* Slightly transparent white background */
+  background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px); /* Frosted glass effect */
   border: 1px solid var(--line);
   border-radius: 20px;
@@ -400,5 +432,48 @@ const submitForm = async () => {
   .form-grid {
     grid-template-columns: 1fr;
   }
+}
+
+:global(.dark) .user-info-form,
+.signup-page.theme-dark .user-info-form {
+  --bg-main: #0b1326;
+  --bg-soft: #0f172a;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --accent: #14b8a6;
+  --accent-hover: #0d9488;
+  --line: #334155;
+  background: rgba(15, 23, 42, 0.95);
+  box-shadow: 0 20px 40px rgba(2, 6, 23, 0.55);
+}
+
+:global(.dark) .form-group input,
+:global(.dark) .form-group select,
+.signup-page.theme-dark .form-group input,
+.signup-page.theme-dark .form-group select {
+  background: #1e293b;
+  color: #f8fafc;
+  border-color: #334155;
+}
+
+:global(.dark) .form-group input:focus,
+:global(.dark) .form-group select:focus,
+.signup-page.theme-dark .form-group input:focus,
+.signup-page.theme-dark .form-group select:focus {
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.25);
+}
+
+:global(.dark) .message.error,
+.signup-page.theme-dark .message.error {
+  background-color: rgba(127, 29, 29, 0.25);
+  color: #fecaca;
+  border-color: rgba(248, 113, 113, 0.45);
+}
+
+:global(.dark) .message.success,
+.signup-page.theme-dark .message.success {
+  background-color: rgba(20, 83, 45, 0.25);
+  color: #bbf7d0;
+  border-color: rgba(74, 222, 128, 0.45);
 }
 </style>
