@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import { auth, API_URL } from '@/auth';
 import { addRecipeToHistory } from '@/utils/recipeHistory';
+import { optimizeImageForVision } from '@/utils/imageUpload';
 
 const fileInput = ref(null);
 const cameraInput = ref(null);
@@ -119,14 +120,22 @@ const handleFileChange = (event) => {
   }
 };
 
-const processSelectedFile = (file) => {
+const processSelectedFile = async (file) => {
   console.log("VisionRecipe: Processing file:", file.name, "Mode:", visionMode.value);
+  let uploadFile = file;
+  try {
+    uploadFile = await optimizeImageForVision(file);
+    console.log("VisionRecipe: Optimized size:", uploadFile.size);
+  } catch (err) {
+    console.warn("VisionRecipe: Could not optimize image, using original file.", err);
+  }
+
   const reader = new FileReader();
   reader.onload = (e) => {
     previewImage.value = e.target.result;
   };
-  reader.readAsDataURL(file);
-  uploadAndAnalyze(file);
+  reader.readAsDataURL(uploadFile);
+  uploadAndAnalyze(uploadFile);
 };
 
 onMounted(() => {
@@ -156,9 +165,19 @@ const uploadAndAnalyze = async (file) => {
 
     console.log("VisionRecipe: Response status:", response.status);
     if (!response.ok) {
-      const errText = await response.text();
-      console.error("VisionRecipe: API Error:", errText);
-      throw new Error('Erro ao analisar a imagem');
+      let errorMessage = 'Erro ao analisar a imagem';
+      try {
+        const errData = await response.json();
+        if (response.status === 413) {
+          errorMessage = errData?.detail || 'A imagem é demasiado grande. Tenta novamente com uma imagem mais leve.';
+        } else if (errData?.detail) {
+          errorMessage = errData.detail;
+        }
+      } catch {
+        const errText = await response.text();
+        console.error("VisionRecipe: API Error:", errText);
+      }
+      throw new Error(errorMessage);
     }
 
     const data = await response.json();
