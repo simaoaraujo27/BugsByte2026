@@ -44,15 +44,12 @@ const chartPoints = computed(() => {
   const min = Math.min(...values)
   const max = Math.max(...values)
   const range = Math.max(0.1, max - min)
-  const left = 16
-  const right = 16
   const top = 16
   const bottom = 30
-  const width = 100 - left - right
   const height = 100 - top - bottom
 
   return values.map((value, index) => {
-    const x = values.length === 1 ? left + width / 2 : left + (index * width) / (values.length - 1)
+    const x = (100 / values.length) * (index + 0.5)
     const y = top + ((max - value) / range) * height
     return { x, y, value }
   })
@@ -86,7 +83,7 @@ const chartPath = computed(() => {
     <div class="chart-container">
       <div v-if="hasDataForPeriod" class="svg-chart-wrap">
         <svg viewBox="0 0 100 100" preserveAspectRatio="none" class="svg-chart" aria-label="Grafico de peso">
-          <line x1="16" y1="70" x2="84" y2="70" class="axis" />
+          <line x1="0" y1="70" x2="100" y2="70" class="axis" />
           <path :d="chartPath" class="line-path" />
           <circle v-for="(point, idx) in chartPoints" :key="idx" :cx="point.x" :cy="point.y" r="1.5" class="dot" />
         </svg>
