@@ -68,15 +68,6 @@ sync_sqlite_schema()
 
 app = FastAPI(redirect_slashes=False)
 
-# Configure CORS to allow frontend to access the backend
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 VALID_MEAL_SECTIONS = {"breakfast", "lunch", "snack", "dinner", "extras"}
 
 
@@ -195,6 +186,19 @@ def get_or_create_diary_day(db: Session, user_id: int, date_key: str) -> models.
     db.commit()
     db.refresh(day)
     return day
+
+
+# Configure CORS to allow frontend to access the backend
+origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 @app.post("/users/", response_model=schemas.User)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
