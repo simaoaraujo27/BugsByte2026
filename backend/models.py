@@ -50,6 +50,16 @@ class User(Base):
     diary_days = relationship("DiaryDay", back_populates="user", cascade="all, delete-orphan")
     favorite_recipes = relationship("Recipe", secondary=user_favorite_recipes)
     favorite_restaurants = relationship("Restaurant", secondary=user_favorite_restaurants)
+    weight_history = relationship("WeightEntry", back_populates="user", cascade="all, delete-orphan")
+
+class WeightEntry(Base):
+    __tablename__ = "weight_entries"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    weight = Column(Float, nullable=False)
+    date = Column(String, nullable=False) # YYYY-MM-DD
+
+    user = relationship("User", back_populates="weight_history")
 
 class Allergen(Base):
     __tablename__ = "allergens"

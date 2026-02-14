@@ -336,11 +336,7 @@ const saveRecipe = async () => {
       instructions: recipeResult.value.recipe.steps.join('\n')
     };
 
-<<<<<<< HEAD
     const createResponse = await fetch(`${API_URL}/recipes/`, {
-=======
-    const createResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/recipes/`, {
->>>>>>> 6d7054ffa3574933bde34503078b439cee5d4cbf
       method: 'POST',
       headers: auth.getAuthHeaders(),
       body: JSON.stringify(recipeData)

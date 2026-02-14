@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { auth } from '@/auth'
+import { auth, API_URL } from '@/auth'
 
 const emit = defineEmits(['navigate'])
 
@@ -9,45 +9,54 @@ const goToHungryMode = () => emit('navigate', 'tenho-fome')
 const goToFridgeMode = () => emit('navigate', 'tenho-fome')
 
 const greetingName = ref('Utilizador')
+const dashboardData = ref({
+  consumed_calories: 0,
+  calorie_goal: 2000,
+  protein: 0,
+  carbs: 0,
+  fat: 0,
+  streak_days: 0,
+  water_liters: 0
+})
 
-const nutritionCards = [
+const nutritionCards = computed(() => [
   {
     title: 'Calorias',
-    value: '1450',
+    value: String(dashboardData.value.consumed_calories),
     unit: '',
-    goalLabel: 'Meta: 2200 kcal',
-    percent: 66,
+    goalLabel: `Meta: ${dashboardData.value.calorie_goal} kcal`,
+    percent: Math.min(100, Math.round((dashboardData.value.consumed_calories / (dashboardData.value.calorie_goal || 1)) * 100)),
     accent: '#16a34a',
     icon: '🔥'
   },
   {
     title: 'Proteínas',
-    value: '85',
+    value: String(Math.round(dashboardData.value.protein)),
     unit: 'g',
     goalLabel: 'Meta: 120g',
-    percent: 71,
+    percent: Math.min(100, Math.round((dashboardData.value.protein / 120) * 100)),
     accent: '#2563eb',
     icon: '💪'
   },
   {
     title: 'Carboidratos',
-    value: '150',
+    value: String(Math.round(dashboardData.value.carbs)),
     unit: 'g',
     goalLabel: 'Meta: 250g',
-    percent: 60,
+    percent: Math.min(100, Math.round((dashboardData.value.carbs / 250) * 100)),
     accent: '#14b8a6',
     icon: '🍎'
   },
   {
     title: 'Água',
-    value: '1.5',
+    value: String(dashboardData.value.water_liters),
     unit: 'L',
     goalLabel: 'Meta: 2.5L',
-    percent: 60,
+    percent: Math.min(100, Math.round((dashboardData.value.water_liters / 2.5) * 100)),
     accent: '#0891b2',
     icon: '💧'
   }
-]
+])
 
 const chartPeriods = [
   { id: '1S', label: '1S' },
@@ -58,26 +67,17 @@ const chartPeriods = [
 
 const selectedPeriod = ref('1M')
 
-const chartData = {
-  '1S': {
-    labels: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'],
-    values: [78.7, 78.6, 78.5, 78.4, 78.3, 78.2, 78.1]
-  },
-  '1M': {
+const chartData = computed(() => {
+  if (dashboardData.value.weight_history && dashboardData.value.weight_history.labels && dashboardData.value.weight_history.labels.length > 0) {
+    return dashboardData.value.weight_history
+  }
+  return {
     labels: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'],
     values: [78.5, 77.9, 77.4, 76.9]
-  },
-  '3M': {
-    labels: ['Jan', 'Fev', 'Mar'],
-    values: [79.2, 78.1, 76.9]
-  },
-  ALL: {
-    labels: ['Q1', 'Q2', 'Q3', 'Q4'],
-    values: [82, 80.3, 78.8, 76.9]
   }
-}
+})
 
-const currentSeries = computed(() => chartData[selectedPeriod.value])
+const currentSeries = computed(() => chartData.value)
 
 const yRange = computed(() => {
   const values = currentSeries.value.values
@@ -132,7 +132,7 @@ const yTicks = computed(() => {
   return values
 })
 
-const streakDays = 7
+const streakDays = computed(() => dashboardData.value.streak_days)
 const weeklyGoals = [
   { label: 'Beber 2.5L água/dia', done: true },
   { label: '5 refeições registadas', done: true },
@@ -151,6 +151,19 @@ const formatDisplayName = (email) => {
     .join(' ')
 }
 
+const fetchDashboardData = async () => {
+  try {
+    const res = await fetch(`${API_URL}/users/me/dashboard`, {
+      headers: auth.getAuthHeaders()
+    })
+    if (res.ok) {
+      dashboardData.value = await res.json()
+    }
+  } catch (err) {
+    console.error('Error fetching dashboard data:', err)
+  }
+}
+
 const loadGreetingName = async () => {
   try {
     const me = await auth.getMe()
@@ -160,7 +173,14 @@ const loadGreetingName = async () => {
   }
 }
 
-onMounted(loadGreetingName)
+const loadData = async () => {
+  await Promise.all([
+    loadGreetingName(),
+    fetchDashboardData()
+  ])
+}
+
+onMounted(loadData)
 </script>
 
 <template>

@@ -73,6 +73,26 @@ class User(UserBase):
     class ConfigDict:
         from_attributes = True
 
+class UserUpdate(BaseModel):
+    username: Optional[str] = None
+    password: Optional[str] = None
+    peso: Optional[float] = None
+    altura: Optional[float] = None
+    sexo: Optional[str] = None
+    idade: Optional[int] = None
+    goal: Optional[str] = None
+    activity_level: Optional[int] = None
+
+class DashboardResponse(BaseModel):
+    consumed_calories: int
+    calorie_goal: int
+    protein: float
+    carbs: float
+    fat: float
+    streak_days: int
+    water_liters: float = 0.0
+    weight_history: dict[str, list] = {}
+
 class LoginRequest(BaseModel):
     username: str
     password: str

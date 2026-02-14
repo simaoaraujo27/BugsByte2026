@@ -495,4 +495,51 @@ const handleLogin = async () => {
 .back-link:hover {
   color: #475569;
 }
+
+/* Dark Mode Support */
+:global(.theme-dark) .auth-card {
+  background: rgba(15, 23, 42, 0.95);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+}
+
+:global(.theme-dark) .auth-title {
+  color: #f8fafc;
+}
+
+:global(.theme-dark) .form-group label {
+  color: #cbd5e1;
+}
+
+:global(.theme-dark) .form-group input {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+:global(.theme-dark) .form-group input:focus {
+  border-color: #14b8a6;
+  background: #1e293b;
+}
+
+:global(.theme-dark) .logo-container {
+  background: #1e293b;
+}
+
+:global(.theme-dark) .footer {
+  border-top-color: #334155;
+}
+
+:global(.theme-dark) .back-link {
+  color: #64748b;
+}
+
+:global(.theme-dark) .signup-text-muted {
+  color: #94a3b8;
+}
+
+:global(.theme-dark) .checkbox-label {
+  color: #94a3b8;
+}
 </style>
