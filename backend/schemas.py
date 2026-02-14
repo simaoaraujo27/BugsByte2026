@@ -130,6 +130,17 @@ class NegotiatorResponse(BaseModel):
     recipe: NegotiatorRecipe | None = None
     restaurant_search_term: str
 
+class NutritionAnalysisRequest(BaseModel):
+    food_text: str
+
+class NutritionAnalysisResponse(BaseModel):
+    food_text: str
+    name: str
+    calories: int
+    protein: float
+    carbs: float
+    fat: float
+    estimated_grams: int
 
 class DiaryGoalUpdate(BaseModel):
     goal: int = Field(..., ge=1000, le=6000)

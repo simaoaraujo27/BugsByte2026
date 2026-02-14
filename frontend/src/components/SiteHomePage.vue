@@ -16,6 +16,7 @@ import SettingsPage from './SettingsPage.vue'
 const sections = [
   { id: 'inicio', label: 'Início', icon: '🏠' },
   { id: 'tenho-fome', label: 'Tenho Fome', icon: '🍔' },
+  { id: 'gerar-receita', label: 'Visão do Chef', icon: '📸' },
   { id: 'visualizador', label: 'Volume das Calorias', icon: '🥗' },
   { id: 'supermercados', label: 'Supermercados & Compras', icon: '🛒' },
   { id: 'diario', label: 'Diário / Tracking', icon: '📊' },
@@ -130,6 +131,10 @@ const sectionContent = {
   'tenho-fome': {
     title: 'Tenho Fome (Intelligent Assistant)',
     subtitle: 'Escolhe como queres decidir a tua próxima refeição saudável.'
+  },
+  'gerar-receita': {
+    title: 'Visão do Chef',
+    subtitle: 'Tira uma foto aos teus ingredientes e deixa a IA criar a receita perfeita.'
   },
   supermercados: {
     title: 'Supermercados & Compras',

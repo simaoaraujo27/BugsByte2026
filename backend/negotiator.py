@@ -81,3 +81,47 @@ def negotiate_craving(craving: str, target_calories: int = 600, mood: Optional[s
     except Exception as e:
         print(f"Erro Negotiator: {e}")
         raise HTTPException(status_code=500, detail="Erro ao processar receita personalizada.")
+
+def analyze_nutrition(food_text: str) -> schemas.NutritionAnalysisResponse:
+    client, model = get_client_config()
+
+    prompt = (
+        f"Analisa a informação nutricional para: '{food_text}'. "
+        "Estima as calorias e macronutrientes totais para a quantidade indicada. "
+        "Se a quantidade não for explícita, assume uma porção padrão média. "
+        "Responde APENAS com um objeto JSON com este formato (sem markdown): "
+        "{ "
+        "  'name': 'Nome curto e claro do alimento (PT-PT)', "
+        "  'calories': 0, "
+        "  'protein': 0.0, "
+        "  'carbs': 0.0, "
+        "  'fat': 0.0, "
+        "  'estimated_grams': 0 "
+        "}"
+    )
+
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": "You are a nutritional expert API. Output valid JSON only."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.3,
+            response_format={"type": "json_object"}
+        )
+        content = response.choices[0].message.content
+        data = json.loads(content)
+        
+        return schemas.NutritionAnalysisResponse(
+            food_text=food_text,
+            name=data.get("name", food_text),
+            calories=data.get("calories", 0),
+            protein=data.get("protein", 0),
+            carbs=data.get("carbs", 0),
+            fat=data.get("fat", 0),
+            estimated_grams=data.get("estimated_grams", 0)
+        )
+    except Exception as e:
+        print(f"Erro na análise nutricional: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro ao analisar nutrição: {str(e)}")

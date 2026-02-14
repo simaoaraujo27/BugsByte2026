@@ -1,31 +1,143 @@
 <script setup>
-import { ref } from 'vue';
-import { auth } from '@/auth';
+import { ref, onMounted, onUnmounted } from 'vue';
+import { auth, API_URL } from '@/auth';
+import { addRecipeToHistory } from '@/utils/recipeHistory';
 
 const fileInput = ref(null);
+const cameraInput = ref(null);
+const videoRef = ref(null);
+const canvasRef = ref(null);
 const previewImage = ref(null);
+const isCameraActive = ref(false);
+const stream = ref(null);
 const loading = ref(false);
 const saving = ref(false);
 const result = ref(null);
 const error = ref(null);
 
+const isDragging = ref(false);
+
+const onDragOver = (e) => {
+  e.preventDefault();
+  isDragging.value = true;
+};
+
+const onDragLeave = () => {
+  isDragging.value = false;
+};
+
+const onDrop = (e) => {
+  e.preventDefault();
+  isDragging.value = false;
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) {
+    processSelectedFile(file);
+  }
+};
+
+const onPaste = (e) => {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      const file = item.getAsFile();
+      processSelectedFile(file);
+      break;
+    }
+  }
+};
+
 const triggerFileSelect = () => {
   fileInput.value.click();
+};
+
+const startCamera = async () => {
+  // On mobile, try to use native camera interface first for better reliability
+  if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+    cameraInput.value.click();
+    return;
+  }
+
+  isCameraActive.value = true;
+  error.value = null;
+  try {
+    stream.value = await navigator.mediaDevices.getUserMedia({ 
+      video: { facingMode: 'environment' } 
+    });
+    if (videoRef.value) {
+      videoRef.value.srcObject = stream.value;
+    }
+  } catch (err) {
+    console.error("Error accessing camera:", err);
+    error.value = "Não foi possível aceder à câmara. Verifique as permissões.";
+    isCameraActive.value = false;
+  }
+};
+
+const stopCamera = () => {
+  if (stream.value) {
+    stream.value.getTracks().forEach(track => track.stop());
+    stream.value = null;
+  }
+  isCameraActive.value = false;
+};
+
+const capturePhoto = () => {
+  console.log("VisionRecipe: Attempting capture...");
+  const video = videoRef.value;
+  const canvas = canvasRef.value;
+  if (video && canvas) {
+    try {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const context = canvas.getContext('2d');
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      canvas.toBlob((blob) => {
+        if (blob) {
+          console.log("VisionRecipe: Blob created, size:", blob.size);
+          const file = new File([blob], "captured_ingredients.jpg", { type: "image/jpeg" });
+          processSelectedFile(file);
+          stopCamera();
+        } else {
+          console.error("VisionRecipe: Failed to create blob");
+          error.value = "Erro ao processar imagem capturada.";
+        }
+      }, 'image/jpeg', 0.8);
+    } catch (err) {
+      console.error("VisionRecipe: Capture error:", err);
+      error.value = "Erro na captura: " + err.message;
+    }
+  }
 };
 
 const handleFileChange = (event) => {
   const file = event.target.files[0];
   if (file) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      previewImage.value = e.target.result;
-    };
-    reader.readAsDataURL(file);
-    uploadAndAnalyze(file);
+    processSelectedFile(file);
   }
 };
 
+const processSelectedFile = (file) => {
+  console.log("VisionRecipe: Processing file:", file.name);
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    previewImage.value = e.target.result;
+  };
+  reader.readAsDataURL(file);
+  uploadAndAnalyze(file);
+};
+
+onMounted(() => {
+  window.addEventListener('paste', onPaste);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('paste', onPaste);
+});
+
 const uploadAndAnalyze = async (file) => {
+  console.log("VisionRecipe: Starting uploadAndAnalyze...");
   loading.value = true;
   error.value = null;
   result.value = null;
@@ -35,21 +147,41 @@ const uploadAndAnalyze = async (file) => {
 
   try {
     // For file uploads, we must NOT set Content-Type manually so the browser can set the boundary.
-    const response = await fetch('' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/vision/analyze', {
+    const response = await fetch(`${API_URL}/vision/analyze`, {
       method: 'POST',
       headers: auth.getAuthHeaders(false),
       body: formData,
     });
 
+    console.log("VisionRecipe: Response status:", response.status);
     if (!response.ok) {
-      const errData = await response.json();
-      throw new Error(errData.detail || 'Erro ao analisar a imagem');
+      const errText = await response.text();
+      console.error("VisionRecipe: API Error:", errText);
+      throw new Error('Erro ao analisar a imagem');
     }
 
-    result.value = await response.json();
+    const data = await response.json();
+    
+    if (!data.detected_ingredients || data.detected_ingredients.length === 0) {
+      throw new Error('Não foram detetados ingredientes na foto. Tenta aproximar mais a câmara ou melhorar a iluminação.');
+    }
+
+    result.value = data;
+    
+    // Guardar no histórico
+    addRecipeToHistory({
+      name: data.recipe.title,
+      ingredients: data.recipe.ingredients,
+      instructions: data.recipe.steps,
+      calories: data.recipe.calories,
+      source: 'vision',
+      note: data.message
+    });
+
+    console.log("VisionRecipe: Analysis success");
   } catch (e) {
+    console.error("VisionRecipe: uploadAndAnalyze error:", e);
     error.value = e.message;
-    console.error(e);
   } finally {
     loading.value = false;
   }
@@ -67,7 +199,7 @@ const saveRecipe = async () => {
       instructions: result.value.recipe.steps.join('\n')
     };
 
-    const createResponse = await fetch('' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/recipes/', {
+    const createResponse = await fetch(`${API_URL}/recipes/`, {
       method: 'POST',
       headers: auth.getAuthHeaders(),
       body: JSON.stringify(recipeData)
@@ -77,7 +209,7 @@ const saveRecipe = async () => {
     const createdRecipe = await createResponse.json();
 
     // 2. Add to favorites
-    const favResponse = await fetch(`' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/users/me/favorites/recipes/${createdRecipe.id}`, {
+    const favResponse = await fetch(`${API_URL}/users/me/favorites/recipes/${createdRecipe.id}`, {
       method: 'POST',
       headers: auth.getAuthHeaders()
     });
@@ -103,11 +235,34 @@ const reset = () => {
 
 <template>
   <div class="vision-container">
-    <div v-if="!previewImage" class="upload-zone" @click="triggerFileSelect">
-      <div class="upload-icon">📸</div>
-      <h3>Fotografe os seus ingredientes</h3>
-      <p>O nosso Chef IA vai detetar o que tem e criar uma receita saudável personalizada.</p>
-      <button class="btn-upload">Escolher Foto ou Tirar agora</button>
+    <div 
+      v-if="!previewImage && !isCameraActive" 
+      class="upload-zone"
+      :class="{ 'is-dragging': isDragging }"
+      @dragover="onDragOver"
+      @dragleave="onDragLeave"
+      @drop="onDrop"
+    >
+      <div class="upload-icon-wrapper">
+        <div class="upload-icon">📸</div>
+        <div class="upload-pulse"></div>
+      </div>
+      <h3>Digitalize os seus ingredientes</h3>
+      <p>Arraste uma foto, cole do clipboard ou use a câmara para criar uma receita saudável personalizada.</p>
+      
+      <div class="upload-actions">
+        <button class="btn-upload" @click="triggerFileSelect">
+          <span class="btn-icon">📁</span> Escolher Ficheiro
+        </button>
+        <button class="btn-camera" @click="startCamera">
+          <span class="btn-icon">📷</span> Abrir Câmara
+        </button>
+      </div>
+
+      <div class="keyboard-hint">
+        <kbd>Ctrl</kbd> + <kbd>V</kbd> para colar imagem
+      </div>
+
       <input 
         type="file" 
         ref="fileInput" 
@@ -115,9 +270,32 @@ const reset = () => {
         accept="image/*" 
         @change="handleFileChange"
       />
+      <input 
+        type="file" 
+        ref="cameraInput" 
+        style="display: none" 
+        accept="image/*" 
+        capture="environment"
+        @change="handleFileChange"
+      />
     </div>
 
-    <div v-else class="analysis-view">
+    <!-- Camera View -->
+    <div v-if="isCameraActive" class="camera-view fade-in">
+      <div class="camera-container">
+        <video ref="videoRef" autoplay playsinline class="camera-video"></video>
+        <canvas ref="canvasRef" style="display: none"></canvas>
+        <div class="camera-controls">
+          <button @click="stopCamera" class="btn-cancel">Cancelar</button>
+          <button @click="capturePhoto" class="btn-capture">
+            <div class="capture-inner"></div>
+          </button>
+          <div class="spacer"></div>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="previewImage && !isCameraActive" class="analysis-view">
       <div class="preview-card">
         <img :src="previewImage" class="image-preview" />
         <div v-if="loading" class="loading-overlay">
@@ -189,32 +367,184 @@ const reset = () => {
 
 .upload-zone {
   background: var(--bg-elevated);
-  border: 3px dashed var(--line);
+  border: 2px dashed var(--line);
   border-radius: 32px;
   padding: 80px 40px;
   text-align: center;
-  cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  overflow: hidden;
 }
 
-.upload-zone:hover {
+.upload-zone.is-dragging {
   border-color: #07a374;
-  background: var(--bg-main);
+  background: var(--menu-active-bg);
+  transform: scale(1.02);
 }
 
-.upload-icon { font-size: 4rem; margin-bottom: 24px; }
-.upload-zone h3 { font-size: 1.8rem; margin-bottom: 12px; color: var(--text-main); }
-.upload-zone p { color: var(--text-muted); margin-bottom: 32px; max-width: 500px; margin-left: auto; margin-right: auto; }
+.upload-icon-wrapper {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  margin: 0 auto 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.upload-icon { 
+  font-size: 4.5rem; 
+  z-index: 2;
+  transition: transform 0.3s ease;
+}
+
+.is-dragging .upload-icon {
+  transform: translateY(-10px);
+}
+
+.upload-pulse {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: #07a374;
+  border-radius: 50%;
+  opacity: 0.1;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.95); opacity: 0.2; }
+  70% { transform: scale(1.3); opacity: 0; }
+  100% { transform: scale(0.95); opacity: 0; }
+}
+
+.upload-zone h3 { font-size: 2rem; margin-bottom: 16px; color: var(--text-main); font-weight: 800; }
+.upload-zone p { color: var(--text-muted); margin-bottom: 40px; max-width: 500px; margin-left: auto; margin-right: auto; line-height: 1.6; }
+
+.upload-actions {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+}
+
+.btn-upload, .btn-camera {
+  padding: 18px 36px;
+  border-radius: 18px;
+  border: none;
+  font-weight: 800;
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.3s;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+}
+
+.btn-icon { font-size: 1.3rem; }
 
 .btn-upload {
   background: #07a374;
   color: white;
-  padding: 16px 32px;
-  border-radius: 16px;
-  border: none;
-  font-weight: 700;
-  font-size: 1.1rem;
 }
+
+.btn-camera {
+  background: var(--text-main);
+  color: var(--bg-main);
+}
+
+.btn-upload:hover, .btn-camera:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+}
+
+.keyboard-hint {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 24px;
+}
+
+kbd {
+  background: var(--bg-main);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-family: inherit;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.camera-view {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.camera-container {
+  position: relative;
+  background: #000;
+  border-radius: 32px;
+  overflow: hidden;
+  aspect-ratio: 3/4;
+  display: flex;
+  flex-direction: column;
+}
+
+.camera-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.camera-controls {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 30px;
+  background: linear-gradient(transparent, rgba(0,0,0,0.7));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.btn-capture {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: white;
+  border: 4px solid rgba(255,255,255,0.3);
+  padding: 4px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.btn-capture:active {
+  transform: scale(0.9);
+}
+
+.capture-inner {
+  width: 100%;
+  height: 100%;
+  background: white;
+  border-radius: 50%;
+  border: 2px solid #000;
+}
+
+.btn-cancel {
+  background: rgba(255,255,255,0.2);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+}
+
+.spacer { width: 80px; }
 
 .analysis-view {
   display: flex;

@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { auth } from '@/auth'
+import { auth, API_URL } from '@/auth'
 
 const STORAGE_KEY = 'nutri_diary_tracking_v1'
 const DEFAULT_GOAL = 1800
@@ -23,6 +23,8 @@ const quickFoods = [
 const dataByDate = ref({})
 const selectedDate = ref(new Date())
 const composerFor = ref('')
+const composerMode = ref('manual') // 'manual' or 'auto'
+const autoLoading = ref(false)
 const foodSearch = ref({
   query: '',
   loading: false,
@@ -45,6 +47,9 @@ const mealDraft = ref({
   protein: '',
   carbs: '',
   fat: ''
+})
+const autoDraft = ref({
+  text: ''
 })
 
 const today = new Date()
@@ -303,11 +308,13 @@ const insights = computed(() => {
 
 const openComposer = (sectionId) => {
   composerFor.value = composerFor.value === sectionId ? '' : sectionId
+  composerMode.value = 'manual'
   foodSearchModalOpen.value = false
   foodSearch.value = { query: '', loading: false, error: '', results: [] }
   foodFilters.value = { source: 'all', sort: 'relevance', maxCalories: '', minProtein: '' }
   selectedFoodPer100g.value = null
   mealDraft.value = { name: '', grams: '', calories: '', protein: '', carbs: '', fat: '' }
+  autoDraft.value = { text: '' }
 }
 
 const estimateMacros = (calories) => {
@@ -315,6 +322,38 @@ const estimateMacros = (calories) => {
   const carbs = round1((calories * 0.45) / 4)
   const fat = round1((calories * 0.3) / 9)
   return { protein, carbs, fat }
+}
+
+const calculateNutrition = async () => {
+  if (!autoDraft.value.text.trim()) return
+  autoLoading.value = true
+  
+  try {
+    const res = await fetch(`${API_URL}/negotiator/nutrition`, {
+      method: 'POST',
+      headers: auth.getAuthHeaders(),
+      body: JSON.stringify({ food_text: autoDraft.value.text })
+    })
+    
+    if (!res.ok) throw new Error('Falha ao calcular.')
+    
+    const data = await res.json()
+    // Populate manual fields with result
+    mealDraft.value.name = data.name
+    mealDraft.value.grams = data.estimated_grams
+    mealDraft.value.calories = data.calories
+    mealDraft.value.protein = data.protein
+    mealDraft.value.carbs = data.carbs
+    mealDraft.value.fat = data.fat
+    
+    // Switch to manual mode so user can review/save
+    composerMode.value = 'manual'
+  } catch (err) {
+    console.error(err)
+    alert('Erro ao calcular macros. Tente novamente.')
+  } finally {
+    autoLoading.value = false
+  }
 }
 
 const addMeal = (sectionId) => {
@@ -392,7 +431,7 @@ const searchFoodApi = async () => {
   foodSearch.value.results = []
 
   try {
-    const res = await fetch(`' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/foods/search?q=${encodeURIComponent(query)}&page_size=8`, {
+    const res = await fetch(`${API_URL}/foods/search?q=${encodeURIComponent(query)}&page_size=8`, {
       headers: auth.getAuthHeaders()
     })
     if (!res.ok) throw new Error('Falha na pesquisa de alimentos')
@@ -568,23 +607,56 @@ watch(
           </header>
 
           <div v-if="composerFor === section.id" class="composer">
-            <input v-model="mealDraft.name" type="text" placeholder="Nome da refeição" />
-            <button type="button" class="search-food-btn" @click="openFoodSearchModal">
-              Pesquisar alimento
-            </button>
-            <p v-if="selectedFoodPer100g" class="selected-food">
-              Selecionado: <strong>{{ selectedFoodPer100g.name }}</strong>
-            </p>
-            <input v-model="mealDraft.grams" type="number" min="1" placeholder="Quantidade (g)" />
-            <input v-model="mealDraft.calories" type="number" min="1" placeholder="kcal" />
-            <div class="macro-inputs">
-              <input v-model="mealDraft.protein" type="number" min="0" step="0.1" placeholder="Prot. g" />
-              <input v-model="mealDraft.carbs" type="number" min="0" step="0.1" placeholder="Hidr. g" />
-              <input v-model="mealDraft.fat" type="number" min="0" step="0.1" placeholder="Gord. g" />
+            <div class="composer-tabs">
+              <button 
+                :class="{ active: composerMode === 'manual' }" 
+                @click="composerMode = 'manual'"
+              >
+                Manual
+              </button>
+              <button 
+                :class="{ active: composerMode === 'auto' }" 
+                @click="composerMode = 'auto'"
+              >
+                ✨ Automático (IA)
+              </button>
             </div>
-            <div class="composer-actions">
-              <button type="button" class="save-btn" @click="addMeal(section.id)">Guardar</button>
-              <button type="button" class="cancel-btn" @click="openComposer('')">Cancelar</button>
+
+            <div v-if="composerMode === 'manual'" class="mode-manual">
+              <input v-model="mealDraft.name" type="text" placeholder="Nome da refeição" />
+              <button type="button" class="search-food-btn" @click="openFoodSearchModal">
+                Pesquisar alimento
+              </button>
+              <p v-if="selectedFoodPer100g" class="selected-food">
+                Selecionado: <strong>{{ selectedFoodPer100g.name }}</strong>
+              </p>
+              <input v-model="mealDraft.grams" type="number" min="1" placeholder="Quantidade (g)" />
+              <input v-model="mealDraft.calories" type="number" min="1" placeholder="kcal" />
+              <div class="macro-inputs">
+                <input v-model="mealDraft.protein" type="number" min="0" step="0.1" placeholder="Prot. g" />
+                <input v-model="mealDraft.carbs" type="number" min="0" step="0.1" placeholder="Hidr. g" />
+                <input v-model="mealDraft.fat" type="number" min="0" step="0.1" placeholder="Gord. g" />
+              </div>
+              <div class="composer-actions">
+                <button type="button" class="save-btn" @click="addMeal(section.id)">Guardar</button>
+                <button type="button" class="cancel-btn" @click="openComposer('')">Cancelar</button>
+              </div>
+            </div>
+
+            <div v-else class="mode-auto">
+              <p class="helper-text">Descreva o que comeu e a quantidade. A IA calculará os macros.</p>
+              <input 
+                v-model="autoDraft.text" 
+                type="text" 
+                placeholder="Ex: 1 banana média e 200ml de leite" 
+                @keyup.enter="calculateNutrition"
+              />
+              <div class="composer-actions">
+                <button type="button" class="save-btn" :disabled="autoLoading" @click="calculateNutrition">
+                  {{ autoLoading ? 'A calcular...' : '✨ Calcular Macros' }}
+                </button>
+                <button type="button" class="cancel-btn" @click="openComposer('')">Cancelar</button>
+              </div>
             </div>
           </div>
 
@@ -1028,10 +1100,39 @@ watch(
   cursor: pointer;
 }
 
-.macro-inputs {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+.composer-tabs {
+  display: flex;
   gap: 8px;
+  margin-bottom: 12px;
+}
+
+.composer-tabs button {
+  flex: 1;
+  padding: 8px;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--text-muted);
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.composer-tabs button.active {
+  background: rgba(20, 184, 166, 0.1);
+  border-color: #14b8a6;
+  color: #14b8a6;
+}
+
+.mode-manual, .mode-auto {
+  display: grid;
+  gap: 8px;
+}
+
+.helper-text {
+  margin: 0 0 4px;
+  font-size: 0.9rem;
+  color: var(--text-muted);
 }
 
 .composer-actions {
