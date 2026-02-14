@@ -50,10 +50,7 @@ def get_or_create_diary_day(db: Session, user_id: int, date_key: str) -> models.
     return day
 
 # Configure CORS to allow frontend to access the backend
-origins = [
-    "http://localhost:5173",  # Default Vue.js development server port
-    "http://127.0.0.1:5173",
-]
+origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
 
 app.add_middleware(
     CORSMiddleware,
@@ -123,10 +120,11 @@ def forgot_password(request: schemas.ForgotPasswordRequest, db: Session = Depend
     db_user.reset_token = token
     db.commit()
     
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
     print("="*50)
     print(f"EMAIL SIMULATION FOR: {request.username}")
     print(f"Subject: Reset Your Password")
-    print(f"Body: Click here to reset your password: http://localhost:5173/reset-password?token={token}")
+    print(f"Body: Click here to reset your password: {frontend_url}/reset-password?token={token}")
     print("="*50)
     
     return {"message": "If the email exists, a reset link has been sent."}
@@ -368,6 +366,6 @@ def remove_favorite_restaurant(restaurant_id: int, db: Session = Depends(get_db)
         pass # Restaurant not in favorites
     return current_user
 
-@app.get("/")
+@app.get("/", methods=["GET", "HEAD"])
 async def root():
     return {"message": "Welcome to the FastAPI Backend!"}

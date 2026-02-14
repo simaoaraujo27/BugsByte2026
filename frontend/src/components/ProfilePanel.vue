@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { auth } from '@/auth'
+import { auth, API_URL } from '@/auth'
 
 const loading = ref(true)
 const errorMessage = ref('')
@@ -121,7 +121,7 @@ const requestPasswordChange = async () => {
   passwordMessage.value = ''
 
   try {
-    const response = await fetch('' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/forgot-password/', {
+    const response = await fetch(`${API_URL}/forgot-password/`, {
       method: 'POST',
       headers: auth.getAuthHeaders(),
       body: JSON.stringify({ username: userProfile.value.username })

@@ -34,6 +34,7 @@
 
 <script setup>
 import { ref } from 'vue';
+import { API_URL } from '@/auth';
 
 const email = ref('');
 const errorMessage = ref('');
@@ -46,7 +47,7 @@ const submitForm = async () => {
   isLoading.value = true;
 
   try {
-    const response = await fetch('' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/forgot-password/', {
+    const response = await fetch(`${API_URL}/forgot-password/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

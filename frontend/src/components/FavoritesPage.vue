@@ -147,7 +147,7 @@
 </template>
 
 <script>
-import { auth } from '@/auth.js';
+import { auth, API_URL } from '@/auth.js';
 
 export default {
   name: 'FavoritesPage',
@@ -263,7 +263,7 @@ export default {
     async fetchFavorites() {
       this.loading = true;
       try {
-        const response = await fetch('' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/users/me/favorites', {
+        const response = await fetch(`${API_URL}/users/me/favorites`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
@@ -285,7 +285,7 @@ export default {
 
     async deleteRecipe(id) {
       try {
-        const response = await fetch(`' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/users/me/favorites/recipes/${id}`, {
+        const response = await fetch(`${API_URL}/users/me/favorites/recipes/${id}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -306,7 +306,7 @@ export default {
 
     async deleteRestaurant(id) {
       try {
-        const response = await fetch(`' + (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/users/me/favorites/restaurants/${id}`, {
+        const response = await fetch(`${API_URL}/users/me/favorites/restaurants/${id}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
