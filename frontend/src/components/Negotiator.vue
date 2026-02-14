@@ -418,7 +418,29 @@ const reset = () => {
   width: 100%; max-width: 700px; box-shadow: 0 15px 40px rgba(0,0,0,0.06); margin-bottom: 24px;
 }
 .search-box-premium input { flex: 1; border: none; padding: 16px 24px; background: transparent; color: var(--text-main); font-size: 1.2rem; outline: none; }
-.btn-primary-action { background: #e74c3c; color: white; border: none; padding: 0 32px; border-radius: 16px; font-weight: 800; cursor: pointer; transition: 0.3s; }
+.btn-primary-action {
+  background: var(--menu-active-text);
+  color: #ffffff;
+  border: 1px solid color-mix(in srgb, var(--menu-active-text), #ffffff 20%);
+  padding: 0 32px;
+  border-radius: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--menu-active-text), transparent 72%);
+}
+
+.btn-primary-action:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+
+.btn-primary-action:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
 
 .suggestion-pills { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 32px; align-items: center; color: var(--text-muted); }
 .s-pill { background: var(--bg-elevated); border: 1px solid var(--line); padding: 8px 20px; border-radius: 25px; font-size: 0.9rem; font-weight: 700; color: var(--text-main); cursor: pointer; transition: 0.2s; }
@@ -475,9 +497,83 @@ const reset = () => {
 .rec-step-num { background: #11263f; color: white; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-weight: 900; }
 .rec-step-txt { color: var(--text-main); line-height: 1.7; font-size: 1.05rem; }
 
-.btn-map-link-premium { width: 100%; margin-top: 32px; padding: 18px; background: var(--menu-active-bg); color: var(--menu-active-text); border: 2px dashed var(--menu-active-text); border-radius: 16px; font-weight: 900; cursor: pointer; }
-.rec-final-action { padding: 40px; background: var(--bg-main); text-align: center; border-top: 1px solid var(--line); display: flex; justify-content: center; gap: 20px; }
-.btn-save { background: #ff5e5e; color: white; border: none; padding: 12px 24px; border-radius: 12px; font-weight: 700; cursor: pointer; }
+.btn-map-link-premium {
+  width: 100%;
+  margin-top: 32px;
+  min-height: 56px;
+  padding: 14px 18px;
+  border: 1px solid rgba(64, 224, 186, 0.55);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(9, 108, 87, 0.85), rgba(7, 148, 115, 0.95));
+  color: #ecfffa;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow: 0 12px 28px rgba(7, 163, 116, 0.22);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.btn-map-link-premium:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 30px rgba(7, 163, 116, 0.3);
+  filter: brightness(1.03);
+}
+
+.rec-final-action {
+  padding: 34px 40px;
+  background: linear-gradient(180deg, rgba(4, 9, 26, 0.95), rgba(2, 6, 18, 0.98));
+  text-align: center;
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+}
+
+.rec-final-action .btn-formatted-back,
+.rec-final-action .btn-save {
+  min-width: 170px;
+  min-height: 56px;
+  margin-top: 0;
+}
+
+.rec-final-action .btn-formatted-back {
+  border: 1px solid rgba(120, 168, 255, 0.3);
+  background: rgba(16, 33, 68, 0.75);
+  box-shadow: 0 12px 24px rgba(5, 12, 28, 0.32);
+}
+
+.rec-final-action .btn-formatted-back:hover {
+  border-color: rgba(120, 168, 255, 0.55);
+  background: rgba(24, 47, 96, 0.82);
+  transform: translateY(-2px);
+}
+
+.btn-save {
+  background: linear-gradient(135deg, #ff6f7e, #ff5a68);
+  color: #fff;
+  border: 1px solid rgba(255, 188, 196, 0.35);
+  padding: 12px 24px;
+  border-radius: 14px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  box-shadow: 0 14px 30px rgba(255, 94, 94, 0.28);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.btn-save:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 34px rgba(255, 94, 94, 0.34);
+  filter: brightness(1.03);
+}
+
+.btn-save:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
 
 /* Rejection */
 .rejection-card-premium { text-align: center; padding: 80px 40px; background: var(--bg-elevated); border-radius: 40px; border: 1px solid var(--line); max-width: 600px; box-shadow: 0 20px 50px rgba(0,0,0,0.05); margin: 0 auto; }
@@ -498,5 +594,13 @@ const reset = () => {
 @media (max-width: 900px) {
   .rec-content-grid-premium, .an-details-grid { grid-template-columns: 1fr; }
   .rec-title-bold { font-size: 2.2rem; }
+  .rec-final-action {
+    flex-direction: column;
+  }
+  .rec-final-action .btn-formatted-back,
+  .rec-final-action .btn-save {
+    width: 100%;
+    max-width: 320px;
+  }
 }
 </style>
