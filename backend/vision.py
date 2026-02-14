@@ -14,7 +14,6 @@ def analyze_image_ingredients(image_bytes: bytes, api_key: Optional[str] = None,
     base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
     model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
-    # Auto-detect Groq Vision
     if final_api_key.startswith("gsk_") and ("openai.com" in base_url):
         base_url = "https://api.groq.com/openai/v1"
         model = "meta-llama/llama-4-scout-17b-16e-instruct"
@@ -22,16 +21,19 @@ def analyze_image_ingredients(image_bytes: bytes, api_key: Optional[str] = None,
     client = OpenAI(api_key=final_api_key, base_url=base_url)
     base64_image = base64.b64encode(image_bytes).decode('utf-8')
 
-    # Format favorite recipes context
-    fav_context = ""
+    # FAVORITES FIRST
+    fav_header = ""
     if favorite_recipes:
         fav_list = "\n".join([f"- {r.name}" for r in favorite_recipes])
-        fav_context = f"\nO utilizador já gosta destas receitas:\n{fav_list}\nTenta seguir um estilo ou nível de sofisticação semelhante."
+        fav_header = f"CONTEXTO DE PREFERÊNCIAS DO UTILIZADOR (RECEITAS QUE ELE ADORA):\n{fav_list}\n\n"
 
     prompt = (
-        f"Analisa esta imagem de ingredientes. {fav_context}"
-        "\n1. Identifica ingredientes. 2. Cria receita saudável em PT-PT. "
-        "Retorna JSON: { 'detected_ingredients': [], 'message': '...', 'recipe': { 'title': '...', 'calories': 450, 'time_minutes': 25, 'ingredients': [], 'steps': [] } }"
+        f"{fav_header}"
+        "Analisa esta imagem de ingredientes. "
+        "1. Identifica os ingredientes. "
+        "2. Cria uma receita saudável que combine com o estilo das receitas favoritas listadas acima. "
+        "3. Responde em PT-PT. "
+        "\nRetorna JSON: { 'detected_ingredients': [], 'message': '...', 'recipe': { 'title': '...', 'calories': 450, 'time_minutes': 25, 'ingredients': [], 'steps': [] } }"
     )
 
     try:
@@ -55,4 +57,4 @@ def analyze_image_ingredients(image_bytes: bytes, api_key: Optional[str] = None,
         )
     except Exception as e:
         print(f"Erro Vision: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Erro na análise visual personalizada.")

@@ -13,7 +13,6 @@ def get_client_config():
     base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
     model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
-    # Force Groq for SPEED if key is available
     if api_key.startswith("gsk_"):
         base_url = "https://api.groq.com/openai/v1"
         model = "llama-3.3-70b-versatile"
@@ -22,77 +21,63 @@ def get_client_config():
 
 def analyze_mood(craving: str, mood: str) -> schemas.MoodAnalysisResponse:
     client, model = get_client_config()
-
     prompt = (
         f"User craving: '{craving}', Mood: '{mood}'. "
         "Atua como um assistente de decisão alimentar inteligente e empático (PT-PT). "
-        "VALIDAÇÃO: Se o desejo for algo não comestível (ex: pedras, objetos), recusa educadamente. "
+        "VALIDAÇÃO: Se o desejo for algo não comestível, recusa educadamente. "
         "Retorna JSON: { 'mood_type': '...', 'empathy_message': '...', 'explanation': '...', 'eating_strategy': '...' }"
     )
-
     try:
         response = client.chat.completions.create(
             model=model,
-            messages=[
-                {"role": "system", "content": "És um assistente sofisticado e rápido. Responde em PT-PT. Retorna APENAS JSON."},
-                {"role": "user", "content": prompt}
-            ],
+            messages=[{"role": "system", "content": "És um assistente sofisticado. Responde em PT-PT. Retorna APENAS JSON."},
+                      {"role": "user", "content": prompt}],
             temperature=0.7,
             response_format={"type": "json_object"},
             max_tokens=300
         )
-        data = json.loads(response.choices[0].message.content)
-        return schemas.MoodAnalysisResponse(**data)
+        return schemas.MoodAnalysisResponse(**json.loads(response.choices[0].message.content))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 def negotiate_craving(craving: str, target_calories: int = 600, mood: Optional[str] = None, favorite_recipes: List[schemas.Recipe] = []) -> schemas.NegotiatorResponse:
     client, model = get_client_config()
     
-    # Format favorite recipes context
-    fav_context = ""
+    # FAVORITES FIRST: Construct context
+    fav_header = ""
     if favorite_recipes:
         fav_list = "\n".join([f"- {r.name}" for r in favorite_recipes])
-        fav_context = f"\nO utilizador já gosta destas receitas:\n{fav_list}\nTenta seguir um estilo ou nível de sofisticação semelhante."
+        fav_header = f"CONTEXTO DE PREFERÊNCIAS DO UTILIZADOR (ESTAS SÃO AS RECEITAS QUE ELE MAIS GOSTA):\n{fav_list}\n\n"
 
     prompt = (
-        f"O utilizador quer: '{craving}'. Estado: {mood}. {fav_context}"
-        "\nREGRAS CRÍTICAS: "
-        "1. Se o pedido NÃO FOR COMIDA ou prato culinário, define 'recipe' como null e explica porquê na 'message'. "
-        "2. Caso contrário, cria uma receita GOURMET saudável em PT-PT. "
-        "3. Sê extremamente conciso mas profissional para garantir rapidez. "
-        "Retorna JSON: { 'message': '...', 'recipe': { 'title': '...', 'calories': 500, 'time_minutes': 30, 'ingredients': [], 'steps': [] }, 'restaurant_search_term': '...' }"
+        f"{fav_header}"
+        f"O utilizador tem agora um desejo de: '{craving}'. Estado emocional: {mood}. "
+        "\nINSTRUÇÕES: "
+        "1. Analisa as receitas favoritas acima para entender o paladar do utilizador. "
+        "2. Cria uma NOVA receita GOURMET saudável que se alinhe com este perfil de gosto. "
+        "3. Se o pedido for inválido (não comida), define 'recipe' como null. "
+        "\nRetorna RIGOROSAMENTE este JSON em PT-PT: "
+        "{ 'message': '...', 'recipe': { 'title': '...', 'calories': 500, 'time_minutes': 30, 'ingredients': [], 'steps': [] }, 'restaurant_search_term': '...' }"
     )
 
     try:
         response = client.chat.completions.create(
             model=model,
             messages=[
-                {"role": "system", "content": "You are a world-class creative Chef. Every recipe you provide must be unique, gourmet, and healthy. Always answer in Portuguese (Portugal). Return only valid JSON."},
+                {"role": "system", "content": "És um Chef Michelin e Nutricionista. Prioriza sempre o perfil de gosto indicado pelas receitas favoritas do utilizador."},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.9,
+            temperature=0.85,
             response_format={"type": "json_object"},
-            max_tokens=800
+            max_tokens=1000
         )
-        content = response.choices[0].message.content
-        data = json.loads(content)
-        
-        try:
-            return schemas.NegotiatorResponse(
-                original_craving=craving,
-                message=data.get('message', 'Aqui está uma alternativa saudável!'),
-                recipe=schemas.NegotiatorRecipe(**data.get('recipe')) if data.get('recipe') else None,
-                restaurant_search_term=data.get('restaurant_search_term', craving)
-            )
-        except Exception as ve:
-            print(f"Erro de validação na resposta da AI: {ve}")
-            return schemas.NegotiatorResponse(
-                original_craving=craving,
-                message="Desculpa, não consegui processar esse pedido de forma segura. Por favor, tenta outro prato real.",
-                recipe=None,
-                restaurant_search_term=craving
-            )
+        data = json.loads(response.choices[0].message.content)
+        return schemas.NegotiatorResponse(
+            original_craving=craving,
+            message=data.get('message', ''),
+            recipe=schemas.NegotiatorRecipe(**data.get('recipe')) if data.get('recipe') else None,
+            restaurant_search_term=data.get('restaurant_search_term', craving)
+        )
     except Exception as e:
-        print(f"Erro no negotiator: {e}")
-        raise HTTPException(status_code=500, detail=f"Erro ao gerar receita: {str(e)}")
+        print(f"Erro Negotiator: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao processar receita personalizada.")
