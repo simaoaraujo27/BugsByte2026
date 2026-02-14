@@ -79,7 +79,9 @@ class NegotiatorResponse(BaseModel):
     recipe: Recipe | None = None
     restaurant_search_term: str
 
-class VisionResponse(BaseModel):
-    detected_ingredients: list[str]
-    recipe: Recipe
-    message: str
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    username: str | None = None
