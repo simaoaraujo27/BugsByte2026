@@ -5,6 +5,7 @@ import UserInfo from '../components/UserInfo.vue'
 import SiteHomePage from '../components/SiteHomePage.vue'
 import AboutPage from '../components/AboutPage.vue'
 import ForgotPassword from '../components/ForgotPassword.vue'
+import FavoritesPage from '../components/FavoritesPage.vue'
 
 const routes = [
   {
@@ -36,6 +37,11 @@ const routes = [
     path: '/dashboard',
     name: 'Dashboard',
     component: SiteHomePage
+  },
+  {
+    path: '/favorites',
+    name: 'Favorites',
+    component: FavoritesPage
   }
 ]
 

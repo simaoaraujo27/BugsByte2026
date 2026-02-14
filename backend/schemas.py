@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field, field_validator
+from typing import List, Optional
 
 class ItemBase(BaseModel):
     name: str
@@ -22,6 +23,34 @@ class Allergen(AllergenBase):
     class ConfigDict:
         from_attributes = True
 
+class RecipeBase(BaseModel):
+    name: str
+    ingredients: str
+    instructions: str
+
+class RecipeCreate(RecipeBase):
+    pass
+
+class Recipe(RecipeBase):
+    id: int
+
+    class ConfigDict:
+        from_attributes = True
+
+class RestaurantBase(BaseModel):
+    name: str
+    address: str
+    phone: str
+
+class RestaurantCreate(RestaurantBase):
+    pass
+
+class Restaurant(RestaurantBase):
+    id: int
+
+    class ConfigDict:
+        from_attributes = True
+
 class UserBase(BaseModel):
     username: str
     peso: float
@@ -38,6 +67,8 @@ class UserCreate(UserBase):
 class User(UserBase):
     id: int
     allergens: list[Allergen] = []
+    favorite_recipes: List[Recipe] = []
+    favorite_restaurants: List[Restaurant] = []
 
     class ConfigDict:
         from_attributes = True
@@ -71,7 +102,7 @@ class FoodSearchItem(BaseModel):
     fat_per_100g: float
     source: str
 
-class Recipe(BaseModel):
+class NegotiatorRecipe(BaseModel):
     title: str
     calories: int
     time_minutes: int
@@ -81,11 +112,18 @@ class Recipe(BaseModel):
 class NegotiatorRequest(BaseModel):
     craving: str
     target_calories: int = 600
+    mood: str | None = None
+
+class MoodAnalysisResponse(BaseModel):
+    mood_type: str
+    empathy_message: str
+    explanation: str
+    eating_strategy: str
 
 class NegotiatorResponse(BaseModel):
     original_craving: str
     message: str
-    recipe: Recipe | None = None
+    recipe: NegotiatorRecipe | None = None
     restaurant_search_term: str
 
 
@@ -143,7 +181,7 @@ class DiaryDay(BaseModel):
 class VisionResponse(BaseModel):
     detected_ingredients: list[str]
     message: str
-    recipe: Recipe
+    recipe: NegotiatorRecipe
 
 class Token(BaseModel):
     access_token: str

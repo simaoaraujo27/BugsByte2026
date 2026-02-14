@@ -1,18 +1,5 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { Line } from 'vue-chartjs'
-import {
-  Chart as ChartJS,
-  Title,
-  Tooltip,
-  Legend,
-  LineElement,
-  CategoryScale,
-  LinearScale,
-  PointElement
-} from 'chart.js'
-
-ChartJS.register(Title, Tooltip, Legend, LineElement, CategoryScale, LinearScale, PointElement)
 
 const selectedPeriod = ref('1M') // 1S, 1M, 1A, ALL
 const timePeriods = [
@@ -47,39 +34,32 @@ const hasDataForPeriod = computed(() => {
   return periodData && periodData.data && periodData.data.length > 0
 })
 
-const chartData = computed(() => ({
-  labels: weightData[selectedPeriod.value].labels,
-  datasets: [
-    {
-      label: 'Evolução do Peso (kg)',
-      backgroundColor: '#10b981',
-      borderColor: '#10b981',
-      data: weightData[selectedPeriod.value].data,
-      tension: 0.3,
-      fill: false
-    }
-  ]
-}))
+const chartLabels = computed(() => weightData[selectedPeriod.value].labels || [])
+const chartValues = computed(() => weightData[selectedPeriod.value].data || [])
 
-const chartOptions = ref({
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      display: false
-    }
-  },
-  scales: {
-    y: {
-      beginAtZero: false,
-      grid: { color: 'rgba(200, 200, 200, 0.1)' },
-      ticks: { color: '#8899a9' } // Using a static color that works on both themes
-    },
-    x: {
-      grid: { display: false },
-      ticks: { color: '#8899a9' } // Using a static color that works on both themes
-    }
-  }
+const chartPoints = computed(() => {
+  const values = chartValues.value
+  if (!values.length) return []
+
+  const min = Math.min(...values)
+  const max = Math.max(...values)
+  const range = Math.max(0.1, max - min)
+  const top = 16
+  const bottom = 30
+  const height = 100 - top - bottom
+
+  return values.map((value, index) => {
+    const x = (100 / values.length) * (index + 0.5)
+    const y = top + ((max - value) / range) * height
+    return { x, y, value }
+  })
+})
+
+const chartPath = computed(() => {
+  if (!chartPoints.value.length) return ''
+  return chartPoints.value
+    .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`)
+    .join(' ')
 })
 </script>
 
@@ -101,7 +81,16 @@ const chartOptions = ref({
       </div>
     </div>
     <div class="chart-container">
-      <Line v-if="hasDataForPeriod" :data="chartData" :options="chartOptions" />
+      <div v-if="hasDataForPeriod" class="svg-chart-wrap">
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" class="svg-chart" aria-label="Grafico de peso">
+          <line x1="0" y1="70" x2="100" y2="70" class="axis" />
+          <path :d="chartPath" class="line-path" />
+          <circle v-for="(point, idx) in chartPoints" :key="idx" :cx="point.x" :cy="point.y" r="1.5" class="dot" />
+        </svg>
+        <div class="labels-row">
+          <span v-for="label in chartLabels" :key="label">{{ label }}</span>
+        </div>
+      </div>
       <div v-else class="no-data-message">
         <p>Sem dados de peso para este período.</p>
         <small>Regista o teu peso regularmente no diário.</small>
@@ -168,6 +157,46 @@ const chartOptions = ref({
   position: relative;
   height: 250px;
   flex-grow: 1;
+}
+
+.svg-chart-wrap {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.svg-chart {
+  flex: 1;
+  width: 100%;
+}
+
+.axis {
+  stroke: rgba(148, 163, 184, 0.45);
+  stroke-width: 0.5;
+}
+
+.line-path {
+  fill: none;
+  stroke: #10b981;
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
+}
+
+.dot {
+  fill: #10b981;
+}
+
+.labels-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.labels-row span {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  text-align: center;
 }
 
 .no-data-message {

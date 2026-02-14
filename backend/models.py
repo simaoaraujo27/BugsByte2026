@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Table, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Table, UniqueConstraint, Text
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -8,6 +8,20 @@ user_allergens = Table(
     Base.metadata,
     Column("user_id", Integer, ForeignKey("users.id"), primary_key=True),
     Column("allergen_id", Integer, ForeignKey("allergens.id"), primary_key=True),
+)
+
+# Association table for favorite recipes
+user_favorite_recipes = Table(
+    'user_favorite_recipes', Base.metadata,
+    Column('user_id', Integer, ForeignKey('users.id'), primary_key=True),
+    Column('recipe_id', Integer, ForeignKey('recipes.id'), primary_key=True)
+)
+
+# Association table for favorite restaurants
+user_favorite_restaurants = Table(
+    'user_favorite_restaurants', Base.metadata,
+    Column('user_id', Integer, ForeignKey('users.id'), primary_key=True),
+    Column('restaurant_id', Integer, ForeignKey('restaurants.id'), primary_key=True)
 )
 
 class Item(Base):
@@ -34,6 +48,8 @@ class User(Base):
 
     allergens = relationship("Allergen", secondary=user_allergens, back_populates="users")
     diary_days = relationship("DiaryDay", back_populates="user", cascade="all, delete-orphan")
+    favorite_recipes = relationship("Recipe", secondary=user_favorite_recipes)
+    favorite_restaurants = relationship("Restaurant", secondary=user_favorite_restaurants)
 
 class Allergen(Base):
     __tablename__ = "allergens"
@@ -70,3 +86,17 @@ class DiaryMeal(Base):
     fat = Column(Float, nullable=False, default=0)
 
     day = relationship("DiaryDay", back_populates="meals")
+
+class Recipe(Base):
+    __tablename__ = 'recipes'
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    ingredients = Column(Text)
+    instructions = Column(Text)
+
+class Restaurant(Base):
+    __tablename__ = 'restaurants'
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    address = Column(String)
+    phone = Column(String)

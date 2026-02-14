@@ -5,6 +5,7 @@ import { auth } from '@/auth';
 const fileInput = ref(null);
 const previewImage = ref(null);
 const loading = ref(false);
+const saving = ref(false);
 const result = ref(null);
 const error = ref(null);
 
@@ -33,9 +34,10 @@ const uploadAndAnalyze = async (file) => {
   formData.append('file', file);
 
   try {
+    // For file uploads, we must NOT set Content-Type manually so the browser can set the boundary.
     const response = await fetch('http://localhost:8000/vision/analyze', {
       method: 'POST',
-      headers: auth.getAuthHeaders(),
+      headers: auth.getAuthHeaders(false),
       body: formData,
     });
 
@@ -50,6 +52,44 @@ const uploadAndAnalyze = async (file) => {
     console.error(e);
   } finally {
     loading.value = false;
+  }
+};
+
+const saveRecipe = async () => {
+  if (!result.value || !result.value.recipe) return;
+  saving.value = true;
+
+  try {
+    // 1. Create the recipe
+    const recipeData = {
+      name: result.value.recipe.title,
+      ingredients: result.value.recipe.ingredients.join(', '),
+      instructions: result.value.recipe.steps.join('\n')
+    };
+
+    const createResponse = await fetch('http://localhost:8000/recipes/', {
+      method: 'POST',
+      headers: auth.getAuthHeaders(),
+      body: JSON.stringify(recipeData)
+    });
+
+    if (!createResponse.ok) throw new Error('Failed to create recipe');
+    const createdRecipe = await createResponse.json();
+
+    // 2. Add to favorites
+    const favResponse = await fetch(`http://localhost:8000/users/me/favorites/recipes/${createdRecipe.id}`, {
+      method: 'POST',
+      headers: auth.getAuthHeaders()
+    });
+
+    if (!favResponse.ok) throw new Error('Failed to add to favorites');
+
+    alert('Receita guardada com sucesso!');
+  } catch (err) {
+    console.error('Error saving recipe:', err);
+    alert('Erro ao guardar a receita.');
+  } finally {
+    saving.value = false;
   }
 };
 
@@ -130,6 +170,9 @@ const reset = () => {
         </div>
         
         <div class="actions">
+          <button @click="saveRecipe" class="btn-save" :disabled="saving">
+            {{ saving ? 'A guardar...' : '❤️ Guardar Receita' }}
+          </button>
           <button @click="reset" class="btn-finish">Fazer Nova Análise</button>
         </div>
       </div>
@@ -343,6 +386,26 @@ const reset = () => {
   color: var(--text-main);
   margin: 0;
 }
+
+.actions {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+
+.btn-save {
+  background: #ff5e5e;
+  color: white;
+  padding: 16px 32px;
+  border-radius: 16px;
+  border: none;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn-save:hover { opacity: 0.9; }
+.btn-save:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .btn-finish {
   background: var(--text-main);

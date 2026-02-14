@@ -76,7 +76,7 @@ def analyze_image_ingredients(image_bytes: bytes, api_key: Optional[str] = None)
         return schemas.VisionResponse(
             detected_ingredients=data.get('detected_ingredients', []),
             message=data.get('message', 'Encontrei excelentes ingredientes!'),
-            recipe=schemas.Recipe(**data.get('recipe', {}))
+            recipe=schemas.NegotiatorRecipe(**data.get('recipe', {}))
         )
     except Exception as e:
         print(f"Erro na análise de imagem: {e}")

@@ -8,6 +8,7 @@ from datetime import datetime
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
+from typing import List
 
 # Force load .env from the current directory
 env_path = os.path.join(os.path.dirname(__file__), '.env')
@@ -141,9 +142,13 @@ def forgot_password(request: schemas.ForgotPasswordRequest, db: Session = Depend
     
     return {"message": "If the email exists, a reset link has been sent."}
 
+@app.post("/negotiator/analyze-mood", response_model=schemas.MoodAnalysisResponse)
+def analyze_mood(request: schemas.NegotiatorRequest, current_user: models.User = Depends(auth.get_current_user)):
+    return negotiator.analyze_mood(request.craving, request.mood)
+
 @app.post("/negotiator/negotiate", response_model=schemas.NegotiatorResponse)
 def negotiate_craving(request: schemas.NegotiatorRequest, current_user: models.User = Depends(auth.get_current_user)):
-    return negotiator.negotiate_craving(request.craving, request.target_calories)
+    return negotiator.negotiate_craving(request.craving, request.target_calories, request.mood)
 
 @app.post("/vision/analyze", response_model=schemas.VisionResponse)
 async def analyze_ingredients_photo(file: UploadFile = File(...), current_user: models.User = Depends(auth.get_current_user)):
@@ -306,6 +311,78 @@ def read_item(item_id: int, db: Session = Depends(get_db), current_user: models.
     if item is None:
         raise HTTPException(status_code=404, detail="Item not found")
     return item
+
+@app.post("/recipes/", response_model=schemas.Recipe)
+def create_recipe(recipe: schemas.RecipeCreate, db: Session = Depends(get_db)):
+    db_recipe = models.Recipe(**recipe.model_dump())
+    db.add(db_recipe)
+    db.commit()
+    db.refresh(db_recipe)
+    return db_recipe
+
+@app.get("/recipes/", response_model=List[schemas.Recipe])
+def read_recipes(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    recipes = db.query(models.Recipe).offset(skip).limit(limit).all()
+    return recipes
+
+@app.post("/restaurants/", response_model=schemas.Restaurant)
+def create_restaurant(restaurant: schemas.RestaurantCreate, db: Session = Depends(get_db)):
+    db_restaurant = models.Restaurant(**restaurant.model_dump())
+    db.add(db_restaurant)
+    db.commit()
+    db.refresh(db_restaurant)
+    return db_restaurant
+
+@app.get("/restaurants/", response_model=List[schemas.Restaurant])
+def read_restaurants(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    restaurants = db.query(models.Restaurant).offset(skip).limit(limit).all()
+    return restaurants
+
+@app.get("/users/me/favorites", response_model=schemas.User)
+def get_user_favorites(current_user: models.User = Depends(auth.get_current_user)):
+    return current_user
+
+@app.post("/users/me/favorites/recipes/{recipe_id}", response_model=schemas.User)
+def add_favorite_recipe(recipe_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    recipe = db.query(models.Recipe).filter(models.Recipe.id == recipe_id).first()
+    if not recipe:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+    current_user.favorite_recipes.append(recipe)
+    db.commit()
+    return current_user
+
+@app.delete("/users/me/favorites/recipes/{recipe_id}", response_model=schemas.User)
+def remove_favorite_recipe(recipe_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    recipe = db.query(models.Recipe).filter(models.Recipe.id == recipe_id).first()
+    if not recipe:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+    try:
+        current_user.favorite_recipes.remove(recipe)
+        db.commit()
+    except ValueError:
+        pass # Recipe not in favorites
+    return current_user
+
+@app.post("/users/me/favorites/restaurants/{restaurant_id}", response_model=schemas.User)
+def add_favorite_restaurant(restaurant_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    restaurant = db.query(models.Restaurant).filter(models.Restaurant.id == restaurant_id).first()
+    if not restaurant:
+        raise HTTPException(status_code=404, detail="Restaurant not found")
+    current_user.favorite_restaurants.append(restaurant)
+    db.commit()
+    return current_user
+
+@app.delete("/users/me/favorites/restaurants/{restaurant_id}", response_model=schemas.User)
+def remove_favorite_restaurant(restaurant_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    restaurant = db.query(models.Restaurant).filter(models.Restaurant.id == restaurant_id).first()
+    if not restaurant:
+        raise HTTPException(status_code=404, detail="Restaurant not found")
+    try:
+        current_user.favorite_restaurants.remove(restaurant)
+        db.commit()
+    except ValueError:
+        pass # Restaurant not in favorites
+    return current_user
 
 @app.get("/")
 async def root():
