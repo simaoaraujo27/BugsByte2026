@@ -188,6 +188,11 @@ const toNumber = (value) => {
 }
 
 const round1 = (value) => Math.round(value * 10) / 10
+const formatMealGrams = (value) => {
+  const grams = toNumber(value)
+  return grams > 0 ? `${round1(grams)} g` : '-- g'
+}
+const formatMacro = (value) => `${round1(toNumber(value))}g`
 
 const buildEmptyDay = () => ({
   goal: DEFAULT_GOAL,
@@ -956,7 +961,7 @@ watch(
             <li v-for="item in currentDay.meals[section.id]" :key="item.id">
               <div>
                 <strong>{{ item.name }}</strong>
-                <small>{{ item.grams }} g · {{ item.protein }}g P · {{ item.carbs }}g H · {{ item.fat }}g G</small>
+                <small>{{ formatMealGrams(item.grams) }} total · {{ formatMacro(item.fat) }} G · {{ formatMacro(item.protein) }} P · {{ formatMacro(item.carbs) }} H</small>
               </div>
               <div class="right">
                 <span>{{ item.calories }} kcal</span>
