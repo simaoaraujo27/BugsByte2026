@@ -177,7 +177,7 @@ onMounted(() => {
     initialSection === 'tenho-fome' ? negotiatorModeToSubSlug[negotiatorRouteMode.value] : ''
   )
 
-  const savedTheme = localStorage.getItem('dashboardTheme')
+  const savedTheme = localStorage.getItem('theme')
   if (savedTheme) {
     isDarkMode.value = savedTheme === 'dark'
   } else {
@@ -191,7 +191,12 @@ onMounted(() => {
 })
 
 watch(isDarkMode, (value) => {
-  localStorage.setItem('dashboardTheme', value ? 'dark' : 'light')
+  localStorage.setItem('theme', value ? 'dark' : 'light')
+  if (value) {
+    document.documentElement.classList.add('dark')
+  } else {
+    document.documentElement.classList.remove('dark')
+  }
 })
 
 watch(
