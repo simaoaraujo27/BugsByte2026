@@ -8,6 +8,7 @@ import ProfilePanel from './ProfilePanel.vue'
 import DiaryTracking from './DiaryTracking.vue'
 import VisionRecipe from './VisionRecipe.vue'
 import FavoritesPage from './FavoritesPage.vue'
+import SettingsPage from './SettingsPage.vue'
 
 const sections = [
   { id: 'inicio', label: 'Início', icon: '🏠' },
@@ -21,6 +22,7 @@ const sections = [
 
 const activeSection = ref('inicio')
 const isDarkMode = ref(false)
+const colorBlindnessMode = ref('none')
 
 // State for ShopFinder parameters
 const shopParams = ref({
@@ -48,6 +50,11 @@ const selectSection = (id) => {
 
 const toggleTheme = () => {
   isDarkMode.value = !isDarkMode.value
+}
+
+const updateColorBlindness = (mode) => {
+  colorBlindnessMode.value = mode
+  localStorage.setItem('colorBlindnessMode', mode)
 }
 
 const sectionContent = {
@@ -81,14 +88,23 @@ const sectionContent = {
   }
 }
 
+const containerStyle = computed(() => {
+  if (colorBlindnessMode.value === 'none') return {}
+  return { filter: `url(#${colorBlindnessMode.value})` }
+})
+
 onMounted(() => {
   const savedTheme = localStorage.getItem('dashboardTheme')
   if (savedTheme) {
     isDarkMode.value = savedTheme === 'dark'
-    return
+  } else {
+    isDarkMode.value = window.matchMedia('(prefers-color-scheme: dark)').matches
   }
 
-  isDarkMode.value = window.matchMedia('(prefers-color-scheme: dark)').matches
+  const savedColorMode = localStorage.getItem('colorBlindnessMode')
+  if (savedColorMode) {
+    colorBlindnessMode.value = savedColorMode
+  }
 })
 
 watch(isDarkMode, (value) => {
@@ -97,7 +113,25 @@ watch(isDarkMode, (value) => {
 </script>
 
 <template>
-  <div class="site-layout" :class="{ 'theme-dark': isDarkMode }">
+  <!-- SVG Filters for Color Blindness -->
+  <svg style="position: absolute; width: 0; height: 0; overflow: hidden;" aria-hidden="true">
+    <defs>
+      <filter id="protanopia">
+        <feColorMatrix type="matrix" values="0.567, 0.433, 0, 0, 0 0.558, 0.442, 0, 0, 0 0, 0.242, 0.758, 0, 0 0, 0, 0, 1, 0"/>
+      </filter>
+      <filter id="deuteranopia">
+        <feColorMatrix type="matrix" values="0.625, 0.375, 0, 0, 0 0.7, 0.3, 0, 0, 0 0, 0.3, 0.7, 0, 0 0, 0, 0, 1, 0"/>
+      </filter>
+      <filter id="tritanopia">
+        <feColorMatrix type="matrix" values="0.95, 0.05, 0, 0, 0 0, 0.433, 0.567, 0, 0 0, 0.475, 0.525, 0, 0 0, 0, 0, 1, 0"/>
+      </filter>
+      <filter id="achromatopsia">
+        <feColorMatrix type="matrix" values="0.299, 0.587, 0.114, 0, 0 0.299, 0.587, 0.114, 0, 0 0.299, 0.587, 0.114, 0, 0 0, 0, 0, 1, 0"/>
+      </filter>
+    </defs>
+  </svg>
+
+  <div class="site-layout" :class="{ 'theme-dark': isDarkMode }" :style="containerStyle">
     <SidebarNav :sections="sections" :active-section="activeSection" @select="selectSection" />
 
     <main class="content">
@@ -124,25 +158,13 @@ watch(isDarkMode, (value) => {
         <FavoritesPage />
       </div>
 
-      <div v-else-if="activeSection === 'definicoes'" class="settings-panel">
-        <h1>{{ sectionContent[activeSection].title }}</h1>
-        <p>{{ sectionContent[activeSection].subtitle }}</p>
-
-        <div class="settings-card">
-          <div>
-            <h3>Modo Escuro</h3>
-            <small>Ativa um tema mais confortavel para ambientes com pouca luz.</small>
-          </div>
-          <button
-            type="button"
-            class="theme-toggle"
-            :class="{ active: isDarkMode }"
-            @click="toggleTheme"
-            :aria-pressed="isDarkMode"
-          >
-            <span class="toggle-knob"></span>
-          </button>
-        </div>
+      <div v-else-if="activeSection === 'definicoes'">
+        <SettingsPage 
+          :is-dark-mode="isDarkMode" 
+          :color-blindness-mode="colorBlindnessMode"
+          @toggle-theme="toggleTheme" 
+          @update-color-blindness="updateColorBlindness"
+        />
       </div>
 
       <div v-else-if="activeSection === 'perfil'">
@@ -218,68 +240,6 @@ watch(isDarkMode, (value) => {
   max-width: 60ch;
   color: var(--text-muted);
   font-size: 1.02rem;
-}
-
-.settings-panel {
-  max-width: 760px;
-}
-
-.settings-card {
-  margin-top: 26px;
-  border: 1px solid var(--line);
-  background: var(--bg-elevated);
-  border-radius: 14px;
-  padding: 18px 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.settings-card h3 {
-  margin: 0;
-  font-size: 1.02rem;
-}
-
-.settings-card small {
-  display: block;
-  margin-top: 6px;
-  color: var(--text-muted);
-  font-size: 0.9rem;
-}
-
-.theme-toggle {
-  width: 56px;
-  height: 32px;
-  border-radius: 99px;
-  border: 1px solid var(--line);
-  background: #d6dee8;
-  padding: 3px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  transition: background 0.2s ease, border-color 0.2s ease;
-}
-
-.site-layout.theme-dark .theme-toggle {
-  background: #23314a;
-}
-
-.theme-toggle.active {
-  background: #07a374;
-  border-color: #07a374;
-}
-
-.toggle-knob {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: #ffffff;
-  transition: transform 0.2s ease;
-}
-
-.theme-toggle.active .toggle-knob {
-  transform: translateX(24px);
 }
 
 .site-layout.theme-dark :deep(.shop-finder .location-setup),
