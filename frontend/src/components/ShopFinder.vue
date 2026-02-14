@@ -34,6 +34,7 @@ const locationConsent = ref(localStorage.getItem('locationConsent') || 'ask');
 const manualQuery = ref('');
 const locationSuggestions = ref([]);
 const showSuggestions = ref(false);
+const savingId = ref(null);
 
 watch(() => props.initialIngredients, (newVal) => {
   ingredients.value = newVal;
@@ -227,6 +228,43 @@ const openInMaps = (shop) => {
     window.open(url, '_blank');
 };
 
+const saveRestaurant = async (shop) => {
+  savingId.value = shop.lat + shop.lon; // Using lat+lon as temp ID since we don't have DB ID
+  
+  try {
+    // 1. Create Restaurant
+    const restaurantData = {
+      name: shop.name,
+      address: `Lat: ${shop.lat}, Lon: ${shop.lon}`, // Placeholder address
+      phone: "N/A"
+    };
+    
+    const createRes = await fetch('http://localhost:8000/restaurants/', {
+      method: 'POST',
+      headers: auth.getAuthHeaders(),
+      body: JSON.stringify(restaurantData)
+    });
+    
+    if (!createRes.ok) throw new Error("Failed to create restaurant");
+    const createdRestaurant = await createRes.json();
+    
+    // 2. Add to Favorites
+    const favRes = await fetch(`http://localhost:8000/users/me/favorites/restaurants/${createdRestaurant.id}`, {
+      method: 'POST',
+      headers: auth.getAuthHeaders()
+    });
+    
+    if (!favRes.ok) throw new Error("Failed to add to favorites");
+    
+    alert('Restaurante guardado com sucesso!');
+  } catch (err) {
+    console.error(err);
+    alert('Erro ao guardar restaurante.');
+  } finally {
+    savingId.value = null;
+  }
+};
+
 onMounted(() => {
   if (locationConsent.value === 'granted') {
     askForLocation();
@@ -307,7 +345,17 @@ onMounted(() => {
                   <p class="shop-dist">{{ shop.distance }} metros de distância</p>
                 </div>
               </div>
-              <button @click="openInMaps(shop)" class="btn-maps">Ver no Mapa</button>
+              <div class="shop-actions">
+                <button @click="openInMaps(shop)" class="btn-maps">Ver no Mapa</button>
+                <button 
+                  v-if="searchMode === 'restaurant'" 
+                  @click="saveRestaurant(shop)" 
+                  class="btn-fav"
+                  :disabled="savingId === (shop.lat + shop.lon)"
+                >
+                  {{ savingId === (shop.lat + shop.lon) ? '...' : '❤️' }}
+                </button>
+              </div>
             </div>
           </div>
           <div v-else-if="!loading" class="empty-state">
@@ -531,6 +579,11 @@ onMounted(() => {
 .shop-name { margin: 0; font-size: 1rem; color: var(--text-main); }
 .shop-dist { margin: 2px 0 0; font-size: 0.8rem; color: var(--text-muted); }
 
+.shop-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .btn-maps {
   background: var(--bg-main);
   border: 1px solid var(--line);
@@ -540,9 +593,23 @@ onMounted(() => {
   font-weight: 700;
   color: var(--primary);
   cursor: pointer;
+  flex: 1;
 }
 
 .btn-maps:hover { background: var(--line); }
+
+.btn-fav {
+  background: var(--bg-main);
+  border: 1px solid var(--line);
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  color: #ff5e5e;
+}
+
+.btn-fav:hover { background: #ffe5e5; }
+.btn-fav:disabled { opacity: 0.5; }
 
 .error-msg {
   background: #fff5f5;

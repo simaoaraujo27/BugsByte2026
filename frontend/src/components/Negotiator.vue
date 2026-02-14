@@ -7,6 +7,7 @@ const emit = defineEmits(['choice']);
 const craving = ref('');
 const result = ref(null);
 const loading = ref(false);
+const saving = ref(false);
 const error = ref(null);
 
 const negotiate = async () => {
@@ -41,6 +42,44 @@ const goToIngredients = () => {
     type: 'diy',
     ingredients: result.value.recipe.ingredients.join(',')
   });
+};
+
+const saveRecipe = async () => {
+  if (!result.value || !result.value.recipe) return;
+  saving.value = true;
+
+  try {
+    // 1. Create the recipe
+    const recipeData = {
+      name: result.value.recipe.title,
+      ingredients: result.value.recipe.ingredients.join(', '),
+      instructions: result.value.recipe.steps.join('\n')
+    };
+
+    const createResponse = await fetch('http://localhost:8000/recipes/', {
+      method: 'POST',
+      headers: auth.getAuthHeaders(),
+      body: JSON.stringify(recipeData)
+    });
+
+    if (!createResponse.ok) throw new Error('Failed to create recipe');
+    const createdRecipe = await createResponse.json();
+
+    // 2. Add to favorites
+    const favResponse = await fetch(`http://localhost:8000/users/me/favorites/recipes/${createdRecipe.id}`, {
+      method: 'POST',
+      headers: auth.getAuthHeaders()
+    });
+
+    if (!favResponse.ok) throw new Error('Failed to add to favorites');
+
+    alert('Receita guardada com sucesso!');
+  } catch (err) {
+    console.error('Error saving recipe:', err);
+    alert('Erro ao guardar a receita.');
+  } finally {
+    saving.value = false;
+  }
 };
 </script>
 
@@ -113,6 +152,9 @@ const goToIngredients = () => {
       
       <footer class="recipe-actions">
         <button @click="result = null" class="btn-secondary">🔙 Outro Desejo</button>
+        <button @click="saveRecipe" class="btn-save" :disabled="saving">
+          {{ saving ? '...' : '❤️ Guardar' }}
+        </button>
         <button @click="negotiate" class="btn-refresh">🔄 Outra Receita</button>
       </footer>
     </div>
@@ -365,6 +407,19 @@ const goToIngredients = () => {
   font-weight: 600;
   cursor: pointer;
 }
+
+.btn-save {
+  background: #ff5e5e;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-save:hover { opacity: 0.9; }
+.btn-save:disabled { opacity: 0.6; }
+
 
 .error-bubble {
   background: #fff5f5;
