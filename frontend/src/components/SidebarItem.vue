@@ -36,18 +36,18 @@ defineEmits(['select'])
 <style scoped>
 .menu-item {
   border: 0;
-  border-radius: 10px;
-  padding: 10px 12px;
+  border-radius: 12px;
+  padding: 12px 16px;
   text-align: left;
   font-size: 0.95rem;
   font-weight: 600;
   color: var(--text-muted);
   background: transparent;
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   width: 100%;
   min-width: 0;
 }
@@ -55,12 +55,13 @@ defineEmits(['select'])
 .menu-item:hover {
   background: var(--menu-hover-bg);
   color: var(--text-main);
-  transform: translateX(2px);
+  transform: translateX(4px);
 }
 
 .menu-item.active {
   background: var(--menu-active-bg);
   color: var(--menu-active-text);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .menu-item.highlight {
@@ -76,10 +77,11 @@ defineEmits(['select'])
 .menu-item.highlight.active {
   background: var(--menu-highlight-active-bg);
   color: var(--menu-highlight-active-text);
+  box-shadow: 0 4px 12px rgba(154, 52, 18, 0.1);
 }
 
 .item-icon {
-  font-size: 1rem;
+  font-size: 1.25rem;
   line-height: 1;
 }
 
