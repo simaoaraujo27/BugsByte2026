@@ -10,18 +10,10 @@ from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 from typing import List
 
-# Force load .env from the current directory
-env_path = os.path.join(os.path.dirname(__file__), '.env')
-load_dotenv(env_path)
+# Simple .env load
+load_dotenv()
 
-print("="*30)
-print(f"Loading .env from: {env_path}")
-print(f"API Key present: {'Yes' if os.getenv('OPENAI_API_KEY') else 'No'}")
-print(f"Base URL: {os.getenv('OPENAI_BASE_URL', 'Default (OpenAI)')}")
-print(f"Model: {os.getenv('OPENAI_MODEL', 'Default')}")
-print("="*30)
-
-# Use absolute imports (as per local requirement and working state)
+# Use absolute imports
 import models, schemas, shops, negotiator, food_data, auth, vision
 from database import SessionLocal, engine, get_db
 from fastapi.middleware.cors import CORSMiddleware
@@ -125,15 +117,12 @@ def read_user_me(current_user: models.User = Depends(auth.get_current_user)):
 def forgot_password(request: schemas.ForgotPasswordRequest, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter(models.User.username == request.username).first()
     if not db_user:
-        # Security: Don't reveal if user exists or not, just return success
         return {"message": "If the email exists, a reset link has been sent."}
     
-    # Generate a random token
     token = str(uuid.uuid4())
     db_user.reset_token = token
     db.commit()
     
-    # SIMULATE EMAIL SENDING (Free & Reliable for Hackathon)
     print("="*50)
     print(f"EMAIL SIMULATION FOR: {request.username}")
     print(f"Subject: Reset Your Password")
@@ -254,10 +243,8 @@ def delete_diary_meal(meal_id: int, db: Session = Depends(get_db), current_user:
 @app.post("/shops/find", response_model=list[schemas.Shop])
 def find_shops(request: schemas.ShopSearchRequest, current_user: models.User = Depends(auth.get_current_user)):
     if request.mode == "restaurant":
-        # Search for restaurants matching the ingredients (which acts as term here)
         search_val = "restaurant"
         key = "amenity"
-        # Use the first item as a search term (e.g. "Pizza", "Italiano")
         search_term = request.ingredients[0] if request.ingredients else None
         
         found_shops = shops.find_nearby_shops(
@@ -269,14 +256,11 @@ def find_shops(request: schemas.ShopSearchRequest, current_user: models.User = D
             search_term=search_term
         )
     else:
-        # 1. Determine the shop type using OpenAI
         shop_tag = shops.get_shop_type(request.ingredients)
         
         if shop_tag == "invalid":
             raise HTTPException(status_code=400, detail="A pesquisa contém termos inválidos ou não relacionados com alimentação.")
 
-        # 2. Find nearby shops using Overpass API
-        # We don't filter by name here because we want any shop that sells the ingredients
         found_shops = shops.find_nearby_shops(
             shop_tag, 
             request.lat, 
