@@ -7,6 +7,7 @@ const emit = defineEmits(['choice']);
 // Views: 'landing', 'text_input', 'vision_input', 'mood_select', 'mood_analysis', 'recipe', 'rejection'
 const activeView = ref('landing');
 const loading = ref(false);
+const saving = ref(false);
 const error = ref(null);
 
 const craving = ref('');
@@ -145,6 +146,43 @@ const goToIngredients = () => {
   });
 };
 
+const saveRecipe = async () => {
+  if (!recipeResult.value || !recipeResult.value.recipe) return;
+  saving.value = true;
+
+  try {
+    // 1. Create the recipe
+    const recipeData = {
+      name: recipeResult.value.recipe.title,
+      ingredients: recipeResult.value.recipe.ingredients.join(', '),
+      instructions: recipeResult.value.recipe.steps.join('\n')
+    };
+
+    const createResponse = await fetch('http://localhost:8000/recipes/', {
+      method: 'POST',
+      headers: auth.getAuthHeaders(),
+      body: JSON.stringify(recipeData)
+    });
+
+    if (!createResponse.ok) throw new Error('Falha ao criar receita');
+    const createdRecipe = await createResponse.json();
+
+    // 2. Add to favorites
+    const favResponse = await fetch(`http://localhost:8000/users/me/favorites/recipes/${createdRecipe.id}`, {
+      method: 'POST',
+      headers: auth.getAuthHeaders()
+    });
+
+    if (!favResponse.ok) throw new Error('Falha ao adicionar aos favoritos');
+
+    alert('Receita guardada com sucesso!');
+  } catch (err) {
+    console.error('Error saving recipe:', err);
+    alert('Erro ao guardar a receita.');
+  } finally {
+    saving.value = false;
+  }
+};
 const reset = () => {
   activeView.value = 'landing';
   craving.value = '';
@@ -321,9 +359,19 @@ const reset = () => {
             </div>
           </section>
         </div>
+<<<<<<< HEAD
         <footer class="rec-footer-premium">
           <button @click="reset" class="btn-formatted-back">← Voltar ao Início</button>
         </footer>
+=======
+
+        <div class="rec-final-action">
+          <button @click="reset" class="btn-formatted-back">← Voltar</button>
+          <button @click="saveRecipe" class="btn-save" :disabled="saving">
+            {{ saving ? 'A guardar...' : '❤️ Guardar Receita' }}
+          </button>
+        </div>
+>>>>>>> abaeb07e3780395e1b3a38184ac1015e7719c8ef
       </div>
     </div>
 
@@ -342,8 +390,143 @@ const reset = () => {
 
 <style scoped>
 .negotiator-container { 
+<<<<<<< HEAD
   max-width: 1000px; margin: 0 auto; font-family: 'Sora', sans-serif; 
   min-height: 700px; display: flex; flex-direction: column;
+=======
+  max-width: 1000px; 
+  margin: 0 auto; 
+  font-family: 'Sora', sans-serif; 
+  min-height: 600px; 
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.step-item {
+  display: flex;
+  gap: 20px;
+}
+
+.step-number {
+  background: var(--text-main);
+  color: var(--bg-main);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-weight: 800;
+}
+
+.step-text {
+  color: var(--text-main);
+  line-height: 1.6;
+  padding-top: 4px;
+}
+
+.recipe-actions {
+  padding: 32px 48px;
+  background: var(--bg-main);
+  display: flex;
+  justify-content: space-between;
+}
+
+.btn-secondary {
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  color: var(--text-main);
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-refresh {
+  background: var(--text-main);
+  color: var(--bg-main);
+  border: none;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-save {
+  background: #ff5e5e;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+}
+.btn-save:hover { opacity: 0.9; }
+.btn-save:disabled { opacity: 0.6; }
+
+
+.error-bubble {
+  background: #fff5f5;
+  color: #c53030;
+  padding: 12px 24px;
+  border-radius: 12px;
+  display: inline-block;
+  margin-bottom: 20px;
+  font-weight: 600;
+}
+
+.disclaimer {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-top: -10px;
+  margin-bottom: 30px;
+}
+
+.rejection-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  padding: 60px;
+  border-radius: 32px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.05);
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.rejection-card .icon {
+  font-size: 4rem;
+  margin-bottom: 20px;
+}
+
+.rejection-card h2 {
+  color: var(--text-main);
+  margin-bottom: 16px;
+}
+
+.rejection-card p {
+  color: var(--text-muted);
+  margin-bottom: 32px;
+  line-height: 1.6;
+}
+
+.btn-primary {
+  background: #07a374;
+  color: white;
+  padding: 12px 32px;
+  border: none;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media (max-width: 850px) {
+  .recipe-content-grid { grid-template-columns: 1fr; }
+  .recipe-header { padding: 32px 24px; }
+  .recipe-title { font-size: 1.8rem; }
+>>>>>>> abaeb07e3780395e1b3a38184ac1015e7719c8ef
 }
 .fade-in { animation: fadeIn 0.5s ease-out both; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }

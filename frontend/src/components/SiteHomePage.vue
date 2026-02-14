@@ -6,6 +6,8 @@ import Negotiator from './Negotiator.vue'
 import ShopFinder from './ShopFinder.vue'
 import ProfilePanel from './ProfilePanel.vue'
 import DiaryTracking from './DiaryTracking.vue'
+import VisionRecipe from './VisionRecipe.vue'
+import FavoritesPage from './FavoritesPage.vue'
 
 const sections = [
   { id: 'inicio', label: 'Início', icon: '🏠' },
@@ -116,6 +118,10 @@ watch(isDarkMode, (value) => {
 
       <div v-else-if="activeSection === 'diario'">
         <DiaryTracking />
+      </div>
+      
+      <div v-else-if="activeSection === 'favoritos'">
+        <FavoritesPage />
       </div>
 
       <div v-else-if="activeSection === 'definicoes'" class="settings-panel">
