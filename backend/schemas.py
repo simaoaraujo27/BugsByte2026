@@ -62,6 +62,10 @@ class UserBase(BaseModel):
     idade: int
     goal: str | None = None
     activity_level: str | None = None
+    target_calories: Optional[int] = None
+    macro_protein_percent: Optional[int] = 30
+    macro_carbs_percent: Optional[int] = 45
+    macro_fat_percent: Optional[int] = 25
 
 class UserCreate(UserBase):
     password: str
@@ -78,6 +82,10 @@ class UserUpdate(BaseModel):
     idade: Optional[int] = None
     goal: Optional[str] = None
     activity_level: Optional[str] = None
+    target_calories: Optional[int] = None
+    macro_protein_percent: Optional[int] = None
+    macro_carbs_percent: Optional[int] = None
+    macro_fat_percent: Optional[int] = None
 
 class User(UserBase):
     id: int
