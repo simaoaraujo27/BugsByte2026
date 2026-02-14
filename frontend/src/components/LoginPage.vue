@@ -195,11 +195,6 @@ const handleLogin = async () => {
         </div>
       </form>
 
-      <!-- Divider -->
-      <div class="divider">
-        <span>Hackathon Mode</span>
-      </div>
-
       <!-- Footer -->
       <div class="footer">
         <router-link to="/" class="back-link">
@@ -476,33 +471,6 @@ const handleLogin = async () => {
   background: #f0fff4;
   color: var(--success);
   border: 1px solid #9ae6b4;
-}
-
-.divider {
-  margin: 30px 0;
-  position: relative;
-  text-align: center;
-}
-
-.divider::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 0;
-  right: 0;
-  border-top: 1px solid var(--line);
-}
-
-.divider span {
-  background: white; /* Matches form bg but slightly simpler */
-  padding: 0 10px;
-  position: relative;
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  background: rgba(255, 255, 255, 0.95); /* Match card bg */
 }
 
 .footer {
