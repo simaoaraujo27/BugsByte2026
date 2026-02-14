@@ -171,7 +171,8 @@ const containerStyle = computed(() => {
 })
 
 onMounted(() => {
-  fetchUser()
+  console.log('SiteHomePage onMounted')
+  fetchUser().catch(err => console.error('fetchUser failed in SiteHomePage:', err))
   const initialSection = resolveSectionFromRoute(route.params.section)
   const initialSubsection = typeof route.params.subsection === 'string' ? route.params.subsection : ''
   activeSection.value = initialSection
