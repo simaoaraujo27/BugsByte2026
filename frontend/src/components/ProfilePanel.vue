@@ -127,9 +127,11 @@ const requestPasswordChange = async () => {
       body: JSON.stringify({ username: userProfile.value.username })
     })
 
-    if (!response.ok) throw new Error('Não foi possível iniciar a alteração da palavra-passe.')
-
     const data = await response.json()
+    if (!response.ok) {
+      throw new Error(data?.detail || 'Não foi possível iniciar a alteração da palavra-passe.')
+    }
+
     passwordMessage.value = data.message || 'Pedido enviado.'
   } catch (error) {
     passwordMessage.value = error instanceof TypeError

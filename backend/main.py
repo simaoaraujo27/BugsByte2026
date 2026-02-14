@@ -3,9 +3,10 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import hashlib
-import uuid
+import smtplib
 from datetime import datetime
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
+from email.message import EmailMessage
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 from typing import List
@@ -24,6 +25,93 @@ models.Base.metadata.create_all(bind=engine)
 app = FastAPI()
 
 VALID_MEAL_SECTIONS = {"breakfast", "lunch", "snack", "dinner", "extras"}
+
+
+def send_password_reset_email(recipient_email: str, reset_token: str) -> None:
+    smtp_host = os.getenv("SMTP_HOST")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_password = os.getenv("SMTP_PASSWORD")
+    smtp_from = os.getenv("SMTP_FROM_EMAIL", smtp_user or "no-reply@localhost")
+    frontend_base = os.getenv("FRONTEND_BASE_URL", "http://localhost:5173")
+    app_name = os.getenv("APP_NAME", "NutriVida")
+    reset_expire_minutes = os.getenv("PASSWORD_RESET_EXPIRE_MINUTES", "30")
+
+    if not smtp_host or not smtp_user or not smtp_password:
+        raise RuntimeError("SMTP is not configured. Set SMTP_HOST, SMTP_USER and SMTP_PASSWORD.")
+
+    reset_url = f"{frontend_base.rstrip('/')}/reset-password?token={reset_token}"
+
+    message = EmailMessage()
+    message["Subject"] = f"{app_name} - Recuperação de palavra-passe"
+    message["From"] = smtp_from
+    message["To"] = recipient_email
+    message.set_content(
+        f"Olá,\n\n"
+        f"Recebemos um pedido para redefinir a sua palavra-passe no {app_name}.\n"
+        f"Use este link para continuar (válido por {reset_expire_minutes} minutos):\n\n"
+        f"{reset_url}\n\n"
+        "Se não pediu esta alteração, pode ignorar este email com segurança."
+    )
+    message.add_alternative(
+        f"""\
+<!doctype html>
+<html lang="pt">
+  <body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="padding:28px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width:600px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;">
+            <tr>
+              <td style="padding:22px 28px;background:linear-gradient(90deg,#0ea5e9 0%,#10b981 100%);">
+                <h1 style="margin:0;font-size:22px;line-height:1.2;color:#ffffff;font-weight:700;">{app_name}</h1>
+                <p style="margin:6px 0 0;font-size:13px;color:#dbeafe;">Recuperação de palavra-passe</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:28px;">
+                <p style="margin:0 0 14px;font-size:16px;line-height:1.5;">Olá,</p>
+                <p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:#334155;">
+                  Recebemos um pedido para redefinir a sua palavra-passe.
+                </p>
+                <p style="margin:0 0 22px;font-size:15px;line-height:1.6;color:#334155;">
+                  Clique no botão abaixo para continuar. Este link é válido por <strong>{reset_expire_minutes} minutos</strong>.
+                </p>
+                <p style="margin:0 0 24px;">
+                  <a href="{reset_url}" style="display:inline-block;background:#10b981;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:12px 20px;border-radius:10px;">
+                    Redefinir palavra-passe
+                  </a>
+                </p>
+                <p style="margin:0 0 10px;font-size:13px;line-height:1.6;color:#64748b;">
+                  Se o botão não funcionar, use este link:
+                </p>
+                <p style="margin:0 0 18px;font-size:13px;line-height:1.6;word-break:break-all;">
+                  <a href="{reset_url}" style="color:#0284c7;text-decoration:none;">{reset_url}</a>
+                </p>
+                <p style="margin:0;font-size:13px;line-height:1.6;color:#64748b;">
+                  Se não pediu esta alteração, pode ignorar este email com segurança.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:14px 28px;background:#f8fafc;border-top:1px solid #e2e8f0;">
+                <p style="margin:0;font-size:12px;color:#64748b;">© {app_name}</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+""",
+        subtype="html",
+    )
+
+    with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+        server.send_message(message)
 
 
 def validate_date_key(date_key: str) -> str:
@@ -118,18 +206,28 @@ def forgot_password(request: schemas.ForgotPasswordRequest, db: Session = Depend
     db_user = db.query(models.User).filter(models.User.username == request.username).first()
     if not db_user:
         return {"message": "If the email exists, a reset link has been sent."}
-    
-    token = str(uuid.uuid4())
-    db_user.reset_token = token
-    db.commit()
-    
-    print("="*50)
-    print(f"EMAIL SIMULATION FOR: {request.username}")
-    print(f"Subject: Reset Your Password")
-    print(f"Body: Click here to reset your password: http://localhost:5173/reset-password?token={token}")
-    print("="*50)
-    
+
+    token = auth.create_password_reset_token(db_user.username)
+    try:
+        send_password_reset_email(db_user.username, token)
+    except Exception as exc:
+        print(f"Password reset email failed: {exc}")
+        raise HTTPException(status_code=500, detail=f"Falha no envio de email: {exc}")
     return {"message": "If the email exists, a reset link has been sent."}
+
+@app.post("/reset-password/")
+def reset_password(request: schemas.ResetPasswordConfirm, db: Session = Depends(get_db)):
+    username = auth.verify_password_reset_token(request.token)
+    if not username:
+        raise HTTPException(status_code=400, detail="Token inválido ou expirado.")
+
+    db_user = db.query(models.User).filter(models.User.username == username).first()
+    if not db_user:
+        raise HTTPException(status_code=400, detail="Token inválido ou expirado.")
+
+    db_user.hashed_password = auth.get_password_hash(request.new_password)
+    db.commit()
+    return {"message": "Palavra-passe alterada com sucesso."}
 
 @app.post("/negotiator/analyze-mood", response_model=schemas.MoodAnalysisResponse)
 def analyze_mood(request: schemas.NegotiatorRequest, current_user: models.User = Depends(auth.get_current_user)):
