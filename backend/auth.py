@@ -61,11 +61,18 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: Se
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         if username is None:
+            print("DEBUG AUTH: Token payload missing 'sub'")
             raise credentials_exception
         token_data = schemas.TokenData(username=username)
-    except JWTError:
+    except JWTError as e:
+        print(f"DEBUG AUTH: JWT Decode Error: {e}")
         raise credentials_exception
+    except Exception as e:
+        print(f"DEBUG AUTH: Unexpected Auth Error: {e}")
+        raise credentials_exception
+        
     user = db.query(models.User).filter(models.User.username == token_data.username).first()
     if user is None:
+        print(f"DEBUG AUTH: User '{token_data.username}' not found in database")
         raise credentials_exception
     return user
