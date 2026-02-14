@@ -27,7 +27,55 @@ const detectedIngredients = ref([]);
 
 // Vision
 const fileInput = ref(null);
+const videoRef = ref(null);
+const canvasRef = ref(null);
 const previewImage = ref(null);
+const isCameraActive = ref(false);
+const stream = ref(null);
+
+const startCamera = async () => {
+  isCameraActive.value = true;
+  error.value = null;
+  try {
+    stream.value = await navigator.mediaDevices.getUserMedia({ 
+      video: { facingMode: 'environment' } 
+    });
+    if (videoRef.value) {
+      videoRef.value.srcObject = stream.value;
+    }
+  } catch (err) {
+    console.error("Error accessing camera:", err);
+    error.value = "Não foi possível aceder à câmara.";
+    isCameraActive.value = false;
+  }
+};
+
+const stopCamera = () => {
+  if (stream.value) {
+    stream.value.getTracks().forEach(track => track.stop());
+    stream.value = null;
+  }
+  isCameraActive.value = false;
+};
+
+const capturePhoto = () => {
+  const video = videoRef.value;
+  const canvas = canvasRef.value;
+  if (video && canvas) {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    
+    canvas.toBlob((blob) => {
+      const file = new File([blob], "camera_photo.jpg", { type: "image/jpeg" });
+      previewImage.value = URL.createObjectURL(blob);
+      uploadAndAnalyze(file);
+      stopCamera();
+    }, 'image/jpeg');
+  }
+};
+
+const triggerFileSelect = () => fileInput.value.click();
 
 const moods = [
   { id: 'stressado', label: 'Stressado(a)', icon: '🌋' },
@@ -354,11 +402,15 @@ watch(
         <p class="subtitle-muted">O reconhecimento visual irá ditar a ementa de hoje.</p>
       </div>
 
-      <div class="premium-upload-zone" @click="triggerFileSelect">
+      <div v-if="!isCameraActive" class="premium-upload-zone">
         <div v-if="!loading" class="u-content-box">
           <div class="u-icon-pulse">📸</div>
-          <h3>Clica para carregar ou tirar foto</h3>
-          <p>O Chef vai detetar todos os teus ingredientes</p>
+          <h3>Digitaliza os teus ingredientes</h3>
+          <p>Tira uma foto agora ou escolhe da tua galeria</p>
+          <div class="u-actions" style="display: flex; gap: 12px; justify-content: center; margin-top: 20px;">
+            <button @click="triggerFileSelect" class="btn-primary-action" style="padding: 12px 24px;">Galeria</button>
+            <button @click="startCamera" class="btn-primary-action" style="padding: 12px 24px; background: #11263f;">Câmara</button>
+          </div>
         </div>
         <div v-else class="u-loading-box">
           <div class="spinner-dot"></div>
@@ -366,7 +418,23 @@ watch(
         </div>
         <input type="file" ref="fileInput" style="display: none" accept="image/*" @change="handleFileChange" />
       </div>
-      <button v-if="!loading" @click="reset" class="btn-formatted-back">← Voltar</button>
+
+      <!-- Camera View -->
+      <div v-if="isCameraActive" class="camera-view-negotiator fade-in">
+        <div class="camera-container-negotiator">
+          <video ref="videoRef" autoplay playsinline class="camera-video"></video>
+          <canvas ref="canvasRef" style="display: none"></canvas>
+          <div class="camera-controls-negotiator">
+            <button @click="stopCamera" class="btn-formatted-back" style="margin-top: 0;">Cancelar</button>
+            <button @click="capturePhoto" class="btn-capture-negotiator">
+              <div class="capture-inner"></div>
+            </button>
+            <div style="width: 100px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <button v-if="!loading && !isCameraActive" @click="reset" class="btn-formatted-back">← Voltar</button>
     </div>
 
     <!-- VIEW: Mood Analysis Result -->
@@ -536,8 +604,61 @@ watch(
 .m-pill-label { font-weight: 800; color: var(--text-main); font-size: 1rem; }
 
 /* 5. Vision Upload View */
-.premium-upload-zone { background: var(--bg-elevated); border: 3px dashed var(--line); border-radius: 40px; padding: 100px 60px; text-align: center; cursor: pointer; width: 100%; max-width: 700px; transition: 0.3s; }
-.premium-upload-zone:hover { border-color: #07a374; background: var(--bg-main); }
+.premium-upload-zone { background: var(--bg-elevated); border: 3px dashed var(--line); border-radius: 40px; padding: 100px 60px; text-align: center; width: 100%; max-width: 700px; transition: 0.3s; }
+
+.camera-view-negotiator {
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.camera-container-negotiator {
+  position: relative;
+  background: #000;
+  border-radius: 32px;
+  overflow: hidden;
+  aspect-ratio: 3/4;
+  display: flex;
+  flex-direction: column;
+}
+
+.camera-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.camera-controls-negotiator {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 30px;
+  background: linear-gradient(transparent, rgba(0,0,0,0.7));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.btn-capture-negotiator {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: white;
+  border: 4px solid rgba(255,255,255,0.3);
+  padding: 4px;
+  cursor: pointer;
+}
+
+.capture-inner {
+  width: 100%;
+  height: 100%;
+  background: white;
+  border-radius: 50%;
+  border: 2px solid #000;
+}
+
+.premium-upload-zone:not(.loading):hover { border-color: #07a374; background: var(--bg-main); }
 .u-icon-pulse { font-size: 6rem; margin-bottom: 24px; animation: pulse 2s infinite; }
 @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
 
