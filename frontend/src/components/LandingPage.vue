@@ -50,9 +50,9 @@ watch(isDark, (val) => {
         </div>
 
         <nav class="menu-links" aria-label="Navegação principal">
-          <a href="#servicos">Serviços</a>
+          <a href="#servicos">Funcionalidades</a>
           <a href="#beneficios">Benefícios</a>
-          <a href="#testemunhos">Testemunhos</a>
+          <a href="#testemunhos">Equipa</a>
         </nav>
 
         <div class="header-actions">
@@ -69,56 +69,45 @@ watch(isDark, (val) => {
       <section class="hero">
         <div class="container hero-grid">
           <div class="hero-copy">
-            <p class="tag">Nutrição Personalizada</p>
-            <h1>Transforme a sua saúde com alimentação consciente</h1>
+            <p class="tag">Nutrição & Tecnologia</p>
+            <h1>A Revolução da IA na tua Alimentação</h1>
             <p>
-              Planos alimentares ajustados aos seus objetivos, rotina e preferências,
-              com acompanhamento contínuo para resultados reais e sustentáveis.
+              A tua assistente inteligente de bolso. Analisa ingredientes por foto, 
+              negocia desejos calóricos e encontra opções saudáveis perto de ti.
             </p>
 
             <div class="hero-actions">
               <button class="btn btn-main" type="button" @click="goToLogin">Começar Agora</button>
-              <a class="btn btn-ghost" href="#servicos">Saber Mais</a>
-            </div>
-
-            <div class="social-proof">
-              <div class="avatars" aria-hidden="true">
-                <span></span><span></span><span></span><span></span>
-              </div>
-              <p>+500 clientes satisfeitos</p>
             </div>
           </div>
 
           <div class="hero-visual" aria-label="Prato saudável">
             <div class="hero-shape"></div>
             <img src="https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=1200&q=80" alt="Prato saudável" />
-            <div class="floating-card top">98% satisfação</div>
-            <div class="floating-card bottom">30+ consultas/semana</div>
+            <div class="floating-card top">IA Avançada</div>
+            <div class="floating-card bottom">Foco na Saúde</div>
           </div>
         </div>
       </section>
 
       <section id="servicos" class="section-light">
         <div class="container">
-          <p class="section-tag">O que oferecemos</p>
-          <h2>Serviços Personalizados</h2>
-          <p class="section-subtitle">Cada plano alimentar é adaptado à sua realidade e objetivos.</p>
+          <p class="section-tag">Funcionalidades</p>
+          <h2>O Poder da IA no teu Prato</h2>
+          <p class="section-subtitle">Ferramentas tecnológicas avançadas para simplificar a tua dieta.</p>
 
           <div class="cards-grid">
             <article class="service-card">
-              <h3>Planos Alimentares</h3>
-              <p>Estratégias nutricionais personalizadas para o seu estilo de vida.</p>
-              <a href="#" @click.prevent>Saiba mais</a>
+              <h3>📸 Chef Vision IA</h3>
+              <p>Tira uma foto aos ingredientes que tens em casa e recebe instantaneamente uma receita saudável e criativa.</p>
             </article>
             <article class="service-card">
-              <h3>Acompanhamento</h3>
-              <p>Consultas regulares para monitorizar progresso e ajustar o plano.</p>
-              <a href="#" @click.prevent>Saiba mais</a>
+              <h3>🍔 Negociador de Desejos</h3>
+              <p>Apetece-te "asneira"? A nossa IA negocia contigo alternativas mais saudáveis ou versões caseiras deliciosas.</p>
             </article>
             <article class="service-card">
-              <h3>Suporte Contínuo</h3>
-              <p>Orientação prática para manter consistência no dia a dia.</p>
-              <a href="#" @click.prevent>Saiba mais</a>
+              <h3>📍 Radar Saudável</h3>
+              <p>Encontra supermercados e restaurantes compatíveis com a tua dieta na tua localização atual.</p>
             </article>
           </div>
         </div>
@@ -152,24 +141,24 @@ watch(isDark, (val) => {
 
       <section id="testemunhos" class="testimonials">
         <div class="container">
-          <p class="section-tag section-tag-light">Testemunhos</p>
-          <h2>O que dizem os nossos clientes</h2>
+          <p class="section-tag section-tag-light">Hackathon 2026</p>
+          <h2>A Visão dos Criadores</h2>
 
           <div class="cards-grid">
             <article class="testimonial-card">
-              <p>“Melhorei a minha relação com a comida e perdi peso sem dietas extremas.”</p>
-              <strong>Ana Silva</strong>
-              <span>Empresária</span>
+              <p>“Acreditamos que a Inteligência Artificial deve servir a saúde de forma intuitiva e imediata.”</p>
+              <strong>Pedro</strong>
+              <span>Dev Team</span>
             </article>
             <article class="testimonial-card">
-              <p>“O plano ajustado à minha rotina fez toda a diferença no meu rendimento.”</p>
-              <strong>Miguel Costa</strong>
-              <span>Atleta amador</span>
+              <p>“O nosso objetivo é simplificar a decisão diária do 'o que comer' para todos.”</p>
+              <strong>Simão</strong>
+              <span>Dev Team</span>
             </article>
             <article class="testimonial-card">
-              <p>“Finalmente encontrei uma estratégia que consigo manter no dia a dia.”</p>
-              <strong>Carla Mendes</strong>
-              <span>Mãe de 3</span>
+              <p>“Criámos o NutriVida para demonstrar como a tecnologia pode quebrar barreiras na nutrição.”</p>
+              <strong>Francisco</strong>
+              <span>Dev Team</span>
             </article>
           </div>
         </div>
@@ -177,9 +166,9 @@ watch(isDark, (val) => {
 
       <section class="final-cta">
         <div class="container final-cta-inner">
-          <h2>Pronto para começar a sua transformação?</h2>
-          <p>Agende a sua primeira consulta e receba um plano adequado às suas metas.</p>
-          <button class="btn btn-main" type="button" @click="goToLogin">Agendar Consulta Gratuita</button>
+          <h2>Pronto para testar o futuro da nutrição?</h2>
+          <p>Junta-te à NutriVida e experimenta todas as ferramentas de Inteligência Artificial agora.</p>
+          <button class="btn btn-main" type="button" @click="goToLogin">Começar Agora</button>
         </div>
       </section>
     </main>
@@ -191,39 +180,42 @@ watch(isDark, (val) => {
             <img :src="logo" alt="NutriVentures" class="brand-logo" />
             <span class="brand-name light">NutriVida</span>
           </div>
-          <p>Transformamos hábitos em resultados com acompanhamento personalizado.</p>
+          <p>Inovação tecnológica aplicada à nutrição para simplificar decisões saudáveis.</p>
         </div>
 
         <div>
-          <h4>Serviços</h4>
+          <h4>Projeto</h4>
           <ul>
-            <li>Consultas Online</li>
-            <li>Planos Alimentares</li>
-            <li>Acompanhamento</li>
+            <li>Hackathon 2026</li>
+            <li>Tecnologia</li>
+            <li>Open Source</li>
           </ul>
         </div>
 
         <div>
-          <h4>Empresa</h4>
+          <h4>Equipa Dev</h4>
           <ul>
-            <li>Sobre Nós</li>
-            <li>Equipa</li>
-            <li>Contactos</li>
+            <li>Francisco Barbosa</li>
+            <li>João Teixeira</li>
+            <li>Pedro Morais</li>
+            <li>Simão Araújo</li>
+            <li>Simão Mendes</li>
           </ul>
         </div>
 
         <div>
-          <h4>Contacto</h4>
+          <h4>Contactos</h4>
           <ul>
-            <li>info@nutrivida.pt</li>
-            <li>+351 900 000 000</li>
-            <li>Lisboa, Portugal</li>
+            <li>nutriventuresbugs@gmail.com</li>
+            <li>+351 969 139 181</li>
+            <li>+351 939 350 345</li>
+            <li>Braga, Portugal</li> 
           </ul>
         </div>
       </div>
 
       <div class="container footer-bottom">
-        © 2026 NutriVida. Todos os direitos reservados.
+        © 2026 NutriVida. Desenvolvido com ❤️ na Hackathon.
       </div>
     </footer>
   </div>
