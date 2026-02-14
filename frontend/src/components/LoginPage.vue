@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import logo from '@/assets/logo.png'
 import { auth } from '@/auth'
@@ -13,9 +13,34 @@ const isLoading = ref(false)
 const calorieBudget = ref(1850)
 const errorMessage = ref('')
 const successMessage = ref('')
+const isDarkTheme = ref(false)
+const handleThemeChange = (event) => {
+  const theme = event?.detail?.theme
+  if (theme === 'dark' || theme === 'light') {
+    isDarkTheme.value = theme === 'dark'
+  } else {
+    isDarkTheme.value = document.documentElement.classList.contains('dark')
+  }
+}
+const handleStorageThemeChange = (event) => {
+  if (event.key !== 'theme') return
+  isDarkTheme.value = event.newValue === 'dark'
+}
+
+const syncTheme = () => {
+  const savedTheme = localStorage.getItem('theme')
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+  const shouldUseDark = savedTheme ? savedTheme === 'dark' : prefersDark
+  document.documentElement.classList.toggle('dark', shouldUseDark)
+  isDarkTheme.value = shouldUseDark
+}
 
 // Load saved credentials on component mount
 onMounted(() => {
+  syncTheme()
+  window.addEventListener('theme-change', handleThemeChange)
+  window.addEventListener('storage', handleStorageThemeChange)
+
   const savedRememberMe = localStorage.getItem('rememberMe') === 'true'
   rememberMe.value = savedRememberMe
   
@@ -26,6 +51,11 @@ onMounted(() => {
     if (savedPassword) password.value = savedPassword
     console.log('Loaded saved credentials from localStorage')
   }
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('theme-change', handleThemeChange)
+  window.removeEventListener('storage', handleStorageThemeChange)
 })
 
 // Clear messages on input
@@ -84,7 +114,7 @@ const handleLogin = async () => {
 </script>
 
 <template>
-  <div class="auth-page">
+  <div class="auth-page" :class="{ 'theme-dark': isDarkTheme }">
     <div class="auth-card">
       
       <!-- Header / Logo Area -->
@@ -496,50 +526,60 @@ const handleLogin = async () => {
   color: #475569;
 }
 
-/* Dark Mode Support */
-:global(.theme-dark) .auth-card {
+:global(.dark) .auth-card,
+.auth-page.theme-dark .auth-card {
   background: rgba(15, 23, 42, 0.95);
   border-color: rgba(255, 255, 255, 0.1);
   color: #f8fafc;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
 }
 
-:global(.theme-dark) .auth-title {
+:global(.dark) .auth-title,
+.auth-page.theme-dark .auth-title {
   color: #f8fafc;
 }
 
-:global(.theme-dark) .form-group label {
+:global(.dark) .form-group label,
+.auth-page.theme-dark .form-group label {
   color: #cbd5e1;
 }
 
-:global(.theme-dark) .form-group input {
+:global(.dark) .form-group input,
+.auth-page.theme-dark .form-group input {
   background: #1e293b;
   border-color: #334155;
   color: #f8fafc;
 }
 
-:global(.theme-dark) .form-group input:focus {
+:global(.dark) .form-group input:focus,
+.auth-page.theme-dark .form-group input:focus {
   border-color: #14b8a6;
   background: #1e293b;
 }
 
-:global(.theme-dark) .logo-container {
+:global(.dark) .logo-container,
+.auth-page.theme-dark .logo-container {
   background: #1e293b;
 }
 
-:global(.theme-dark) .footer {
+:global(.dark) .footer,
+.auth-page.theme-dark .footer {
   border-top-color: #334155;
 }
 
-:global(.theme-dark) .back-link {
+:global(.dark) .back-link,
+.auth-page.theme-dark .back-link {
   color: #64748b;
 }
 
-:global(.theme-dark) .signup-text-muted {
+:global(.dark) .signup-text-muted,
+.auth-page.theme-dark .signup-text-muted {
   color: #94a3b8;
 }
 
-:global(.theme-dark) .checkbox-label {
+:global(.dark) .checkbox-label,
+.auth-page.theme-dark .checkbox-label {
   color: #94a3b8;
 }
+
 </style>

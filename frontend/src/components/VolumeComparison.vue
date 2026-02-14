@@ -1,7 +1,8 @@
 <script setup>
-import { onMounted, ref, watch, computed } from 'vue'
+import { onMounted, onBeforeUnmount, ref, watch, computed } from 'vue'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 
 // Props
 const props = defineProps({
@@ -17,21 +18,22 @@ const calorieBudget = ref(500)
 const isLoading = ref(false)
 
 const junkModels = [
-  { name: 'Hambúrguer', file: 'burger.glb', baseScale: 0.15, caloriesPerGram: 2.5, unitGrams: 180 },
-  { name: 'Pizza', file: 'pizza.glb', baseScale: 0.23, caloriesPerGram: 2.7, unitGrams: 120 },
-  { name: 'Refrigerante', file: 'soda.glb', baseScale: 0.08, caloriesPerGram: 0.41, unitGrams: 330 }
+  { name: 'Hambúrguer', file: 'burger.glb', baseScale: 0.15, caloriesPerGram: 2.5, unitGrams: 180, surfaceOffsetY: 0 },
+  { name: 'Pizza', file: 'pizza.glb', baseScale: 0.23, caloriesPerGram: 2.7, unitGrams: 120, surfaceOffsetY: 0 },
+  { name: 'Refrigerante', file: 'soda.glb', baseScale: 0.08, caloriesPerGram: 0.41, unitGrams: 330, surfaceOffsetY: 0 }
 ]
 
 const healthyModels = [
-  { name: 'Salada', file: 'salad.glb', baseScale: 1.2, caloriesPerGram: 0.45, unitGrams: 250 },
-  { name: 'Brócolos', file: 'broccoli.glb', baseScale: 0.8, caloriesPerGram: 0.34, unitGrams: 90 },
-  { name: 'Maçã', file: 'apple.glb', baseScale: 0.10, caloriesPerGram: 0.52, unitGrams: 150 }
+  { name: 'Salada', file: 'salad.glb', baseScale: 1.2, caloriesPerGram: 0.45, unitGrams: 250, surfaceOffsetY: 0.22 },
+  { name: 'Brócolos', file: 'broccoli.glb', baseScale: 0.8, caloriesPerGram: 0.34, unitGrams: 90, surfaceOffsetY: 0 },
+  { name: 'Maçã', file: 'apple.glb', baseScale: 0.10, caloriesPerGram: 0.52, unitGrams: 150, surfaceOffsetY: 0 }
 ]
 
 const CONFIG = {
   plate: {
     scale: 3.0,
-    y: -0.5
+    y: -0.5,
+    height: 0.1
   }
 }
 
@@ -109,6 +111,11 @@ let junkScene, healthyScene, junkCamera, healthyCamera, renderer
 let junkTemplate, healthyTemplate
 let junkGroup, healthyGroup
 let junkPlate, healthyPlate
+let junkControls, healthyControls
+let handleWindowResize
+let handlePointerMove
+let handlePointerLeave
+let handlePointerDown
 
 const initScene = () => {
   junkScene = new THREE.Scene()
@@ -129,6 +136,45 @@ const initScene = () => {
   renderer.setPixelRatio(window.devicePixelRatio)
   renderer.shadowMap.enabled = true
   canvasContainer.value.appendChild(renderer.domElement)
+
+  junkControls = new OrbitControls(junkCamera, renderer.domElement)
+  junkControls.enableDamping = true
+  junkControls.dampingFactor = 0.07
+  junkControls.enablePan = false
+  junkControls.minDistance = 4
+  junkControls.maxDistance = 14
+  junkControls.target.set(0, 0, 0)
+  junkControls.enabled = false
+
+  healthyControls = new OrbitControls(healthyCamera, renderer.domElement)
+  healthyControls.enableDamping = true
+  healthyControls.dampingFactor = 0.07
+  healthyControls.enablePan = false
+  healthyControls.minDistance = 4
+  healthyControls.maxDistance = 14
+  healthyControls.target.set(0, 0, 0)
+  healthyControls.enabled = false
+
+  handlePointerMove = (event) => {
+    const rect = renderer.domElement.getBoundingClientRect()
+    const x = event.clientX - rect.left
+    const leftHalf = x < rect.width / 2
+    junkControls.enabled = leftHalf
+    healthyControls.enabled = !leftHalf
+  }
+
+  handlePointerLeave = () => {
+    junkControls.enabled = false
+    healthyControls.enabled = false
+  }
+
+  handlePointerDown = (event) => {
+    handlePointerMove(event)
+  }
+
+  renderer.domElement.addEventListener('pointermove', handlePointerMove)
+  renderer.domElement.addEventListener('pointerleave', handlePointerLeave)
+  renderer.domElement.addEventListener('pointerdown', handlePointerDown)
 
   const setupLights = (scene) => {
     const ambient = new THREE.AmbientLight(0xffffff, 2.0)
@@ -159,8 +205,8 @@ const initScene = () => {
 }
 
 const getItemCount = (grams, unitGrams) => {
-  if (!grams || !unitGrams) return 1
-  return Math.max(1, Math.min(12, Math.round(grams / unitGrams)))
+  if (!grams || !unitGrams) return 0
+  return Math.max(0, Math.min(12, Math.floor(grams / unitGrams)))
 }
 
 const clearGroup = (group) => {
@@ -187,6 +233,36 @@ const getSlotPosition = (index, total) => {
   return { x: Math.cos(angle) * radius, z: Math.sin(angle) * radius }
 }
 
+const getPizzaSliceLayout = (index, total) => {
+  const slicesPerPizza = 8
+  const pizzaIndex = Math.floor(index / slicesPerPizza)
+  const sliceIndex = index % slicesPerPizza
+  const slicesInThisPizza = Math.min(slicesPerPizza, total - (pizzaIndex * slicesPerPizza))
+
+  const centerX = total > slicesPerPizza ? (pizzaIndex === 0 ? -0.85 : 0.85) : 0
+  const centerZ = 0
+  const angleStep = (Math.PI * 2) / Math.max(slicesInThisPizza, 2)
+  const angle = sliceIndex * angleStep
+  const radius = slicesInThisPizza <= 1 ? 0 : 0.38
+
+  return {
+    x: centerX + Math.cos(angle) * radius,
+    z: centerZ + Math.sin(angle) * radius,
+    rotationY: (-angle + Math.PI / 2),
+    scaleMultiplier: 1.45
+  }
+}
+
+const normalizeModelToGround = (model) => {
+  const bounds = new THREE.Box3().setFromObject(model)
+  const center = bounds.getCenter(new THREE.Vector3())
+  const minY = bounds.min.y
+
+  model.position.x -= center.x
+  model.position.z -= center.z
+  model.position.y -= minY
+}
+
 const renderFoodCopies = (type) => {
   const isJunk = type === 'junk'
   const template = isJunk ? junkTemplate : healthyTemplate
@@ -198,14 +274,18 @@ const renderFoodCopies = (type) => {
 
   const copies = getItemCount(grams, config.unitGrams)
   clearGroup(group)
+  const plateTopY = CONFIG.plate.y + (CONFIG.plate.height / 2)
 
   for (let i = 0; i < copies; i += 1) {
     const copy = template.clone(true)
-    const { x, z } = getSlotPosition(i, copies)
+    const isPizza = config.name === 'Pizza'
+    const slot = isPizza ? getPizzaSliceLayout(i, copies) : getSlotPosition(i, copies)
+    const { x, z } = slot
     const yOffset = copies > 7 ? (i % 2) * 0.08 : 0
-    copy.position.set(x, yOffset, z)
-    copy.rotation.y = Math.PI / 4 + i * 0.25
-    copy.scale.setScalar(config.baseScale)
+    copy.position.set(x, plateTopY + yOffset + (config.surfaceOffsetY || 0), z)
+    copy.rotation.y = isPizza ? slot.rotationY : (Math.PI / 4 + i * 0.25)
+    const scaleMultiplier = isPizza ? (slot.scaleMultiplier || 1) : 1
+    copy.scale.setScalar(config.baseScale * scaleMultiplier)
     group.add(copy)
   }
 }
@@ -223,6 +303,7 @@ const loadFood = async (type) => {
     })
     
     const model = gltf.scene
+    normalizeModelToGround(model)
 
     if (type === 'junk') {
       junkTemplate = model
@@ -252,8 +333,8 @@ const cycle = (type) => {
 
 const animate = () => {
   requestAnimationFrame(animate)
-  if (junkGroup) junkGroup.rotation.y += 0.0035
-  if (healthyGroup) healthyGroup.rotation.y += 0.0035
+  if (junkControls) junkControls.update()
+  if (healthyControls) healthyControls.update()
   
   if (renderer) {
     const width = canvasContainer.value.clientWidth
@@ -280,7 +361,7 @@ onMounted(() => {
   loadFood('healthy')
   animate()
   
-  window.addEventListener('resize', () => {
+  handleWindowResize = () => {
     if (!canvasContainer.value) return
     const width = canvasContainer.value.clientWidth
     const height = canvasContainer.value.clientHeight
@@ -293,7 +374,23 @@ onMounted(() => {
     healthyCamera.updateProjectionMatrix()
     
     renderer.setSize(width, height)
-  })
+  }
+
+  window.addEventListener('resize', handleWindowResize)
+})
+
+onBeforeUnmount(() => {
+  if (renderer?.domElement) {
+    renderer.domElement.removeEventListener('pointermove', handlePointerMove)
+    renderer.domElement.removeEventListener('pointerleave', handlePointerLeave)
+    renderer.domElement.removeEventListener('pointerdown', handlePointerDown)
+  }
+  if (handleWindowResize) {
+    window.removeEventListener('resize', handleWindowResize)
+  }
+  junkControls?.dispose()
+  healthyControls?.dispose()
+  renderer?.dispose()
 })
 </script>
 
@@ -310,6 +407,9 @@ onMounted(() => {
       <p class="mt-1 text-sm font-semibold" :class="uiTheme.subtitle">
         Visualize como <span class="font-bold underline decoration-2 underline-offset-4" :class="props.isDarkMode ? 'text-blue-400' : 'text-blue-600'">{{ calorieBudget }} kcal</span> ocupam o espaço real.
       </p>
+      <p class="mt-2 text-xs" :class="uiTheme.subtitle">
+        Arrasta para rodar e usa scroll para zoom.
+      </p>
     </header>
 
     <!-- Main Stage: Unified Dashboard Card (Apple Health / Clinical Look) -->
@@ -323,7 +423,7 @@ onMounted(() => {
           <span class="text-[9px] font-black text-rose-500 uppercase tracking-widest mb-1.5">Ultra-Processado</span>
           <div class="text-base font-extrabold" :class="uiTheme.cardTitle">{{ currentJunkConfig.name }}</div>
           <div class="mt-1 text-[11px] font-semibold" :class="uiTheme.cardMeta">
-            {{ junkGrams }}g · {{ junkUnits }} un.
+            {{ junkGrams }}g<span v-if="junkUnits > 0"> · {{ junkUnits }} un.</span>
           </div>
           <button @click="cycle('junk')" class="mt-3 px-4 py-2 text-[11px] font-bold rounded-xl transition-all flex items-center gap-2 border" :class="uiTheme.cardBtn">
             <span>Trocar</span>
@@ -343,7 +443,7 @@ onMounted(() => {
           <span class="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-1.5">Densidade Baixa</span>
           <div class="text-base font-extrabold" :class="uiTheme.cardTitle">{{ currentHealthyConfig.name }}</div>
           <div class="mt-1 text-[11px] font-semibold" :class="uiTheme.cardMeta">
-            {{ healthyGrams }}g · {{ healthyUnits }} un.
+            {{ healthyGrams }}g<span v-if="healthyUnits > 0"> · {{ healthyUnits }} un.</span>
           </div>
           <button @click="cycle('healthy')" class="mt-3 px-4 py-2 text-[11px] font-bold rounded-xl transition-all flex items-center gap-2 border" :class="uiTheme.cardBtn">
             <span>Trocar</span>

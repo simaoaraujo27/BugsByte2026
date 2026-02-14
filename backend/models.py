@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Table, UniqueConstraint, Text
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Table, UniqueConstraint, Text, DateTime
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 from database import Base
 
 # Association table for many-to-many relationship between User and Allergen
@@ -53,6 +54,7 @@ class User(Base):
     favorite_recipes = relationship("Recipe", secondary=user_favorite_recipes)
     favorite_restaurants = relationship("Restaurant", secondary=user_favorite_restaurants)
     weight_history = relationship("WeightEntry", back_populates="user", cascade="all, delete-orphan")
+    food_history = relationship("FoodHistory", back_populates="user", cascade="all, delete-orphan")
 
 class WeightEntry(Base):
     __tablename__ = "weight_entries"
@@ -62,6 +64,21 @@ class WeightEntry(Base):
     date = Column(String, nullable=False) # YYYY-MM-DD
 
     user = relationship("User", back_populates="weight_history")
+
+class FoodHistory(Base):
+    __tablename__ = "food_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    name = Column(String, nullable=False, index=True)
+    calories_per_100g = Column(Float, nullable=False)
+    protein_per_100g = Column(Float, nullable=False)
+    carbs_per_100g = Column(Float, nullable=False)
+    fat_per_100g = Column(Float, nullable=False)
+    source = Column(String, default="search")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", back_populates="food_history")
 
 class Allergen(Base):
     __tablename__ = "allergens"

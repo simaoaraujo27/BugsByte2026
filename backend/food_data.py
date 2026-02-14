@@ -2,6 +2,7 @@ import os
 from typing import List, Dict
 
 import requests
+import re
 
 
 USDA_SEARCH_URL = "https://api.nal.usda.gov/fdc/v1/foods/search"
@@ -28,6 +29,22 @@ def _get_fatsecret_token(client_id: str, client_secret: str) -> str:
     return response.json().get("access_token")
 
 
+def _extract_fatsecret_nutrients(desc: str) -> Dict[str, float]:
+    """Helper to extract nutrients from FatSecret description string."""
+    nutrients = {"calories": 0.0, "fat": 0.0, "carbs": 0.0, "protein": 0.0}
+    parts = desc.split("|")
+    for p in parts:
+        if "Calories:" in p:
+            nutrients["calories"] = _safe_float(p.replace("Calories:", "").replace("kcal", "").strip())
+        elif "Fat:" in p:
+            nutrients["fat"] = _safe_float(p.replace("Fat:", "").replace("g", "").strip())
+        elif "Carbs:" in p:
+            nutrients["carbs"] = _safe_float(p.replace("Carbs:", "").replace("g", "").strip())
+        elif "Protein:" in p:
+            nutrients["protein"] = _safe_float(p.replace("Protein:", "").replace("g", "").strip())
+    return nutrients
+
+
 def _search_fatsecret(query: str, client_id: str, client_secret: str, page_size: int) -> List[Dict]:
     token = _get_fatsecret_token(client_id, client_secret)
     
@@ -52,24 +69,8 @@ def _search_fatsecret(query: str, client_id: str, client_secret: str, page_size:
         results = [results]
 
     for item in results:
-        # FatSecret search returns a 'food_description' string like:
-        # "Per 100g - Calories: 155kcal | Fat: 10.61g | Carbs: 1.12g | Protein: 12.58g"
         desc = item.get("food_description", "")
-        
-        # Simple extraction logic for 100g basis
-        # Note: This is a simplified parser for the search result string
-        nutrients = {"calories": 0.0, "fat": 0.0, "carbs": 0.0, "protein": 0.0}
-        if "Per 100g" in desc or "Per 100ml" in desc:
-            parts = desc.split("|")
-            for p in parts:
-                if "Calories:" in p:
-                    nutrients["calories"] = _safe_float(p.replace("Calories:", "").replace("kcal", "").strip())
-                elif "Fat:" in p:
-                    nutrients["fat"] = _safe_float(p.replace("Fat:", "").replace("g", "").strip())
-                elif "Carbs:" in p:
-                    nutrients["carbs"] = _safe_float(p.replace("Carbs:", "").replace("g", "").strip())
-                elif "Protein:" in p:
-                    nutrients["protein"] = _safe_float(p.replace("Protein:", "").replace("g", "").strip())
+        nutrients = _extract_fatsecret_nutrients(desc)
 
         foods.append(
             {
@@ -192,3 +193,81 @@ def search_foods(query: str, page_size: int = 10) -> List[Dict]:
         return _search_open_food_facts(query, page_size)
     except requests.RequestException:
         return []
+
+
+def get_nutrition_for_recipe(ingredients: List[str]) -> Dict:
+    """
+    Estimates total nutrition for a list of ingredients using FatSecret.
+    Parses quantities (g, kg, ml, etc.) for better accuracy.
+    """
+    fs_id = os.getenv("FATSECRET_CLIENT_ID") or os.getenv("Client ID")
+    fs_secret = os.getenv("FATSECRET_CLIENT_SECRET") or os.getenv("Client Secret")
+    
+    total_nutrients = {"calories": 0.0, "protein": 0.0, "carbs": 0.0, "fat": 0.0}
+    
+    if not fs_id or not fs_secret or not ingredients:
+        return total_nutrients
+
+    try:
+        token = _get_fatsecret_token(fs_id, fs_secret)
+        
+        for ing in ingredients:
+            try:
+                # 1. Extract quantity and unit
+                # Pattern to find numbers and units
+                qty_match = re.search(r"(\d+(?:[.,]\d+)?)\s*(g|kg|ml|l|colher|unidade|chávena|dente|fatia|fatias|ovo|ovos)", ing.lower())
+                multiplier = 1.0 
+                
+                search_term = ing
+                if qty_match:
+                    val = float(qty_match.group(1).replace(",", "."))
+                    unit = qty_match.group(2)
+                    search_term = ing.replace(qty_match.group(0), "").strip()
+                    # Clean search term: remove leading prepositions
+                    search_term = re.sub(r"^(de|do|da|dos|das)\s+", "", search_term, flags=re.IGNORECASE).strip()
+                    
+                    if unit == "kg" or unit == "l":
+                        multiplier = val * 10 # 10 * 100g = 1kg
+                    elif unit == "g" or unit == "ml":
+                        multiplier = val / 100
+                    else:
+                        multiplier = val
+                else:
+                    # Clean the term even if no quantity found
+                    search_term = re.sub(r"^\d+\s+", "", ing).strip()
+
+                # 2. Search for the ingredient
+                response = requests.get(
+                    FATSECRET_SEARCH_URL,
+                    headers={"Authorization": f"Bearer {token}"},
+                    params={
+                        "method": "foods.search",
+                        "search_expression": search_term,
+                        "format": "json",
+                        "max_results": 1,
+                    },
+                    timeout=5,
+                )
+                if not response.ok:
+                    continue
+                    
+                payload = response.json()
+                results = payload.get("foods", {}).get("food", [])
+                if isinstance(results, dict):
+                    results = [results]
+                
+                if results:
+                    desc = results[0].get("food_description", "")
+                    nutrients = _extract_fatsecret_nutrients(desc)
+                    
+                    total_nutrients["calories"] += nutrients["calories"] * multiplier
+                    total_nutrients["protein"] += nutrients["protein"] * multiplier
+                    total_nutrients["carbs"] += nutrients["carbs"] * multiplier
+                    total_nutrients["fat"] += nutrients["fat"] * multiplier
+            except Exception:
+                continue
+                
+    except Exception as e:
+        print(f"Error in get_nutrition_for_recipe: {e}")
+        
+    return total_nutrients

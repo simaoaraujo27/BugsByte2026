@@ -3,6 +3,7 @@ import json
 from typing import List, Dict, Optional
 from openai import OpenAI
 import schemas
+import food_data
 from fastapi import HTTPException
 
 def get_client_config():
@@ -43,28 +44,29 @@ def analyze_mood(craving: str, mood: str) -> schemas.MoodAnalysisResponse:
 def negotiate_craving(craving: str, target_calories: int = 600, mood: Optional[str] = None, favorite_recipes: List[schemas.Recipe] = []) -> schemas.NegotiatorResponse:
     client, model = get_client_config()
     
-    # FAVORITES FIRST: Construct context
+    # FAVORITES: Construct context as subtle inspiration
     fav_header = ""
     if favorite_recipes:
         fav_list = "\n".join([f"- {r.name}" for r in favorite_recipes])
-        fav_header = f"CONTEXTO DE PREFERÊNCIAS DO UTILIZADOR (ESTAS SÃO AS RECEITAS QUE ELE MAIS GOSTA):\n{fav_list}\n\n"
+        fav_header = f"REFERÊNCIA DE ESTILO (Usa isto apenas como inspiração subtil para o tipo de cozinha que o utilizador gosta):\n{fav_list}\n\n"
 
     prompt = (
         f"{fav_header}"
-        f"O utilizador tem agora um desejo de: '{craving}'. Estado emocional: {mood}. "
+        f"O utilizador enviou o seguinte: '{craving}'. Estado emocional: {mood}. "
         "\nINSTRUÇÕES: "
-        "1. Analisa as receitas favoritas acima para entender o paladar do utilizador. "
-        "2. Cria uma NOVA receita GOURMET saudável que se alinhe com este perfil de gosto. "
-        "3. Se o pedido for inválido (não comida), define 'recipe' como null. "
-        "\nRetorna RIGOROSAMENTE este JSON em PT-PT: "
-        "{ 'message': '...', 'recipe': { 'title': '...', 'calories': 500, 'time_minutes': 30, 'ingredients': [], 'steps': [] }, 'restaurant_search_term': '...' }"
+        "1. Se o utilizador descreveu um desejo específico, cria uma versão saudável. "
+        "2. Se forneceu ingredientes, cria uma receita criativa com eles. "
+        "3. Usa a lista de 'estilo' acima APENAS como base para o perfil de sabor, mas foca-te em ser VARIADO e ORIGINAL. Não sugiras sempre o mesmo tipo de prato. "
+        "4. Se o pedido for inválido, define 'recipe' como null. "
+        "\nRetorna RIGOROSAMENTE este JSON em PT-PT (define SEMPRE 'calories' como 0, pois eu vou calcular o valor real): "
+        "{ 'message': '...', 'recipe': { 'title': '...', 'calories': 0, 'time_minutes': 30, 'ingredients': [], 'steps': [] }, 'restaurant_search_term': '...' }"
     )
 
     try:
         response = client.chat.completions.create(
             model=model,
             messages=[
-                {"role": "system", "content": "És um Chef Michelin e Nutricionista. Prioriza sempre o perfil de gosto indicado pelas receitas favoritas do utilizador."},
+                {"role": "system", "content": "És um Chef Michelin e Nutricionista que adora variedade. Cria receitas novas e surpreendentes, usando as preferências do utilizador apenas como guia de estilo."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.85,
@@ -72,10 +74,18 @@ def negotiate_craving(craving: str, target_calories: int = 600, mood: Optional[s
             max_tokens=1000
         )
         data = json.loads(response.choices[0].message.content)
+        
+        # Integrar FatSecret para calorias mais precisas se possível
+        raw_recipe = data.get('recipe')
+        if raw_recipe and raw_recipe.get('ingredients'):
+            fs_nutrition = food_data.get_nutrition_for_recipe(raw_recipe['ingredients'])
+            if fs_nutrition['calories'] > 0:
+                raw_recipe['calories'] = int(fs_nutrition['calories'])
+
         return schemas.NegotiatorResponse(
             original_craving=craving,
             message=data.get('message', ''),
-            recipe=schemas.NegotiatorRecipe(**data.get('recipe')) if data.get('recipe') else None,
+            recipe=schemas.NegotiatorRecipe(**raw_recipe) if raw_recipe else None,
             restaurant_search_term=data.get('restaurant_search_term', craving)
         )
     except Exception as e:

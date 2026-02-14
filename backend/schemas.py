@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional
+from datetime import datetime
 
 class ItemBase(BaseModel):
     name: str
@@ -66,15 +67,6 @@ class UserCreate(UserBase):
     password: str
     allergens: list[str] = []
 
-class User(UserBase):
-    id: int
-    allergens: list[Allergen] = []
-    favorite_recipes: List[Recipe] = []
-    favorite_restaurants: List[Restaurant] = []
-
-    class ConfigDict:
-        from_attributes = True
-
 class UserUpdate(BaseModel):
     username: Optional[str] = None
     full_name: Optional[str] = None
@@ -86,6 +78,15 @@ class UserUpdate(BaseModel):
     idade: Optional[int] = None
     goal: Optional[str] = None
     activity_level: Optional[str] = None
+
+class User(UserBase):
+    id: int
+    allergens: list[Allergen] = []
+    favorite_recipes: List[Recipe] = []
+    favorite_restaurants: List[Restaurant] = []
+
+    class ConfigDict:
+        from_attributes = True
 
 class DashboardResponse(BaseModel):
     consumed_calories: int
@@ -219,6 +220,22 @@ class DiaryDay(BaseModel):
 
     class ConfigDict:
         from_attributes = True
+
+class FoodHistoryCreate(BaseModel):
+    name: str
+    calories_per_100g: float
+    protein_per_100g: float
+    carbs_per_100g: float
+    fat_per_100g: float
+    source: str = "search"
+
+class FoodHistoryResponse(FoodHistoryCreate):
+    id: int
+    created_at: datetime
+
+    class ConfigDict:
+        from_attributes = True
+
 class VisionResponse(BaseModel):
     detected_ingredients: list[str]
     message: str

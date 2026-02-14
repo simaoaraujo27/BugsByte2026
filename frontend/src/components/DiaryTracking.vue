@@ -2,7 +2,6 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { auth, API_URL } from '@/auth'
 
-const STORAGE_KEY = 'nutri_diary_tracking_v1'
 const DEFAULT_GOAL = 1800
 const mealSections = [
   { id: 'breakfast', label: 'Pequeno-almoço', icon: '🥣' },
@@ -11,14 +10,6 @@ const mealSections = [
   { id: 'dinner', label: 'Jantar', icon: '🍽️' },
   { id: 'extras', label: 'Extras', icon: '🍫' }
 ]
-const quickFoods = [
-  { name: 'Peito de frango', calories_per_100g: 165, protein_per_100g: 31, carbs_per_100g: 0, fat_per_100g: 3.6, source: 'quick' },
-  { name: 'Arroz cozido', calories_per_100g: 130, protein_per_100g: 2.7, carbs_per_100g: 28, fat_per_100g: 0.3, source: 'quick' },
-  { name: 'Ovo cozido', calories_per_100g: 155, protein_per_100g: 13, carbs_per_100g: 1.1, fat_per_100g: 11, source: 'quick' },
-  { name: 'Iogurte natural', calories_per_100g: 63, protein_per_100g: 5.3, carbs_per_100g: 7, fat_per_100g: 1.5, source: 'quick' },
-  { name: 'Banana', calories_per_100g: 89, protein_per_100g: 1.1, carbs_per_100g: 23, fat_per_100g: 0.3, source: 'quick' },
-  { name: 'Aveia', calories_per_100g: 389, protein_per_100g: 17, carbs_per_100g: 66, fat_per_100g: 7, source: 'quick' }
-]
 
 const dataByDate = ref({})
 const selectedDate = ref(new Date())
@@ -26,6 +17,7 @@ const isLoading = ref(false)
 const composerFor = ref('')
 const composerMode = ref('manual') // 'manual' or 'auto'
 const autoLoading = ref(false)
+
 const foodSearch = ref({
   query: '',
   loading: false,
@@ -47,7 +39,8 @@ const mealDraft = ref({
   calories: '',
   protein: '',
   carbs: '',
-  fat: ''
+  fat: '',
+  source: 'manual'
 })
 const autoDraft = ref({
   text: ''
@@ -207,29 +200,6 @@ const buildEmptyDay = () => ({
   }
 })
 
-const normalizeDay = (rawDay) => {
-  const day = buildEmptyDay()
-  if (!rawDay || typeof rawDay !== 'object') return day
-
-  day.goal = toNumber(rawDay.goal) > 0 ? toNumber(rawDay.goal) : DEFAULT_GOAL
-
-  for (const section of mealSections) {
-    const list = Array.isArray(rawDay.meals?.[section.id]) ? rawDay.meals[section.id] : []
-    day.meals[section.id] = list.map((item) => ({
-      id: item.id || `${Date.now()}-${Math.random()}`,
-      name: item.name || 'Item',
-      grams: toNumber(item.grams),
-      calories: toNumber(item.calories),
-      protein: toNumber(item.protein),
-      carbs: toNumber(item.carbs),
-      fat: toNumber(item.fat)
-    }))
-  }
-  return day
-}
-
-// persist function removed
-
 const ensureDay = (key) => {
   fetchDay(key)
 }
@@ -251,9 +221,10 @@ const currentDay = computed(() => {
   return normalized
 })
 
-const allMealsToday = computed(() =>
-  mealSections.flatMap((section) => currentDay.value.meals[section.id] || [])
-)
+const allMealsToday = computed(() => {
+  const mealsObj = currentDay.value.meals
+  return Object.values(mealsObj).flat()
+})
 
 const consumedCalories = computed(() =>
   Math.round(allMealsToday.value.reduce((acc, item) => acc + toNumber(item.calories), 0))
@@ -316,10 +287,8 @@ const macroProgress = computed(() => ({
 }))
 
 const isDayOnTarget = (day) => {
-  const total = mealSections.reduce((sum, section) => {
-    const list = day.meals?.[section.id] || []
-    return sum + list.reduce((acc, item) => acc + toNumber(item.calories), 0)
-  }, 0)
+  const mealsList = Array.isArray(day.meals) ? day.meals : []
+  const total = mealsList.reduce((acc, item) => acc + toNumber(item.calories), 0)
   if (total === 0) return false
   return total <= toNumber(day.goal || DEFAULT_GOAL)
 }
@@ -336,8 +305,8 @@ const weeklyDays = computed(() => {
     const d = new Date(cursor)
     d.setDate(cursor.getDate() + i)
     const key = toDateKey(d)
-    const normalized = normalizeDay(dataByDate.value[key])
-    const hasMeals = mealSections.some((section) => normalized.meals[section.id]?.length)
+    const dayData = dataByDate.value[key] || buildEmptyDay()
+    const hasMeals = Array.isArray(dayData.meals) ? dayData.meals.length > 0 : false
     out.push({
       key,
       date: d,
@@ -345,7 +314,7 @@ const weeklyDays = computed(() => {
       dayNum: d.getDate(),
       active: key === dateKey.value,
       hasMeals,
-      onTarget: isDayOnTarget(normalized)
+      onTarget: isDayOnTarget(dayData)
     })
   }
   return out
@@ -429,6 +398,83 @@ const insights = computed(() => {
   return list.slice(0, 3)
 })
 
+const foodHistory = ref([])
+
+const fetchFoodHistory = async () => {
+  try {
+    const res = await fetch(`${API_URL}/users/me/food-history?limit=20`, {
+      headers: auth.getAuthHeaders()
+    })
+    if (!res.ok) throw new Error('Falha ao carregar histórico')
+    foodHistory.value = await res.json()
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+const saveFoodHistory = async (food) => {
+  try {
+    await fetch(`${API_URL}/users/me/food-history`, {
+      method: 'POST',
+      headers: auth.getAuthHeaders(),
+      body: JSON.stringify({
+        name: food.name,
+        calories_per_100g: toNumber(food.calories_per_100g),
+        protein_per_100g: toNumber(food.protein_per_100g),
+        carbs_per_100g: toNumber(food.carbs_per_100g),
+        fat_per_100g: toNumber(food.fat_per_100g),
+        source: food.source || 'search'
+      })
+    })
+    // Refresh history silently
+    fetchFoodHistory()
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+const mergedHistory = computed(() => {
+  const uniqueMap = new Map()
+
+  // 1. Add API history first (presumed most recent/relevant if sorted by date desc)
+  for (const item of foodHistory.value) {
+    const key = item.name.trim().toLowerCase()
+    uniqueMap.set(key, item)
+  }
+
+  // 2. Add local history from current visible days (if not already present)
+  // We iterate backwards through days to get recent stuff
+  const allDays = Object.values(dataByDate.value)
+  for (const day of allDays) {
+    if (!day || !day.meals) continue
+    const flatMeals = mealSections.flatMap(s => day.meals[s.id] || [])
+    
+    // Reverse to process later items (if array is ordered by time added) ?? 
+    // Actually day.meals order depends on array. Let's just process.
+    for (const meal of flatMeals) {
+      const grams = toNumber(meal.grams)
+      if (!meal.name || grams <= 0) continue
+
+      const key = meal.name.trim().toLowerCase()
+      // If we already have this from API, skip (API source is preferred for accuracy)
+      // OR overwrite if we prefer local? Let's stick with API preference for consistency.
+      if (!uniqueMap.has(key)) {
+        uniqueMap.set(key, {
+          name: meal.name,
+          source: 'histórico local',
+          calories_per_100g: Math.round((toNumber(meal.calories) / grams) * 100),
+          protein_per_100g: round1((toNumber(meal.protein) / grams) * 100),
+          carbs_per_100g: round1((toNumber(meal.carbs) / grams) * 100),
+          fat_per_100g: round1((toNumber(meal.fat) / grams) * 100),
+        })
+      }
+    }
+  }
+
+  // Convert map to array
+  return Array.from(uniqueMap.values()).slice(0, 30)
+})
+
 const openComposer = (sectionId) => {
   composerFor.value = composerFor.value === sectionId ? '' : sectionId
   composerMode.value = 'manual'
@@ -436,7 +482,7 @@ const openComposer = (sectionId) => {
   foodSearch.value = { query: '', loading: false, error: '', results: [] }
   foodFilters.value = { source: 'all', sort: 'relevance', maxCalories: '', minProtein: '' }
   selectedFoodPer100g.value = null
-  mealDraft.value = { name: '', grams: '', calories: '', protein: '', carbs: '', fat: '' }
+  mealDraft.value = { name: '', grams: '', calories: '', protein: '', carbs: '', fat: '', source: 'manual' }
   autoDraft.value = { text: '' }
 }
 
@@ -445,6 +491,40 @@ const estimateMacros = (calories) => {
   const carbs = round1((calories * 0.45) / 4)
   const fat = round1((calories * 0.3) / 9)
   return { protein, carbs, fat }
+}
+
+const startListening = () => {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    alert('O seu navegador não suporta reconhecimento de voz.')
+    return
+  }
+  
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition
+  const recognition = new Recognition()
+  
+  recognition.lang = 'pt-PT'
+  recognition.interimResults = false
+  recognition.maxAlternatives = 1
+  
+  recognition.onstart = () => {
+    isListening.value = true
+  }
+  
+  recognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript
+    autoDraft.value.text = transcript
+  }
+  
+  recognition.onerror = (event) => {
+    console.error('Speech recognition error', event.error)
+    isListening.value = false
+  }
+  
+  recognition.onend = () => {
+    isListening.value = false
+  }
+  
+  recognition.start()
 }
 
 const calculateNutrition = async () => {
@@ -468,8 +548,8 @@ const calculateNutrition = async () => {
     mealDraft.value.protein = data.protein
     mealDraft.value.carbs = data.carbs
     mealDraft.value.fat = data.fat
+    mealDraft.value.source = 'IA'
     
-    // Switch to manual mode so user can review/save
     composerMode.value = 'manual'
   } catch (err) {
     console.error(err)
@@ -510,6 +590,7 @@ const addMeal = async (sectionId) => {
   const name = mealDraft.value.name.trim()
   const grams = toNumber(mealDraft.value.grams)
   const calories = toNumber(mealDraft.value.calories)
+  const source = mealDraft.value.source || 'manual'
 
   // Only name and calories are strictly required now
   if (!name || calories <= 0) {
@@ -551,14 +632,74 @@ const addMeal = async (sectionId) => {
     foodFilters.value = { source: 'all', sort: 'relevance', maxCalories: '', minProtein: '' }
     selectedFoodPer100g.value = null
     mealDraft.value = { name: '', grams: '', calories: '', protein: '', carbs: '', fat: '' }
+
+    // Save to history for future suggestions
+    // Calculate per 100g
+    if (grams > 0) {
+      const ratio = 100 / grams
+      saveFoodHistory({
+        name,
+        source: 'manual',
+        calories_per_100g: calories * ratio,
+        protein_per_100g: protein * ratio,
+        carbs_per_100g: carbs * ratio,
+        fat_per_100g: fat * ratio
+      })
+    }
   } catch (err) {
     console.error(err)
     alert('Erro ao adicionar refeição.')
   }
 }
 
+const removeMeal = async (sectionId, itemId) => {
+  try {
+    const res = await fetch(`${API_URL}/diary/meals/${itemId}`, {
+      method: 'DELETE',
+      headers: auth.getAuthHeaders()
+    })
+    if (!res.ok) throw new Error('Falha ao remover refeição')
+    const updatedDay = await res.json()
+    dataByDate.value[dateKey.value] = updatedDay
+  } catch (err) {
+    console.error(err)
+    alert('Erro ao remover refeição.')
+  }
+}
+
+const shiftDay = (delta) => {
+  const d = new Date(selectedDate.value)
+  d.setDate(d.getDate() + delta)
+  d.setHours(12, 0, 0, 0)
+  selectedDate.value = d
+}
+
+const setSelectedDay = (dateObj) => {
+  const d = new Date(dateObj)
+  d.setHours(12, 0, 0, 0)
+  selectedDate.value = d
+}
+
+const updateGoal = async (event) => {
+  const next = Math.max(1000, Math.min(6000, toNumber(event.target.value) || DEFAULT_GOAL))
+  try {
+    const res = await fetch(`${API_URL}/diary/${dateKey.value}/goal`, {
+      method: 'PUT',
+      headers: auth.getAuthHeaders(),
+      body: JSON.stringify({ goal: next })
+    })
+    if (!res.ok) throw new Error('Falha ao atualizar meta')
+    const updatedDay = await res.json()
+    dataByDate.value[dateKey.value] = updatedDay
+  } catch (err) {
+    console.error(err)
+    alert('Erro ao atualizar meta.')
+  }
+}
+
 const openFoodSearchModal = () => {
   foodSearchModalOpen.value = true
+  fetchFoodHistory()
 }
 
 const closeFoodSearchModal = () => {
@@ -578,10 +719,12 @@ const applyFoodByGrams = (foodPer100g, gramsInput) => {
 const chooseFoodSuggestion = (food) => {
   selectedFoodPer100g.value = food
   mealDraft.value.name = food.name
+  mealDraft.value.source = food.source
   if (!toNumber(mealDraft.value.grams)) {
     mealDraft.value.grams = 100
   }
   applyFoodByGrams(food, mealDraft.value.grams)
+  saveFoodHistory(food)
   closeFoodSearchModal()
 }
 
@@ -642,56 +785,16 @@ const filteredFoodResults = computed(() => {
 })
 
 const displayedFoodResults = computed(() => {
-  const hasQuery = foodSearch.value.query.trim().length > 0
-  if (!hasQuery && filteredFoodResults.value.length === 0) return quickFoods
-  if (filteredFoodResults.value.length > 0) return filteredFoodResults.value
-  return []
+  const hasQuery = foodSearch.value.query.trim().length > 0;
+
+  // If user is actively searching, show API results
+  if (hasQuery) {
+    return filteredFoodResults.value;
+  }
+
+  // Otherwise, show merged history
+  return mergedHistory.value;
 })
-
-const removeMeal = async (sectionId, itemId) => {
-  try {
-    const res = await fetch(`${API_URL}/diary/meals/${itemId}`, {
-      method: 'DELETE',
-      headers: auth.getAuthHeaders()
-    })
-    if (!res.ok) throw new Error('Falha ao remover refeição')
-    const updatedDay = await res.json()
-    dataByDate.value[dateKey.value] = updatedDay
-  } catch (err) {
-    console.error(err)
-    alert('Erro ao remover refeição.')
-  }
-}
-
-const shiftDay = (delta) => {
-  const d = new Date(selectedDate.value)
-  d.setDate(d.getDate() + delta)
-  d.setHours(12, 0, 0, 0)
-  selectedDate.value = d
-}
-
-const setSelectedDay = (dateObj) => {
-  const d = new Date(dateObj)
-  d.setHours(12, 0, 0, 0)
-  selectedDate.value = d
-}
-
-const updateGoal = async (event) => {
-  const next = Math.max(1000, Math.min(6000, toNumber(event.target.value) || DEFAULT_GOAL))
-  try {
-    const res = await fetch(`${API_URL}/diary/${dateKey.value}/goal`, {
-      method: 'PUT',
-      headers: auth.getAuthHeaders(),
-      body: JSON.stringify({ goal: next })
-    })
-    if (!res.ok) throw new Error('Falha ao atualizar meta')
-    const updatedDay = await res.json()
-    dataByDate.value[dateKey.value] = updatedDay
-  } catch (err) {
-    console.error(err)
-    alert('Erro ao atualizar meta.')
-  }
-}
 
 onMounted(() => {
   ensureDay(dateKey.value)
@@ -936,15 +1039,12 @@ watch(
           </div>
         </article>
 
-        <article class="side-card streak">
-          <h3>🔥 Streak</h3>
-          <p><strong>{{ streakDays }}</strong> dias seguidos dentro do objetivo.</p>
-        </article>
-
         <article class="side-card">
           <h3>Sugestões</h3>
           <ul class="insights">
-            <li v-for="tip in insights" :key="tip">{{ tip }}</li>
+            <li v-if="mealCount === 0">Comece por adicionar a primeira refeição de hoje.</li>
+            <li v-else-if="deltaCalories >= 0">Ainda tem {{ deltaCalories }} kcal disponíveis hoje.</li>
+            <li v-else>Hoje já excedeu {{ Math.abs(deltaCalories) }} kcal.</li>
           </ul>
         </article>
       </aside>
@@ -961,44 +1061,30 @@ watch(
           <input
             v-model="foodSearch.query"
             type="text"
-            placeholder="Ex: frango, arroz, iogurte..."
-            @keyup.enter="searchFoodApi"
+            placeholder="Procurar alimento..."
           />
-          <button type="button" class="search-food-btn" @click="searchFoodApi" :disabled="foodSearch.loading">
-            {{ foodSearch.loading ? 'A procurar...' : 'Pesquisar' }}
-          </button>
-        </div>
-
-        <div v-if="foodSearch.results.length" class="filter-row">
-          <select v-model="foodFilters.source">
-            <option value="all">Todas as fontes</option>
-            <option value="usda">USDA</option>
-            <option value="openfoodfacts">OpenFoodFacts</option>
-          </select>
-          <select v-model="foodFilters.sort">
-            <option value="relevance">Mais relevantes</option>
-            <option value="kcal_asc">Menos kcal/100g</option>
-            <option value="kcal_desc">Mais kcal/100g</option>
-            <option value="protein_desc">Mais proteína</option>
-          </select>
-          <input v-model="foodFilters.maxCalories" type="number" min="0" placeholder="Máx kcal/100g" />
-          <input v-model="foodFilters.minProtein" type="number" min="0" placeholder="Mín Prot. g" />
         </div>
 
         <p v-if="foodSearch.error" class="search-error">{{ foodSearch.error }}</p>
-        <p v-if="!foodSearch.query.trim()" class="search-empty">Sugestões rápidas (clique para usar):</p>
-        <ul v-if="displayedFoodResults.length" class="food-suggestions">
-          <li v-for="food in displayedFoodResults" :key="`${food.source}-${food.name}`">
-            <button type="button" @click="chooseFoodSuggestion(food)">
-              <strong>{{ food.name }}</strong>
-              <small>
-                {{ food.calories_per_100g }} kcal · P {{ food.protein_per_100g }}g · H {{ food.carbs_per_100g }}g · G {{ food.fat_per_100g }}g
-                (100g)
-              </small>
-            </button>
-          </li>
-        </ul>
-        <p v-else-if="foodSearch.results.length" class="search-empty">Sem resultados com estes filtros.</p>
+        
+        <div v-if="!foodSearch.error">
+          <p v-if="!foodSearch.query.trim()" class="search-empty">Sugestões do seu histórico:</p>
+          
+          <ul v-if="displayedFoodResults.length > 0" class="food-suggestions">
+            <li v-for="food in displayedFoodResults" :key="`${food.source}-${food.name}`">
+              <button type="button" @click="chooseFoodSuggestion(food)">
+                <div class="food-info">
+                  <strong>{{ food.name }}</strong>
+                  <span class="food-source-badge">{{ food.source }}</span>
+                </div>
+                <small>{{ food.calories_per_100g }} kcal · P {{ food.protein_per_100g }}g · H {{ food.carbs_per_100g }}g · G {{ food.fat_per_100g }}g (100g)</small>
+              </button>
+            </li>
+          </ul>
+          <p v-else-if="foodSearch.query.trim() && !foodSearch.loading" class="search-empty">
+            Sem resultados para a sua pesquisa.
+          </p>
+        </div>
         </div>
     </div>
   </section>
@@ -1293,6 +1379,21 @@ watch(
 
 .food-suggestions small {
   color: var(--text-muted);
+}
+
+.food-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.food-source-badge {
+  font-size: 0.75rem;
+  background: rgba(20, 184, 166, 0.1);
+  color: #14b8a6;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
 }
 
 .food-modal-overlay {

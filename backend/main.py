@@ -393,9 +393,9 @@ def analyze_nutrition_endpoint(request: schemas.NutritionAnalysisRequest, curren
     return negotiator.analyze_nutrition(request.food_text)
 
 @app.post("/vision/analyze", response_model=schemas.VisionResponse)
-async def analyze_ingredients_photo(file: UploadFile = File(...), current_user: models.User = Depends(auth.get_current_user)):
+async def analyze_ingredients_photo(mode: str = "ingredients", file: UploadFile = File(...), current_user: models.User = Depends(auth.get_current_user)):
     contents = await file.read()
-    return vision.analyze_image_ingredients(contents, favorite_recipes=current_user.favorite_recipes)
+    return vision.analyze_image_ingredients(contents, mode=mode, favorite_recipes=current_user.favorite_recipes)
 
 @app.get("/shops/find", response_model=list[schemas.Shop])
 def find_shops(request: schemas.ShopSearchRequest, current_user: models.User = Depends(auth.get_current_user)):
@@ -422,6 +422,57 @@ def find_shops(request: schemas.ShopSearchRequest, current_user: models.User = D
 @app.get("/foods/search", response_model=list[schemas.FoodSearchItem])
 def search_foods(q: str, page_size: int = 10, current_user: models.User = Depends(auth.get_current_user)):
     return food_data.search_foods(q, page_size=page_size)
+
+@app.post("/users/me/food-history", response_model=schemas.FoodHistoryResponse)
+def add_food_history(
+    item: schemas.FoodHistoryCreate, 
+    db: Session = Depends(get_db), 
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    existing = db.query(models.FoodHistory).filter(
+        models.FoodHistory.user_id == current_user.id,
+        models.FoodHistory.name == item.name
+    ).first()
+    
+    if existing:
+        db.delete(existing)
+        db.commit()
+    
+    new_entry = models.FoodHistory(
+        user_id=current_user.id,
+        name=item.name,
+        calories_per_100g=item.calories_per_100g,
+        protein_per_100g=item.protein_per_100g,
+        carbs_per_100g=item.carbs_per_100g,
+        fat_per_100g=item.fat_per_100g,
+        source=item.source
+    )
+    db.add(new_entry)
+    db.commit()
+    db.refresh(new_entry)
+    
+    count = db.query(models.FoodHistory).filter(models.FoodHistory.user_id == current_user.id).count()
+    if count > 50:
+        oldest = db.query(models.FoodHistory).filter(models.FoodHistory.user_id == current_user.id).order_by(models.FoodHistory.created_at.asc()).first()
+        if oldest:
+            db.delete(oldest)
+            db.commit()
+            
+    return new_entry
+
+@app.get("/users/me/food-history", response_model=list[schemas.FoodHistoryResponse])
+def get_food_history(
+    limit: int = 20, 
+    db: Session = Depends(get_db), 
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    return (
+        db.query(models.FoodHistory)
+        .filter(models.FoodHistory.user_id == current_user.id)
+        .order_by(models.FoodHistory.created_at.desc())
+        .limit(limit)
+        .all()
+    )
 
 @app.post("/recipes/", response_model=schemas.Recipe)
 def create_recipe(recipe: schemas.RecipeCreate, db: Session = Depends(get_db)):
