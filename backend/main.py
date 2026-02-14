@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
 from email.message import EmailMessage
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from dotenv import load_dotenv
 from typing import List
 
@@ -21,6 +22,46 @@ from database import SessionLocal, engine, get_db
 from fastapi.middleware.cors import CORSMiddleware
 
 models.Base.metadata.create_all(bind=engine)
+
+
+def sync_sqlite_schema() -> None:
+    if engine.dialect.name != "sqlite":
+        return
+
+    sqlite_migrations = {
+        "users": {
+            "full_name": "ALTER TABLE users ADD COLUMN full_name VARCHAR",
+            "profile_image": "ALTER TABLE users ADD COLUMN profile_image TEXT",
+            "reset_token": "ALTER TABLE users ADD COLUMN reset_token VARCHAR",
+            "goal": "ALTER TABLE users ADD COLUMN goal VARCHAR",
+            "activity_level": "ALTER TABLE users ADD COLUMN activity_level VARCHAR",
+        },
+        "food_history": {
+            "source": "ALTER TABLE food_history ADD COLUMN source VARCHAR DEFAULT 'search'",
+            "created_at": "ALTER TABLE food_history ADD COLUMN created_at DATETIME",
+        },
+    }
+
+    with engine.begin() as conn:
+        for table_name, columns in sqlite_migrations.items():
+            table_exists = conn.execute(
+                text("SELECT name FROM sqlite_master WHERE type='table' AND name=:name"),
+                {"name": table_name},
+            ).first()
+            if not table_exists:
+                continue
+
+            existing = {
+                row[1] for row in conn.execute(text(f"PRAGMA table_info({table_name})")).fetchall()
+            }
+            for column_name, alter_sql in columns.items():
+                if column_name in existing:
+                    continue
+                conn.execute(text(alter_sql))
+                print(f"DB MIGRATION: added {table_name}.{column_name}")
+
+
+sync_sqlite_schema()
 
 app = FastAPI(redirect_slashes=False)
 

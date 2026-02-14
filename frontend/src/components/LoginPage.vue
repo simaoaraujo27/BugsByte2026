@@ -118,6 +118,14 @@ const handleLogin = async () => {
     isLoading.value = false
   }
 }
+
+const forgotPasswordRoute = () => {
+  const query = {}
+  if (email.value) {
+    query.email = email.value.trim()
+  }
+  return { path: '/forgot-password', query }
+}
 </script>
 
 <template>
@@ -198,7 +206,7 @@ const handleLogin = async () => {
               <span class="checkbox-text">Lembrar-me</span>
             </label>
           </div>
-          <router-link to="/forgot-password" class="forgot-link">Esqueceu-se da palavra-passe?</router-link>
+          <router-link :to="forgotPasswordRoute()" class="forgot-link">Esqueceu-se da palavra-passe?</router-link>
         </div>
 
         <button type="submit" class="btn btn-primary" :disabled="isLoading">
