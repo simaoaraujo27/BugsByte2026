@@ -521,8 +521,8 @@ onUnmounted(() => {
 
 .stat-card,
 .card {
-  background: var(--bg-elevated);
-  border: 1px solid var(--line);
+  background: var(--bg-elevated, #ffffff);
+  border: 1px solid var(--line, #dbe3eb);
   border-radius: 18px;
   padding: 18px;
   box-shadow: 0 10px 20px rgba(2, 12, 27, 0.06);
