@@ -252,7 +252,7 @@ class FoodHistoryResponse(FoodHistoryCreate):
 class VisionResponse(BaseModel):
     detected_ingredients: list[str]
     message: str
-    recipe: NegotiatorRecipe
+    recipe: Optional[NegotiatorRecipe] = None
 
 class ChatMessage(BaseModel):
     role: str

@@ -45,32 +45,32 @@ def analyze_image_ingredients(image_bytes: bytes, mode: str = "ingredients", api
             f"{fav_header}"
             f"{allergen_context}"
             f"BRIEF CRIATIVO DESTA GERAÇÃO: cozinha {cuisine_focus}, técnica {technique_focus}, formato {format_focus}. "
-            "Analisa esta imagem de um prato já cozinhado. "
-            "1. Identifica o nome do prato (ex: Lasanha, Sushi, Hambúrguer). "
-            "2. Cria uma RECRIAÇÃO SAUDÁVEL desse exato prato. Não inventes uma receita aleatória; foca-te em tornar o prato da imagem mais nutritivo. "
-            "3. Se houver ALERGÉNIOS listados acima, substitui-os por alternativas seguras. "
-            "4. Responde sempre em PORTUGUÊS DE PORTUGAL (PT-PT). "
-            "5. Em 'ingredients', usa quantidades realistas por ingrediente (g, ml, colheres, frações de unidade). "
-            "6. Evita unidade inteira quando não fizer sentido para uma porção (ex: '1/4 abacate' em vez de '1 abacate'). "
-            "7. PROIBIDO usar quinoa/qinoa em qualquer parte da receita (título, ingredientes ou passos). "
+            "Analisa esta imagem de um prato já cozinhado.\n"
+            "0. VALIDAÇÃO: Se a imagem NÃO for de um prato de comida ou for algo não comestível (ex: objetos, eletrónicos, lixo, etc), define 'recipe' como null e explica na 'message' em PT-PT que não detetaste um prato de comida válido.\n"
+            "1. Identifica o nome do prato (ex: Lasanha, Sushi, Hambúrguer).\n"
+            "2. Cria uma RECRIAÇÃO SAUDÁVEL desse exato prato. Não inventes uma receita aleatória; foca-te em tornar o prato da imagem mais nutritivo.\n"
+            "3. Se houver ALERGÉNIOS listados acima, substitui-os por alternativas seguras.\n"
+            "4. Responde sempre em PORTUGUÊS DE PORTUGAL (PT-PT).\n"
+            "5. Em 'ingredients', usa quantidades realistas por ingrediente.\n"
+            "6. PROIBIDO usar quinoa/qinoa.\n"
             "IMPORTANTE: Responde APENAS com um objeto JSON válido. Define 'calories' como 0. "
-            "\nEstrutura JSON: { \"detected_ingredients\": [\"nome do prato\"], \"message\": \"...\", \"recipe\": { \"title\": \"Versão Saudável de...\", \"calories\": 0, \"time_minutes\": 25, \"ingredients\": [\"200g massa\", \"100g carne\"], \"steps\": [] } }"
+            "\nEstrutura JSON: { \"detected_ingredients\": [\"nome do prato\"], \"message\": \"...\", \"recipe\": { \"title\": \"Versão Saudável de...\", \"calories\": 0, \"time_minutes\": 25, \"ingredients\": [\"...\"], \"steps\": [] } ou null }"
         )
     else:
         prompt = (
             f"{fav_header}"
             f"{allergen_context}"
             f"BRIEF CRIATIVO DESTA GERAÇÃO: cozinha {cuisine_focus}, técnica {technique_focus}, formato {format_focus}. "
-            "Analisa esta imagem de ingredientes. "
-            "1. Identifica os ingredientes presentes. "
-            "2. Cria uma receita saudável que combine estes ingredientes. "
-            "3. Se houver ALERGÉNIOS listados acima, IGNORA-OS TOTALMENTE e não os uses na receita. "
-            "4. Responde em PT-PT. "
-            "5. Em 'ingredients', usa quantidades realistas por ingrediente (g, ml, colheres, frações de unidade). "
-            "6. Evita unidade inteira quando não fizer sentido para uma porção (ex: '1/4 abacate' em vez de '1 abacate'). "
-            "7. PROIBIDO usar quinoa/qinoa em qualquer parte da receita (título, ingredientes ou passos). "
+            "Analisa esta imagem de ingredientes.\n"
+            "0. VALIDAÇÃO: Se a imagem NÃO contiver ingredientes alimentares ou se os objetos presentes não fizerem sentido para cozinhar (ex: ferramentas, pedras, objetos aleatórios), define 'recipe' como null e explica na 'message' em PT-PT que não detetaste ingredientes válidos para criar uma receita.\n"
+            "1. Identifica os ingredientes presentes.\n"
+            "2. Cria uma receita saudável que combine estes ingredientes.\n"
+            "3. Se houver ALERGÉNIOS listados acima, IGNORA-OS TOTALMENTE e não os uses na receita.\n"
+            "4. Responde em PT-PT.\n"
+            "5. Em 'ingredients', usa quantidades realistas por ingrediente.\n"
+            "6. PROIBIDO usar quinoa/qinoa.\n"
             "IMPORTANTE: Responde APENAS com um objeto JSON válido. Define 'calories' como 0. "
-            "\nEstrutura JSON: { \"detected_ingredients\": [], \"message\": \"...\", \"recipe\": { \"title\": \"...\", \"calories\": 0, \"time_minutes\": 25, \"ingredients\": [\"200g de arroz\", \"1 tomate\"], \"steps\": [] } }"
+            "\nEstrutura JSON: { \"detected_ingredients\": [], \"message\": \"...\", \"recipe\": { \"title\": \"...\", \"calories\": 0, \"time_minutes\": 25, \"ingredients\": [\"...\"], \"steps\": [] } ou null }"
         )
 
     try:
@@ -114,7 +114,7 @@ def analyze_image_ingredients(image_bytes: bytes, mode: str = "ingredients", api
         return schemas.VisionResponse(
             detected_ingredients=data.get('detected_ingredients', []),
             message=data.get('message', ''),
-            recipe=schemas.NegotiatorRecipe(**raw_recipe)
+            recipe=schemas.NegotiatorRecipe(**raw_recipe) if raw_recipe else None
         )
     except Exception as e:
         error_text = str(e).lower()
