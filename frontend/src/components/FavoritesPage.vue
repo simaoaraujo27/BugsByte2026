@@ -13,7 +13,6 @@
     <div v-else class="favorites-content">
       <section class="favorites-section">
         <div class="section-header">
-          <h2>🍽️ Receitas Guardadas</h2>
           <span class="count-badge">{{ favoriteRecipes.length }}</span>
         </div>
 
