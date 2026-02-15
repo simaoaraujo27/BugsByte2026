@@ -112,6 +112,17 @@ def negotiate_craving(craving: str, target_calories: int = 600, mood: Optional[s
         # Calcular calorias reais via "food_data" (que usa a IA como DB)
         raw_recipe = data.get('recipe')
         if raw_recipe:
+            # FIX: Ensure steps are always strings
+            if 'steps' in raw_recipe and isinstance(raw_recipe['steps'], list):
+                sanitized_steps = []
+                for step in raw_recipe['steps']:
+                    if isinstance(step, dict):
+                        # Convert dict to string (e.g. {'acao': '...', 'tempo': 1} -> '...')
+                        sanitized_steps.append(step.get('acao', str(step)))
+                    else:
+                        sanitized_steps.append(str(step))
+                raw_recipe['steps'] = sanitized_steps
+
             real_calories = food_data.calculate_recipe_calories(raw_recipe.get('ingredients', []))
             if real_calories > 0:
                 raw_recipe['calories'] = real_calories
