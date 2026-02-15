@@ -1,0 +1,23 @@
+
+> frontend@0.0.0 build
+> vite build
+
+vite v7.3.1 building client environment for production...
+transforming...
+✓ 93 modules transformed.
+[plugin vite:reporter] 
+(!) /home/jdelzen15/LEI/BugsByte2026/frontend/src/auth.js is dynamically imported by /home/jdelzen15/LEI/BugsByte2026/frontend/src/store/userStore.js, /home/jdelzen15/LEI/BugsByte2026/frontend/src/store/userStore.js but also statically imported by /home/jdelzen15/LEI/BugsByte2026/frontend/src/components/DashboardHome.vue, /home/jdelzen15/LEI/BugsByte2026/frontend/src/components/DiaryTracking.vue, /home/jdelzen15/LEI/BugsByte2026/frontend/src/components/FavoritesPage.vue, /home/jdelzen15/LEI/BugsByte2026/frontend/src/components/ForgotPassword.vue, /home/jdelzen15/LEI/BugsByte2026/frontend/src/components/LoginPage.vue, /home/jdelzen15/LEI/BugsByte2026/frontend/src/components/Negotiator.vue, /home/jdelzen15/LEI/BugsByte2026/frontend/src/components/ProfilePanel.vue, /home/jdelzen15/LEI/BugsByte2026/frontend/src/components/ResetPassword.vue, /home/jdelzen15/LEI/BugsByte2026/frontend/src/components/ShopFinder.vue, /home/jdelzen15/LEI/BugsByte2026/frontend/src/components/SidebarNav.vue, /home/jdelzen15/LEI/BugsByte2026/frontend/src/components/SiteHomePage.vue, /home/jdelzen15/LEI/BugsByte2026/frontend/src/components/UserInfo.vue, /home/jdelzen15/LEI/BugsByte2026/frontend/src/components/VisionRecipe.vue, /home/jdelzen15/LEI/BugsByte2026/frontend/src/router/index.js, /home/jdelzen15/LEI/BugsByte2026/frontend/src/store/userStore.js, dynamic import will not move module into another chunk.
+
+rendering chunks...
+computing gzip size...
+dist/index.html                       0.47 kB │ gzip:   0.30 kB
+dist/assets/logo-DWNEZVYM.png        70.00 kB
+dist/assets/chatbot-Si6OZ8yk.png  2,768.31 kB
+dist/assets/index-BZSfrDPo.css      162.84 kB │ gzip:  33.15 kB
+dist/assets/index-9c03FaZT.js     1,022.28 kB │ gzip: 290.36 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 2.79s

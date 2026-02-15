@@ -42,9 +42,6 @@ const chatMessages = ref([
   { role: 'assistant', content: 'Olá! Eu sou a Nutra. Estou aqui para te ajudar a tirar o máximo partido da NutriVentures. O que precisas de saber?' }
 ])
 
-// Global reference to current utterance to prevent garbage collection issues
-let currentUtterance = null
-
 const toggleChat = () => {
   isChatOpen.value = !isChatOpen.value
 }
