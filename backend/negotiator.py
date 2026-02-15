@@ -6,10 +6,9 @@ from openai import OpenAI
 import schemas
 import food_data
 from fastapi import HTTPException
-from llm_client import get_client_config
+from llm_client import get_client_config, get_chat_completion
 
 def analyze_mood(craving: str, mood: str) -> schemas.MoodAnalysisResponse:
-    client, model = get_client_config()
     prompt = (
         f"User craving: '{craving}', Mood: '{mood}'. "
         "Atua como um assistente de decisão alimentar inteligente e empático (PT-PT). "
@@ -17,8 +16,7 @@ def analyze_mood(craving: str, mood: str) -> schemas.MoodAnalysisResponse:
         "Retorna JSON: { 'mood_type': '...', 'empathy_message': '...', 'explanation': '...', 'eating_strategy': '...' }"
     )
     try:
-        response = client.chat.completions.create(
-            model=model,
+        response = get_chat_completion(
             messages=[{"role": "system", "content": "És um assistente sofisticado. Responde em PT-PT. Retorna APENAS JSON."},
                       {"role": "user", "content": prompt}],
             temperature=0.7,
@@ -30,7 +28,6 @@ def analyze_mood(craving: str, mood: str) -> schemas.MoodAnalysisResponse:
         raise HTTPException(status_code=500, detail=str(e))
 
 def negotiate_craving(craving: str, target_calories: int = 600, mood: Optional[str] = None, favorite_recipes: List[schemas.Recipe] = [], allergens: List[str] = []) -> schemas.NegotiatorResponse:
-    client, model = get_client_config()
     cuisine_focus = random.choice(["mediterrânica", "asiática leve", "mexicana equilibrada", "portuguesa moderna", "levantina"])
     technique_focus = random.choice(["forno", "grelhar", "saltear rápido", "estufar leve", "air fryer"])
     format_focus = random.choice(["bowl", "wrap", "prato no prato", "salada morna", "tosta aberta"])
@@ -84,15 +81,14 @@ def negotiate_craving(craving: str, target_calories: int = 600, mood: Optional[s
             "És um Chef Michelin e Nutricionista PT-PT que adora variedade alta, pouca repetição e quantidades realistas por ingrediente. Quinoa/qinoa é proibida."
         )
         user_content = prompt + (strict_json_rules if strict_mode else "")
-        response = client.chat.completions.create(
-            model=model,
+        # Note: presence and frequency penalties are not currently supported by get_chat_completion helper, 
+        # but we prioritize resilience over these specific penalties for now.
+        response = get_chat_completion(
             messages=[
                 {"role": "system", "content": system_content},
                 {"role": "user", "content": user_content}
             ],
             temperature=temp,
-            presence_penalty=presence,
-            frequency_penalty=frequency,
             response_format={"type": "json_object"},
             max_tokens=1000
         )
@@ -131,8 +127,6 @@ def negotiate_craving(craving: str, target_calories: int = 600, mood: Optional[s
         raise HTTPException(status_code=500, detail="Erro ao processar receita personalizada.")
 
 def analyze_nutrition(food_text: str) -> schemas.NutritionAnalysisResponse:
-    client, model = get_client_config()
-
     prompt = (
         f"Analisa a informação nutricional para: '{food_text}'. "
         "Estima as calorias e macronutrientes totais para a quantidade indicada. "
@@ -152,8 +146,7 @@ def analyze_nutrition(food_text: str) -> schemas.NutritionAnalysisResponse:
     )
 
     try:
-        response = client.chat.completions.create(
-            model=model,
+        response = get_chat_completion(
             messages=[
                 {"role": "system", "content": "You are a nutritional expert API. Output valid JSON only."},
                 {"role": "user", "content": prompt}
