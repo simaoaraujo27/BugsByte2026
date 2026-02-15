@@ -33,6 +33,8 @@ let waterInterval = null
 const isChatOpen = ref(false)
 const chatInput = ref('')
 const isChatLoading = ref(false)
+const isListening = ref(false)
+const isVoiceEnabled = ref(false)
 const diaryKey = ref(0) // Used to refresh diary if needed
 const chatMessages = ref([
   { role: 'assistant', content: 'Olá! Eu sou a Nutra. Estou aqui para te ajudar a tirar o máximo partido da NutriVentures. O que precisas de saber?' }
@@ -40,6 +42,41 @@ const chatMessages = ref([
 
 const toggleChat = () => {
   isChatOpen.value = !isChatOpen.value
+}
+
+// Voice Synthesis (TTS)
+const speak = (text) => {
+  if (!isVoiceEnabled.value) return
+  window.speechSynthesis.cancel() // Stop any current speech
+  const utterance = new SpeechSynthesisUtterance(text)
+  utterance.lang = 'pt-PT'
+  
+  // Try to find a female voice
+  const voices = window.speechSynthesis.getVoices()
+  const femaleVoice = voices.find(v => (v.name.includes('Female') || v.name.includes('Maria') || v.name.includes('Joana')) && v.lang.startsWith('pt'))
+  if (femaleVoice) utterance.voice = femaleVoice
+  
+  window.speechSynthesis.speak(utterance)
+}
+
+// Voice Recognition (STT)
+const startListening = () => {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+  if (!SpeechRecognition) {
+    alert('O seu navegador não suporta reconhecimento de voz.')
+    return
+  }
+  
+  const recognition = new SpeechRecognition()
+  recognition.lang = 'pt-PT'
+  recognition.onstart = () => { isListening.value = true }
+  recognition.onend = () => { isListening.value = false }
+  recognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript
+    chatInput.value = transcript
+    sendChatMessage()
+  }
+  recognition.start()
 }
 
 const sendChatMessage = async () => {
@@ -60,14 +97,19 @@ const sendChatMessage = async () => {
     if (res.ok) {
       const data = await res.json()
       chatMessages.value.push({ role: 'assistant', content: data.content })
+      speak(data.content) // Speak the response
       if (data.action) {
         executeNutraAction(data.action)
       }
     } else {
-      chatMessages.value.push({ role: 'assistant', content: 'Desculpa, tive um problema ao processar a tua mensagem.' })
+      const errText = 'Desculpa, tive um problema ao processar a tua mensagem.'
+      chatMessages.value.push({ role: 'assistant', content: errText })
+      speak(errText)
     }
   } catch (e) {
-    chatMessages.value.push({ role: 'assistant', content: 'Erro de ligação com o servidor.' })
+    const errText = 'Erro de ligação com o servidor.'
+    chatMessages.value.push({ role: 'assistant', content: errText })
+    speak(errText)
   } finally {
     isChatLoading.value = false
     // Scroll to bottom
@@ -635,6 +677,14 @@ onUnmounted(() => {
             <p>Assistente Inteligente</p>
           </div>
         </div>
+        <button 
+          class="voice-toggle-btn" 
+          @click="isVoiceEnabled = !isVoiceEnabled"
+          :class="{ 'voice-active': isVoiceEnabled }"
+          title="Ativar/Desativar Voz"
+        >
+          {{ isVoiceEnabled ? '🔊' : '🔈' }}
+        </button>
       </header>
       
       <div class="chat-messages-box">
@@ -660,6 +710,14 @@ onUnmounted(() => {
       </div>
 
       <form class="chat-input-area" @submit.prevent="sendChatMessage">
+        <button 
+          type="button" 
+          class="mic-btn" 
+          @click="startListening" 
+          :class="{ 'mic-listening': isListening }"
+        >
+          🎤
+        </button>
         <input 
           v-model="chatInput" 
           placeholder="Pergunta como fazer algo..." 
@@ -921,7 +979,27 @@ onUnmounted(() => {
   background: var(--menu-active-text);
   color: white;
   padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
+
+.voice-toggle-btn {
+  background: rgba(255,255,255,0.15);
+  border: none;
+  font-size: 1.2rem;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.voice-toggle-btn:hover { background: rgba(255,255,255,0.25); }
+.voice-toggle-btn.voice-active { background: white; }
 
 .chat-header-info {
   display: flex;
@@ -1009,6 +1087,33 @@ onUnmounted(() => {
   display: flex;
   gap: 10px;
   background: var(--bg-elevated);
+}
+
+.mic-btn {
+  background: var(--bg-main);
+  border: 1.5px solid var(--line);
+  border-radius: 14px;
+  width: 46px;
+  height: 46px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mic-btn:hover { background: var(--line); }
+.mic-listening {
+  background: #fee2e2 !important;
+  border-color: #ef4444 !important;
+  animation: micPulse 1.5s infinite;
+}
+
+@keyframes micPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
 }
 
 .chat-input-area input {
