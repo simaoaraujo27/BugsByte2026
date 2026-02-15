@@ -186,6 +186,13 @@ const generateTextRecipe = async () => {
   }
 };
 
+const autoResizeCraving = (event) => {
+  const el = event?.target;
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = `${Math.min(el.scrollHeight, 140)}px`;
+};
+
 // --- MOOD FLOW ---
 const selectMood = async (moodId) => {
   selectedMood.value = moodId;
@@ -409,7 +416,14 @@ watch(
       </div>
 
       <div class="search-box-premium">
-        <input v-model="craving" type="text" placeholder="Ex: Risotto ou tenho ovos e tomate..." @keyup.enter="generateTextRecipe" autofocus />
+        <textarea
+          v-model="craving"
+          rows="1"
+          placeholder="Ex: Risotto ou tenho ovos e tomate..."
+          @keydown.enter.exact.prevent="generateTextRecipe"
+          @input="autoResizeCraving"
+          autofocus
+        ></textarea>
         <button 
           type="button" 
           class="mic-btn-negotiator" 
@@ -585,26 +599,51 @@ watch(
 /* 3. Text Input View */
 .search-box-premium { 
   display: flex; background: var(--bg-elevated); border: 1px solid var(--line); border-radius: 24px; padding: 8px; 
+  align-items: center;
+  gap: 8px;
   width: 100%; max-width: 700px; box-shadow: 0 15px 40px rgba(0,0,0,0.06); margin-bottom: 24px;
 }
-.search-box-premium input { flex: 1; border: none; padding: 16px 24px; background: transparent; color: var(--text-main); font-size: 1.2rem; outline: none; }
-.mic-btn-negotiator {
-  background: transparent;
+.search-box-premium textarea {
+  flex: 1;
+  min-width: 0;
+  min-height: 56px;
+  max-height: 140px;
   border: none;
-  font-size: 1.3rem;
-  padding: 0 16px;
+  padding: 16px 24px;
+  background: transparent;
+  color: var(--text-main);
+  font-size: 1.2rem;
+  outline: none;
+  resize: none;
+  overflow-y: auto;
+  line-height: 1.35;
+  font-family: inherit;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.mic-btn-negotiator {
+  background: color-mix(in srgb, var(--bg-main), transparent 35%);
+  border: 1px solid var(--line);
+  font-size: 1.15rem;
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  padding: 0;
   cursor: pointer;
-  border-radius: 12px;
-  transition: all 0.2s;
+  border-radius: 14px;
+  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .mic-btn-negotiator:hover {
   background: var(--menu-hover-bg);
+  transform: translateY(-1px);
 }
 .mic-btn-negotiator.active {
   color: #ef4444;
+  border-color: color-mix(in srgb, #ef4444, #ffffff 30%);
+  background: color-mix(in srgb, #ef4444, transparent 90%);
   animation: pulse-mic 1.5s infinite;
 }
 @keyframes pulse-mic {
@@ -616,9 +655,14 @@ watch(
   background: var(--menu-active-text);
   color: #ffffff;
   border: 1px solid color-mix(in srgb, var(--menu-active-text), #ffffff 20%);
-  padding: 0 32px;
+  min-width: 160px;
+  height: 46px;
+  padding: 0 24px;
   border-radius: 16px;
   font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
   cursor: pointer;
   transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease;
   box-shadow: 0 10px 24px color-mix(in srgb, var(--menu-active-text), transparent 72%);
@@ -637,8 +681,23 @@ watch(
 }
 
 .suggestion-pills { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 32px; align-items: center; color: var(--text-muted); }
-.s-pill { background: var(--bg-elevated); border: 1px solid var(--line); padding: 8px 20px; border-radius: 25px; font-size: 0.9rem; font-weight: 700; color: var(--text-main); cursor: pointer; transition: 0.2s; }
-.s-pill:hover { border-color: #e74c3c; background: var(--bg-main); }
+.s-pill {
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  min-height: 42px;
+  padding: 9px 18px;
+  border-radius: 999px;
+  font-size: 0.95rem;
+  font-weight: 750;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+.s-pill:hover {
+  border-color: #e74c3c;
+  background: var(--bg-main);
+  transform: translateY(-1px);
+}
 
 /* 4. Mood Selection View */
 .mood-pill-container-centered { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; max-width: 850px; margin: 0 auto; }
@@ -649,8 +708,16 @@ watch(
 
 /* Standard Back Button */
 .btn-formatted-back { 
-  background: var(--bg-elevated); border: 1px solid var(--line); padding: 12px 32px; border-radius: 16px;
-  color: var(--text-main); font-weight: 800; font-size: 1rem; cursor: pointer; transition: all 0.3s; 
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  min-height: 50px;
+  padding: 12px 34px;
+  border-radius: 16px;
+  color: var(--text-main);
+  font-weight: 800;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.25s;
   margin-top: 40px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);
 }
 .btn-formatted-back:hover { background: var(--bg-main); border-color: #e74c3c; transform: translateX(-4px); }

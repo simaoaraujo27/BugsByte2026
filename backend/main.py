@@ -630,6 +630,26 @@ def get_food_history(
         .all()
     )
 
+@app.delete("/users/me/food-history/{item_id}", status_code=204)
+def delete_food_history_item(
+    item_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    item = (
+        db.query(models.FoodHistory)
+        .filter(
+            models.FoodHistory.id == item_id,
+            models.FoodHistory.user_id == current_user.id
+        )
+        .first()
+    )
+    if not item:
+        raise HTTPException(status_code=404, detail="Item de histórico não encontrado")
+
+    db.delete(item)
+    db.commit()
+
 @app.post("/recipes/", response_model=schemas.Recipe)
 def create_recipe(recipe: schemas.RecipeCreate, db: Session = Depends(get_db)):
     db_recipe = models.Recipe(**recipe.model_dump())

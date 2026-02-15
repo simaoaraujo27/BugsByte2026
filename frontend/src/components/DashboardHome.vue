@@ -13,7 +13,7 @@ const {
 } = useUser()
 
 const goToDiary = () => emit('navigate', 'diario')
-const goToHungryMode = () => emit('navigate', { id: 'tenho-fome', subsection: 'desejo' })
+const goToHungryMode = () => emit('navigate', 'tenho-fome')
 const goToFridgeMode = () => emit('navigate', 'gerar-receita')
 const waterDraft = ref('0.0')
 
