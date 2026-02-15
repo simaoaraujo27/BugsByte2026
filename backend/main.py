@@ -44,6 +44,9 @@ def sync_sqlite_schema() -> None:
             "source": "ALTER TABLE food_history ADD COLUMN source VARCHAR DEFAULT 'search'",
             "created_at": "ALTER TABLE food_history ADD COLUMN created_at DATETIME",
         },
+        "diary_days": {
+            "water_liters": "ALTER TABLE diary_days ADD COLUMN water_liters FLOAT DEFAULT 0.0",
+        },
         "diary_meals": {
             "grams": "ALTER TABLE diary_meals ADD COLUMN grams FLOAT",
         },
