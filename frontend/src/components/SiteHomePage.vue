@@ -13,7 +13,12 @@ import VolumeComparison from './VolumeComparison.vue'
 import FavoritesPage from './FavoritesPage.vue'
 import HistoryPage from './HistoryPage.vue'
 import SettingsPage from './SettingsPage.vue'
+import CasinoGame from './CasinoGame.vue'
+import NutritionQuiz from './NutritionQuiz.vue'
+import UnitConverter from './UnitConverter.vue'
+import FastingTimer from './FastingTimer.vue'
 import { auth, API_URL } from '@/auth'
+import chatbotImg from '@/assets/chatbot.png'
 
 const { fetchUser } = useUser()
 
@@ -23,6 +28,190 @@ const dashboardKey = ref(0)
 const showWaterReminder = ref(false)
 const nextWaterTime = ref(null)
 let waterInterval = null
+
+// Chat Assistant Logic
+const isChatOpen = ref(false)
+const chatInput = ref('')
+const isChatLoading = ref(false)
+const diaryKey = ref(0) // Used to refresh diary if needed
+const chatMessages = ref([
+  { role: 'assistant', content: 'Olá! Eu sou a Nutra. Estou aqui para te ajudar a tirar o máximo partido da NutriVentures. O que precisas de saber?' }
+])
+
+const toggleChat = () => {
+  isChatOpen.value = !isChatOpen.value
+}
+
+const sendChatMessage = async () => {
+  if (!chatInput.value.trim() || isChatLoading.value) return
+  
+  const userText = chatInput.value.trim()
+  chatMessages.value.push({ role: 'user', content: userText })
+  chatInput.value = ''
+  isChatLoading.value = true
+
+  try {
+    const res = await fetch(`${API_URL}/assistant/chat`, {
+      method: 'POST',
+      headers: auth.getAuthHeaders(),
+      body: JSON.stringify({ messages: chatMessages.value })
+    })
+    
+    if (res.ok) {
+      const data = await res.json()
+      chatMessages.value.push({ role: 'assistant', content: data.content })
+      if (data.action) {
+        executeNutraAction(data.action)
+      }
+    } else {
+      chatMessages.value.push({ role: 'assistant', content: 'Desculpa, tive um problema ao processar a tua mensagem.' })
+    }
+  } catch (e) {
+    chatMessages.value.push({ role: 'assistant', content: 'Erro de ligação com o servidor.' })
+  } finally {
+    isChatLoading.value = false
+    // Scroll to bottom
+    setTimeout(() => {
+      const box = document.querySelector('.chat-messages-box')
+      if (box) box.scrollTop = box.scrollHeight
+    }, 100)
+  }
+}
+
+const executeNutraAction = async (action) => {
+  console.log('Executing Nutra Action:', action)
+  const { type, value, section } = action
+
+  switch (type) {
+    case 'ADD_MEAL':
+      try {
+        // 1. Analyze nutrition
+        const anaRes = await fetch(`${API_URL}/negotiator/nutrition`, {
+          method: 'POST',
+          headers: auth.getAuthHeaders(),
+          body: JSON.stringify({ food_text: value })
+        })
+        if (!anaRes.ok) throw new Error('Falha na análise')
+        const data = await anaRes.json()
+
+        // 2. Add to diary
+        const today = new Date().toISOString().split('T')[0]
+        const mealSection = section || 'lunch'
+        await fetch(`${API_URL}/diary/${today}/meals`, {
+          method: 'POST',
+          headers: auth.getAuthHeaders(),
+          body: JSON.stringify({
+            section: mealSection,
+            name: data.name,
+            grams: data.estimated_grams,
+            calories: data.calories,
+            protein: data.protein,
+            carbs: data.carbs,
+            fat: data.fat
+          })
+        })
+        
+        // Refresh dashboard and diary if active
+        if (activeSection.value === 'inicio') dashboardKey.value++
+        if (activeSection.value === 'diario') diaryKey.value++
+      } catch (e) {
+        console.error('Add meal via Nutra failed', e)
+      }
+      break
+    case 'START_NEGOTIATION':
+      globalCraving.value = value
+      negotiatorRouteMode.value = 'desejo'
+      selectSection('tenho-fome')
+      break
+    case 'NAVIGATE':
+      const sectionId = sectionSlugToId[value] || value
+      if (sections.some(s => s.id === sectionId)) {
+        selectSection(sectionId)
+      }
+      break
+    case 'SET_THEME':
+      if (value === 'dark' && !isDarkMode.value) toggleTheme()
+      if (value === 'light' && isDarkMode.value) toggleTheme()
+      break
+    case 'ADD_WATER':
+      addWaterGlobal()
+      break
+    case 'REMOVE_WATER':
+      removeWaterGlobal()
+      break
+    case 'SET_COLOR_MODE':
+      updateColorBlindness(value)
+      break
+    case 'OPEN_CASINO':
+      chatMessages.value.push({ 
+        role: 'assistant', 
+        type: 'casino',
+        content: 'Bora lá! Tenta a tua sorte na nossa Slot Machine saudável. Clica em "Girar"!' 
+      })
+      break
+    case 'OPEN_QUIZ':
+      chatMessages.value.push({ 
+        role: 'assistant', 
+        type: 'quiz',
+        content: 'Vamos testar os teus conhecimentos nutricionais? Responde às perguntas abaixo!' 
+      })
+      break
+    case 'OPEN_CONVERTER':
+      chatMessages.value.push({ 
+        role: 'assistant', 
+        type: 'converter',
+        content: 'Aqui tens a ferramenta de conversão para te ajudar a medir as porções corretamente.' 
+      })
+      break
+    case 'OPEN_FASTING_TIMER':
+      chatMessages.value.push({ 
+        role: 'assistant', 
+        type: 'timer',
+        content: 'Configura aqui o teu cronómetro de jejum intermitente.' 
+      })
+      break
+    case 'CLEAR_MEALS':
+      try {
+        const today = new Date().toISOString().split('T')[0]
+        await fetch(`${API_URL}/diary/${today}/meals`, {
+          method: 'DELETE',
+          headers: auth.getAuthHeaders()
+        })
+        if (activeSection.value === 'inicio') dashboardKey.value++
+        if (activeSection.value === 'diario') diaryKey.value++
+      } catch (e) {
+        console.error('Clear meals failed', e)
+      }
+      break
+    case 'LOG_WEIGHT':
+      try {
+        const today = new Date().toISOString().split('T')[0]
+        await fetch(`${API_URL}/users/me/weight`, {
+          method: 'POST',
+          headers: auth.getAuthHeaders(),
+          body: JSON.stringify({ weight: parseFloat(value), date: today })
+        })
+        if (activeSection.value === 'inicio') dashboardKey.value++
+      } catch (e) {
+        console.error('Weight log failed', e)
+      }
+      break
+    case 'OPEN_FOOD_SEARCH':
+      selectSection('diario')
+      // Wait for navigation
+      setTimeout(() => {
+        const btn = document.querySelector('.search-food-btn')
+        if (btn) btn.click()
+      }, 300)
+      break
+    case 'LOGOUT':
+      auth.logout()
+      router.push('/login')
+      break
+    default:
+      console.warn('Unknown action type:', type)
+  }
+}
 
 const fetchWaterIntake = async () => {
   try {
@@ -121,6 +310,7 @@ const shopParams = ref({
   term: ''
 })
 const negotiatorRouteMode = ref('')
+const globalCraving = ref('')
 
 const sectionIdToSlug = {
   inicio: 'inicio',
@@ -372,9 +562,11 @@ onUnmounted(() => {
       <div v-else-if="activeSection === 'tenho-fome'">
         <Negotiator
           :route-mode="negotiatorRouteMode"
+          :initial-craving="globalCraving"
           @choice="handleNegotiationChoice"
           @route-mode-change="handleNegotiatorModeChange"
           @navigate="selectSection"
+          @negotiated="globalCraving = ''"
         />
       </div>
       
@@ -394,7 +586,7 @@ onUnmounted(() => {
       </div>
 
       <div v-else-if="activeSection === 'diario'">
-        <DiaryTracking />
+        <DiaryTracking :key="diaryKey" />
       </div>
       
       <div v-else-if="activeSection === 'favoritos'">
@@ -423,6 +615,61 @@ onUnmounted(() => {
         <p>{{ sectionContent[activeSection].subtitle }}</p>
       </div>
     </main>
+
+    <!-- Assistant Chat FAB -->
+    <button class="chat-fab" @click="toggleChat" :class="{ 'chat-fab-open': isChatOpen }">
+      <span v-if="!isChatOpen">💬</span>
+      <span v-else>✕</span>
+    </button>
+
+    <!-- Assistant Chat Window -->
+    <div v-if="isChatOpen" class="chat-assistant-window fade-in">
+      <header class="chat-assistant-header">
+        <div class="chat-header-info">
+          <div class="bot-photo-container">
+            <img :src="chatbotImg" alt="Nutra" class="bot-photo" />
+            <span class="online-status"></span>
+          </div>
+          <div>
+            <h4>Nutra</h4>
+            <p>Assistente Inteligente</p>
+          </div>
+        </div>
+      </header>
+      
+      <div class="chat-messages-box">
+        <div 
+          v-for="(msg, idx) in chatMessages" 
+          :key="idx" 
+          class="chat-bubble-wrap"
+          :class="msg.role"
+        >
+          <div class="chat-bubble">
+            {{ msg.content }}
+            <CasinoGame v-if="msg.type === 'casino'" />
+            <NutritionQuiz v-if="msg.type === 'quiz'" />
+            <UnitConverter v-if="msg.type === 'converter'" />
+            <FastingTimer v-if="msg.type === 'timer'" />
+          </div>
+        </div>
+        <div v-if="isChatLoading" class="chat-bubble-wrap assistant">
+          <div class="chat-bubble loading-bubble">
+            <span></span><span></span><span></span>
+          </div>
+        </div>
+      </div>
+
+      <form class="chat-input-area" @submit.prevent="sendChatMessage">
+        <input 
+          v-model="chatInput" 
+          placeholder="Pergunta como fazer algo..." 
+          autofocus
+        />
+        <button type="submit" :disabled="isChatLoading || !chatInput.trim()">
+          Enviar
+        </button>
+      </form>
+    </div>
   </div>
 </template>
 
@@ -614,4 +861,219 @@ onUnmounted(() => {
 }
 
 .btn-snooze:hover { background: var(--bg-main); }
+
+/* Assistant Chat Styles */
+.chat-fab {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--menu-active-text);
+  color: white;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  box-shadow: 0 10px 25px rgba(10, 112, 93, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2100;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  animation: fabPulse 2s infinite;
+  overflow: hidden;
+  padding: 0;
+}
+
+@keyframes fabPulse {
+  0% { box-shadow: 0 0 0 0 rgba(10, 112, 93, 0.4); }
+  70% { box-shadow: 0 0 0 15px rgba(10, 112, 93, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(10, 112, 93, 0); }
+}
+
+.chat-fab:hover {
+  transform: scale(1.1) rotate(5deg);
+}
+
+.chat-fab-open {
+  background: #ef4444;
+  box-shadow: 0 10px 25px rgba(239, 68, 68, 0.3);
+}
+
+.chat-assistant-window {
+  position: fixed;
+  bottom: 100px;
+  right: 24px;
+  width: 380px;
+  height: 550px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+  z-index: 2100;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chat-assistant-header {
+  background: var(--menu-active-text);
+  color: white;
+  padding: 20px;
+}
+
+.chat-header-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.bot-photo-container {
+  position: relative;
+  width: 48px;
+  height: 48px;
+}
+
+.bot-photo {
+  width: 100%;
+  height: 100%;
+  border-radius: 14px;
+  object-fit: cover;
+  border: 2px solid rgba(255,255,255,0.3);
+}
+
+.online-status {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 12px;
+  height: 12px;
+  background: #22c55e;
+  border: 2px solid var(--menu-active-text);
+  border-radius: 50%;
+}
+
+.chat-header-info h4 { margin: 0; font-size: 1.15rem; font-weight: 800; }
+.chat-header-info p { margin: 0; font-size: 0.85rem; opacity: 0.9; }
+
+.chat-messages-box {
+  flex: 1;
+  padding: 24px 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.02));
+}
+
+.chat-bubble-wrap {
+  display: flex;
+  width: 100%;
+  animation: messageIn 0.3s ease-out;
+}
+
+@keyframes messageIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.chat-bubble-wrap.user { justify-content: flex-end; }
+.chat-bubble-wrap.assistant { justify-content: flex-start; }
+
+.chat-bubble {
+  max-width: 85%;
+  padding: 12px 18px;
+  border-radius: 20px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.user .chat-bubble {
+  background: linear-gradient(135deg, var(--menu-active-text), #0d9488);
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.assistant .chat-bubble {
+  background: var(--bg-elevated);
+  color: var(--text-main);
+  border-bottom-left-radius: 4px;
+  border: 1px solid var(--line);
+}
+
+.chat-input-area {
+  padding: 20px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  gap: 10px;
+  background: var(--bg-elevated);
+}
+
+.chat-input-area input {
+  flex: 1;
+  border: 1.5px solid var(--line);
+  background: var(--bg-main);
+  color: var(--text-main);
+  padding: 12px 18px;
+  border-radius: 14px;
+  outline: none;
+  font-size: 0.95rem;
+  transition: border-color 0.2s;
+}
+
+.chat-input-area input:focus {
+  border-color: var(--menu-active-text);
+}
+
+.chat-input-area button {
+  background: var(--menu-active-text);
+  color: white;
+  border: none;
+  padding: 0 20px;
+  border-radius: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.chat-input-area button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+}
+
+.chat-input-area button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.loading-bubble {
+  display: flex;
+  gap: 4px;
+  padding: 12px 20px !important;
+}
+
+.loading-bubble span {
+  width: 8px;
+  height: 8px;
+  background: var(--text-muted);
+  border-radius: 50%;
+  animation: bounce 1.4s infinite ease-in-out;
+}
+
+.loading-bubble span:nth-child(1) { animation-delay: -0.32s; }
+.loading-bubble span:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes bounce {
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1); }
+}
+
+@media (max-width: 450px) {
+  .chat-assistant-window {
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+  }
+}
 </style>

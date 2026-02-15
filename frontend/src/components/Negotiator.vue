@@ -7,10 +7,23 @@ const props = defineProps({
   routeMode: {
     type: String,
     default: ''
+  },
+  initialCraving: {
+    type: String,
+    default: ''
   }
 });
 
-const emit = defineEmits(['choice', 'route-mode-change', 'navigate']);
+const emit = defineEmits(['choice', 'route-mode-change', 'navigate', 'negotiated']);
+
+// ... (existing refs)
+
+onMounted(() => {
+  if (props.initialCraving) {
+    craving.value = props.initialCraving;
+    generateTextRecipe();
+  }
+});
 
 // Views: 'landing', 'text_input', 'mood_select', 'mood_analysis', 'recipe', 'rejection'
 const activeView = ref('landing');
@@ -145,6 +158,7 @@ const storeInHistory = (data, source) => {
 // --- TEXT FLOW ---
 const generateTextRecipe = async () => {
   if (!craving.value.trim()) return;
+  emit('negotiated');
   loading.value = true;
   error.value = null;
 

@@ -246,6 +246,17 @@ class VisionResponse(BaseModel):
     message: str
     recipe: NegotiatorRecipe
 
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+class ChatRequest(BaseModel):
+    messages: list[ChatMessage]
+
+class ChatResponse(BaseModel):
+    content: str
+    action: Optional[dict] = None # { "type": "SET_THEME", "value": "dark" }
+
 class Token(BaseModel):
     access_token: str
     token_type: str
