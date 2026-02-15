@@ -4,34 +4,22 @@ import os
 import json
 from functools import lru_cache
 from typing import List, Dict
-from llm_client import get_client_config
+from llm_client import get_client_config, get_chat_completion
 
 OPEN_FOOD_FACTS_URL = "https://world.openfoodfacts.org/cgi/search.pl"
-OFF_TIMEOUT_SECONDS = float(os.getenv("OFF_TIMEOUT_SECONDS", "2.0"))
+OFF_TIMEOUT_SECONDS = float(os.getenv("OFF_TIMEOUT_SECONDS", "1.5"))
 OFF_DEFAULT_PAGE_SIZE = int(os.getenv("OFF_DEFAULT_PAGE_SIZE", "3"))
 
 # Fallback values for common staples if API fails (kcal/100g)
 COMMON_STAPLES = {
-    "azeite": 884,
-    "oliva": 884,
-    "mel": 304,
-    "cebola": 40,
-    "alho": 149,
-    "arroz": 130,
-    "massa": 131,
-    "espaguete": 158,
-    "frango": 165,
-    "peru": 189,
-    "salsicha": 250, # Average
-    "tomate": 18,
-    "batata": 77,
-    "ovo": 155,
-    "ovos": 155,
-    "queijo": 402,
-    "leite": 42,
-    "pao": 265,
-    "pão": 265,
-    "manteiga": 717
+    "azeite": 884, "oliva": 884, "mel": 304, "cebola": 40, "alho": 149,
+    "arroz": 130, "massa": 131, "espaguete": 158, "frango": 165,
+    "peru": 189, "salsicha": 250, "tomate": 18, "batata": 77,
+    "ovo": 155, "ovos": 155, "queijo": 402, "leite": 42,
+    "pao": 265, "pão": 265, "manteiga": 717,
+    "salmão": 208, "atum": 130, "carne": 250, "vaca": 250, "porco": 242,
+    "alface": 15, "cenoura": 41, "brócolos": 34, "espinafres": 23,
+    "maçã": 52, "banana": 89, "laranja": 47, "iogurte": 59, "pimento": 20
 }
 
 def _safe_float(value, default: float = 0.0) -> float:
@@ -101,6 +89,9 @@ def _search_foods_cached(query: str, page_size: int) -> tuple[dict, ...]:
             
         return tuple(results)
 
+    except requests.exceptions.Timeout:
+        print(f"OFF Search Timeout for: {query}")
+        raise requests.exceptions.Timeout(f"Timeout searching OFF for {query}")
     except Exception as e:
         print(f"OFF Search Error: {e}")
         return tuple()
@@ -114,7 +105,6 @@ def estimate_recipe_calories_with_ai(ingredients: List[str]) -> int:
         return 0
 
     try:
-        client, model = get_client_config()
         joined = ", ".join(ingredients[:30])
         prompt = (
             "Estima as calorias totais aproximadas desta receita com base nos ingredientes e quantidades indicadas. "
@@ -122,8 +112,7 @@ def estimate_recipe_calories_with_ai(ingredients: List[str]) -> int:
             "{ \"estimated_total_calories\": 0 }. "
             f"Ingredientes: {joined}"
         )
-        response = client.chat.completions.create(
-            model=model,
+        response = get_chat_completion(
             messages=[
                 {"role": "system", "content": "És um nutricionista. Retorna apenas JSON."},
                 {"role": "user", "content": prompt}
@@ -142,6 +131,7 @@ def estimate_recipe_calories_with_ai(ingredients: List[str]) -> int:
 
 def calculate_recipe_calories(ingredients: List[str]) -> int:
     total_calories = 0.0
+    off_available = True
 
     for ing in ingredients:
         try:
@@ -182,18 +172,19 @@ def calculate_recipe_calories(ingredients: List[str]) -> int:
                     found = True
                     break
             
-            if not found:
+            if not found and off_available:
                 # Search OFF with simplified term
-                results = search_foods(simple_term, page_size=3)
-                # Filter results that actually have calories
-                valid_results = [r for r in results if r["calories_per_100g"] > 0]
-                
-                if valid_results:
-                    found_kcal = valid_results[0]["calories_per_100g"]
-                elif results: 
-                    # If we found items but they had 0 kcal (weird for OFF), maybe try one more simplification?
-                    # Or just accept 0 if it's like "salt" or "water"
-                    pass
+                try:
+                    results = search_foods(simple_term, page_size=3)
+                    # Filter results that actually have calories
+                    valid_results = [r for r in results if r["calories_per_100g"] > 0]
+                    
+                    if valid_results:
+                        found_kcal = valid_results[0]["calories_per_100g"]
+                except requests.exceptions.Timeout:
+                    off_available = False # API is slow, don't try again for this recipe
+                except Exception:
+                    pass # Other errors, just skip this ingredient
 
             total_calories += found_kcal * multiplier
                 
