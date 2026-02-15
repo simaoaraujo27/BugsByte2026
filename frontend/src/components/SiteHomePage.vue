@@ -41,64 +41,127 @@ const chatMessages = ref([
   { role: 'assistant', content: 'Olá! Eu sou a Nutra. Estou aqui para te ajudar a tirar o máximo partido da NutriVentures. O que precisas de saber?' }
 ])
 
+// Global reference to current utterance to prevent garbage collection issues
+let currentUtterance = null
+
 const toggleChat = () => {
   isChatOpen.value = !isChatOpen.value
 }
 
 // Voice Synthesis (TTS)
 const speak = (text) => {
-  if (!isVoiceEnabled.value) return
-  if (!window.speechSynthesis) return
+  console.log('[TTS] Requested speech for:', text.substring(0, 30) + '...')
+  
+  if (!isVoiceEnabled.value) {
+    console.log('[TTS] Speech skipped: Voice is disabled.')
+    return
+  }
+  
+  if (!window.speechSynthesis) {
+    console.error('[TTS] Error: window.speechSynthesis not supported in this browser.')
+    return
+  }
 
   // Cancel any ongoing speech
   window.speechSynthesis.cancel()
   
-  // Wait a tiny bit for the cancel to take effect in some browsers
-  setTimeout(() => {
-    const utterance = new SpeechSynthesisUtterance(text)
-    utterance.lang = 'pt-PT'
-    utterance.rate = 1.0
-    utterance.pitch = 1.0
-    
-    const voices = window.speechSynthesis.getVoices()
-    // Detailed search for a female Portuguese voice
-    const femaleVoice = voices.find(v => 
-      (v.lang.includes('pt-PT') || v.lang.includes('pt-BR')) && 
-      (v.name.includes('Maria') || v.name.includes('Helena') || v.name.includes('Joana') || v.name.includes('Raquel') || v.name.includes('Google português'))
-    )
-    
-    if (femaleVoice) {
-      utterance.voice = femaleVoice
-    } else {
-      const anyPt = voices.find(v => v.lang.startsWith('pt'))
-      if (anyPt) utterance.voice = anyPt
-    }
-    
-    window.speechSynthesis.speak(utterance)
-  }, 50)
-}
-
-// Ensure voices are loaded (for Chrome/Edge)
-if (typeof window !== 'undefined' && window.speechSynthesis) {
-  window.speechSynthesis.onvoiceschanged = () => {
-    window.speechSynthesis.getVoices()
+  // Bug fix for Chrome: resume if paused
+  if (window.speechSynthesis.paused) {
+    window.speechSynthesis.resume()
   }
+
+  // Small delay ensures previous cancel is processed
+  setTimeout(() => {
+    try {
+      currentUtterance = new SpeechSynthesisUtterance(text)
+      currentUtterance.lang = 'pt-PT'
+      currentUtterance.rate = 0.95 // Slightly slower for better clarity
+      currentUtterance.pitch = 1.0
+      currentUtterance.volume = 1.0
+
+      const voices = window.speechSynthesis.getVoices()
+      console.log('[TTS] Found ' + voices.length + ' voices.')
+
+      // Improved female Portuguese voice selection (European PT prioritized)
+      // Maria/Helena are common names for high-quality PT-PT voices
+      const preferredVoices = voices.filter(v => 
+        v.lang.includes('pt-PT') || v.lang.includes('pt_PT')
+      )
+      
+      const femalePtPt = preferredVoices.find(v => 
+        v.name.includes('Maria') || v.name.includes('Helena') || v.name.includes('Joana') || 
+        v.name.includes('Raquel') || v.name.includes('Female')
+      )
+
+      if (femalePtPt) {
+        console.log('[TTS] Selected preferred voice:', femalePtPt.name)
+        currentUtterance.voice = femalePtPt
+      } else if (preferredVoices.length > 0) {
+        console.log('[TTS] Preferred female voice not found, using first PT-PT voice:', preferredVoices[0].name)
+        currentUtterance.voice = preferredVoices[0]
+      } else {
+        // Fallback to any Portuguese (including Brazil if PT-PT is missing)
+        const anyPt = voices.find(v => v.lang.toLowerCase().startsWith('pt'))
+        if (anyPt) {
+          console.log('[TTS] PT-PT not found, using fallback Portuguese voice:', anyPt.name)
+          currentUtterance.voice = anyPt
+        } else {
+          console.warn('[TTS] No Portuguese voice found at all.')
+        }
+      }
+
+      currentUtterance.onstart = () => console.log('[TTS] Playing...')
+      currentUtterance.onend = () => {
+        console.log('[TTS] Done.')
+        currentUtterance = null
+      }
+      currentUtterance.onerror = (event) => {
+        console.error('[TTS] Utterance error:', event)
+        currentUtterance = null
+      }
+
+      window.speechSynthesis.speak(currentUtterance)
+    } catch (err) {
+      console.error('[TTS] Failed to initialize speech:', err)
+    }
+  }, 100)
 }
 
 // Function to "unlock" audio (browsers require user gesture)
 const toggleVoiceAndUnlock = () => {
   isVoiceEnabled.value = !isVoiceEnabled.value
+  console.log('[TTS] Voice enabled:', isVoiceEnabled.value)
+  
   if (isVoiceEnabled.value) {
-    // Speak a tiny silent or very short greeting to unlock the context
-    const unlockUtterance = new SpeechSynthesisUtterance('')
-    unlockUtterance.volume = 0
-    window.speechSynthesis.speak(unlockUtterance)
+    // Basic test speech to unlock engine
+    window.speechSynthesis.cancel()
+    const unlock = new SpeechSynthesisUtterance('Voz ativada')
+    unlock.lang = 'pt-PT'
+    unlock.volume = 0.01 // Very quiet but not silent
     
-    // Also trigger the welcome message if it's the start
-    if (chatMessages.value.length === 1) {
-      speak(chatMessages.value[0].content)
+    // Attempt to pick a voice for the unlock utterance too
+    const voices = window.speechSynthesis.getVoices()
+    const ptVoice = voices.find(v => v.lang.startsWith('pt'))
+    if (ptVoice) unlock.voice = ptVoice
+    
+    window.speechSynthesis.speak(unlock)
+    
+    // Speak first message if it's there
+    if (chatMessages.value.length > 0) {
+      speak(chatMessages.value[chatMessages.value.length - 1].content)
     }
   }
+}
+
+// Pre-load voices
+if (typeof window !== 'undefined' && window.speechSynthesis) {
+  // Some browsers need this event to populate voices
+  window.speechSynthesis.onvoiceschanged = () => {
+    const v = window.speechSynthesis.getVoices()
+    console.log('[TTS] Voices loaded asynchronously:', v.length)
+  }
+  // Initial call
+  window.speechSynthesis.getVoices()
 }
 
 // Voice Recognition (STT)
