@@ -383,13 +383,6 @@ watch(
           <p>Sintoniza a tua nutrição com as tuas emoções do momento.</p>
           <button class="p-card-btn">Check-in</button>
         </div>
-
-        <div class="p-card" @click="emit('navigate', 'gerar-receita')">
-          <div class="p-card-icon">📸</div>
-          <h3>Visão do Chef</h3>
-          <p>Cria magia culinária a partir dos teus ingredientes atuais.</p>
-          <button class="p-card-btn">Digitalizar</button>
-        </div>
       </div>
     </div>
 

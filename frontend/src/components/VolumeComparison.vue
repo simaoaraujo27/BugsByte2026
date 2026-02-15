@@ -476,14 +476,14 @@ onBeforeUnmount(() => {
       <div class="relative flex-1 w-full min-h-0 cursor-grab active:cursor-grabbing bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))]" :class="uiTheme.viewport" ref="canvasContainer">
         
         <!-- Overlays: Junk Food Info -->
-        <div class="absolute z-20 flex flex-col items-center p-3 md:p-4 transition-all transform rounded-[1.2rem] md:rounded-[1.5rem] backdrop-blur-sm shadow-lg border min-w-[120px] md:min-w-[140px]" 
+        <div class="absolute z-20 flex flex-col items-center p-4 md:p-5 transition-all transform rounded-[1.2rem] md:rounded-[1.5rem] backdrop-blur-sm shadow-lg border min-w-[170px] md:min-w-[220px]" 
              :class="[uiTheme.card, isVertical ? 'top-4 left-4' : 'top-6 left-6']">
-          <span class="text-[8px] md:text-[9px] font-black text-rose-500 uppercase tracking-widest mb-1">Ultra-Processado</span>
-          <div class="text-sm md:text-base font-extrabold" :class="uiTheme.cardTitle">{{ currentJunkConfig.name }}</div>
-          <div class="mt-0.5 text-[10px] md:text-[11px] font-semibold" :class="uiTheme.cardMeta">
+          <span class="text-[10px] md:text-[11px] font-black text-rose-500 uppercase tracking-[0.18em] mb-1.5">Ultra-Processado</span>
+          <div class="text-lg md:text-2xl font-extrabold leading-tight text-center" :class="uiTheme.cardTitle">{{ currentJunkConfig.name }}</div>
+          <div class="mt-1 text-sm md:text-base font-semibold" :class="uiTheme.cardMeta">
             {{ junkGrams }}g<span v-if="junkUnits > 0"> · {{ junkUnits }} un.</span>
           </div>
-          <button @click="cycle('junk')" class="mt-2 md:mt-3 px-3 py-1.5 md:px-4 md:py-2 text-[10px] md:text-[11px] font-bold rounded-xl transition-all flex items-center gap-2 border" :class="uiTheme.cardBtn">
+          <button @click="cycle('junk')" class="mt-3 md:mt-4 px-4 py-2 md:px-5 md:py-2.5 text-xs md:text-sm font-bold rounded-xl transition-all flex items-center gap-2 border" :class="uiTheme.cardBtn">
             <span>Trocar</span>
             <svg xmlns="http://www.w3.org/2000/svg" class="w-3 md:w-3.5 h-3 md:h-3.5 opacity-60" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" /></svg>
           </button>
@@ -499,14 +499,14 @@ onBeforeUnmount(() => {
         <div v-else class="absolute inset-x-0 z-10 border-t border-dashed top-1/2" :class="uiTheme.divider"></div>
 
         <!-- Overlays: Healthy Food Info -->
-        <div class="absolute z-20 flex flex-col items-center p-3 md:p-4 transition-all transform rounded-[1.2rem] md:rounded-[1.5rem] backdrop-blur-sm shadow-lg border min-w-[120px] md:min-w-[140px]" 
+        <div class="absolute z-20 flex flex-col items-center p-4 md:p-5 transition-all transform rounded-[1.2rem] md:rounded-[1.5rem] backdrop-blur-sm shadow-lg border min-w-[170px] md:min-w-[220px]" 
              :class="[uiTheme.card, isVertical ? 'bottom-4 right-4' : 'top-6 right-6']">
-          <span class="text-[8px] md:text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-1">Densidade Baixa</span>
-          <div class="text-sm md:text-base font-extrabold" :class="uiTheme.cardTitle">{{ currentHealthyConfig.name }}</div>
-          <div class="mt-0.5 text-[10px] md:text-[11px] font-semibold" :class="uiTheme.cardMeta">
+          <span class="text-[10px] md:text-[11px] font-black text-emerald-500 uppercase tracking-[0.18em] mb-1.5">Densidade Baixa</span>
+          <div class="text-lg md:text-2xl font-extrabold leading-tight text-center" :class="uiTheme.cardTitle">{{ currentHealthyConfig.name }}</div>
+          <div class="mt-1 text-sm md:text-base font-semibold" :class="uiTheme.cardMeta">
             {{ healthyGrams }}g<span v-if="healthyUnits > 0"> · {{ healthyUnits }} un.</span>
           </div>
-          <button @click="cycle('healthy')" class="mt-2 md:mt-3 px-3 py-1.5 md:px-4 md:py-2 text-[10px] md:text-[11px] font-bold rounded-xl transition-all flex items-center gap-2 border" :class="uiTheme.cardBtn">
+          <button @click="cycle('healthy')" class="mt-3 md:mt-4 px-4 py-2 md:px-5 md:py-2.5 text-xs md:text-sm font-bold rounded-xl transition-all flex items-center gap-2 border" :class="uiTheme.cardBtn">
             <span>Trocar</span>
             <svg xmlns="http://www.w3.org/2000/svg" class="w-3 md:w-3.5 h-3 md:h-3.5 opacity-60" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" /></svg>
           </button>

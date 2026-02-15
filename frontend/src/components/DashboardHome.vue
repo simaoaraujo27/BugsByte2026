@@ -9,44 +9,47 @@ const userStore = useUser()
 const displayName = computed(() => userStore.displayName.value)
 
 const goToDiary = () => emit('navigate', 'diario')
-const goToHungryMode = () => emit('navigate', 'tenho-fome')
-const goToFridgeMode = () => emit('navigate', 'tenho-fome')
+const goToHungryMode = () => emit('navigate', { id: 'tenho-fome', subsection: 'desejo' })
+const goToFridgeMode = () => emit('navigate', 'gerar-receita')
+const waterDraft = ref('0.0')
 
-const addWater = async () => {
-  const newAmount = Math.min(5.0, dashboardData.value.water_liters + 0.25)
-  // Optimistic update
-  dashboardData.value.water_liters = Number(newAmount.toFixed(2))
-  
+const saveWater = async (amount) => {
+  const safeAmount = Math.max(0, Math.min(10, amount))
+  dashboardData.value.water_liters = Number(safeAmount.toFixed(2))
+  waterDraft.value = dashboardData.value.water_liters.toFixed(1)
+
   try {
     const today = new Date().toISOString().split('T')[0]
     await fetch(`${API_URL}/diary/${today}/water`, {
       method: 'PUT',
       headers: auth.getAuthHeaders(),
-      body: JSON.stringify({ water_liters: newAmount })
+      body: JSON.stringify({ water_liters: safeAmount })
     })
-    emit('update-water') // Tell parent to refresh its global state
+    emit('update-water')
   } catch (e) {
     console.error("Water update failed", e)
   }
 }
 
+const addWater = async () => {
+  const newAmount = Math.min(10, dashboardData.value.water_liters + 0.25)
+  await saveWater(newAmount)
+}
+
 const removeWater = async () => {
   if (dashboardData.value.water_liters <= 0) return
   const newAmount = Math.max(0, dashboardData.value.water_liters - 0.25)
-  // Optimistic update
-  dashboardData.value.water_liters = Number(newAmount.toFixed(2))
-  
-  try {
-    const today = new Date().toISOString().split('T')[0]
-    await fetch(`${API_URL}/diary/${today}/water`, {
-      method: 'PUT',
-      headers: auth.getAuthHeaders(),
-      body: JSON.stringify({ water_liters: newAmount })
-    })
-    emit('update-water') // Tell parent to refresh its global state
-  } catch (e) {
-    console.error("Water update failed", e)
+  await saveWater(newAmount)
+}
+
+const applyWaterInput = async () => {
+  const normalized = String(waterDraft.value || '').replace(',', '.')
+  const parsed = Number(normalized)
+  if (!Number.isFinite(parsed)) {
+    waterDraft.value = dashboardData.value.water_liters.toFixed(1)
+    return
   }
+  await saveWater(parsed)
 }
 
 const dashboardData = ref({
@@ -312,6 +315,7 @@ const fetchDashboardData = async () => {
     })
     if (res.ok) {
       dashboardData.value = await res.json()
+      waterDraft.value = Number(dashboardData.value.water_liters || 0).toFixed(1)
     }
   } catch (err) {
     console.error('Error fetching dashboard data:', err)
@@ -345,14 +349,22 @@ onUnmounted(() => {
           <div class="stat-icon" :style="{ backgroundColor: card.accent }">{{ card.icon }}</div>
           <div>
             <p class="stat-label">{{ card.title }}</p>
-            <h3>
-              <button v-if="card.action" @click="removeWater" class="btn-water-mini" title="Remover 250ml">
-                -
-              </button>
+            <h3 v-if="card.action" class="water-value-row">
+              <button @click="removeWater" class="btn-water-mini" title="Remover 250ml">−</button>
+              <input
+                v-model="waterDraft"
+                type="text"
+                inputmode="decimal"
+                class="water-input"
+                aria-label="Litros de água"
+                @blur="applyWaterInput"
+                @keyup.enter="applyWaterInput"
+              />
+              <span class="stat-unit">L</span>
+              <button @click="addWater" class="btn-water-mini plus" title="Adicionar 250ml">+</button>
+            </h3>
+            <h3 v-else>
               {{ card.value }}<span class="stat-unit">{{ card.unit }}</span>
-              <button v-if="card.action" @click="addWater" class="btn-water-mini plus" title="Adicionar 250ml">
-                +
-              </button>
             </h3>
           </div>
         </div>
@@ -563,41 +575,58 @@ onUnmounted(() => {
 }
 
 .btn-water-mini {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  border: none;
-  background: var(--bg-main);
-  color: #0891b2;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, #0891b2, transparent 55%);
+  background: color-mix(in srgb, #0891b2, transparent 88%);
+  color: #22d3ee;
   font-weight: 800;
-  font-size: 1.1rem;
+  font-size: 1.2rem;
+  line-height: 1;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
-  margin: 0 6px;
-  vertical-align: middle;
+  margin: 0;
 }
 
 .btn-water-mini:hover {
-  background: #0891b2;
+  background: #0ea5e9;
   color: white;
-  transform: scale(1.1);
+  transform: translateY(-1px);
 }
 
 .btn-water-mini.plus {
-  background: #e0f2fe;
+  background: color-mix(in srgb, #10b981, transparent 84%);
+  border-color: color-mix(in srgb, #10b981, transparent 52%);
+  color: #34d399;
 }
 
-:global(.theme-dark) .btn-water-mini {
-  background: #1e293b;
-  color: #22d3ee;
+.water-value-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-:global(.theme-dark) .btn-water-mini:hover {
-  background: #22d3ee;
-  color: #0f172a;
+.water-input {
+  width: 66px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg-main), transparent 20%);
+  color: var(--text-main);
+  padding: 5px 8px;
+  font: inherit;
+  font-size: 1.25rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.water-input:focus {
+  outline: none;
+  border-color: #22d3ee;
+  box-shadow: 0 0 0 2px color-mix(in srgb, #22d3ee, transparent 75%);
 }
 
 .stat-unit {
