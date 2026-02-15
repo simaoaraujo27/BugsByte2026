@@ -3,7 +3,15 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { auth, API_URL } from '@/auth'
 import { useUser } from '@/store/userStore'
 
-const { user: userProfile, fetchUser, setUser, displayName } = useUser()
+const { 
+  user: userProfile, 
+  fetchUser, 
+  setUser, 
+  displayName,
+  bmr,
+  tdee,
+  targetCalories
+} = useUser()
 
 const toNumber = (val) => {
   const n = parseFloat(val)
@@ -23,7 +31,8 @@ const editForm = ref({
   idade: 0,
   sexo: '',
   goal: '',
-  activity_level: ''
+  activity_level: '',
+  target_calories: null
 })
 const isSaving = ref(false)
 const showImageMenu = ref(false)
@@ -161,34 +170,6 @@ const bmi = computed(() => {
   return Number(userProfile.value.peso) / (heightM * heightM)
 })
 
-const bmr = computed(() => {
-  const profile = userProfile.value
-  if (!profile?.peso || !profile?.altura || !profile?.idade) return null
-
-  const weight = Number(profile.peso)
-  const height = Number(profile.altura)
-  const age = Number(profile.idade)
-  const gender = (profile.sexo || '').toLowerCase()
-
-  if (gender === 'male') return 10 * weight + 6.25 * height - 5 * age + 5
-  if (gender === 'female') return 10 * weight + 6.25 * height - 5 * age - 161
-  return 10 * weight + 6.25 * height - 5 * age - 78
-})
-
-const activityFactor = computed(() => {
-  const level = (userProfile.value?.activity_level || '').toLowerCase()
-  if (level === 'sedentary') return 1.2
-  if (level === 'light') return 1.375
-  if (level === 'moderate') return 1.55
-  if (level === 'high') return 1.725
-  return 1.2
-})
-
-const tdee = computed(() => {
-  if (!bmr.value) return null
-  return bmr.value * activityFactor.value
-})
-
 const bmiCategory = computed(() => {
   if (!bmi.value) return 'N/A'
   if (bmi.value < 18.5) return 'Abaixo do peso'
@@ -236,7 +217,8 @@ const syncEditForm = () => {
     idade: toNumber(userProfile.value.idade),
     sexo: userProfile.value.sexo || 'other',
     goal: userProfile.value.goal || 'maintain',
-    activity_level: userProfile.value.activity_level || 'sedentary'
+    activity_level: userProfile.value.activity_level || 'sedentary',
+    target_calories: userProfile.value.target_calories || null
   }
 }
 
@@ -449,6 +431,22 @@ onMounted(fetchProfileData)
                 <option value="high">Elevado</option>
               </select>
             </div>
+            <div class="form-group">
+              <label>Calorias Alvo (Manual)</label>
+              <div class="input-with-action">
+                <input v-model.number="editForm.target_calories" type="number" placeholder="Ex: 2000" />
+                <button 
+                  v-if="editForm.target_calories" 
+                  type="button" 
+                  class="reset-btn" 
+                  @click="editForm.target_calories = null"
+                  title="Voltar ao cálculo automático"
+                >
+                  🔄
+                </button>
+              </div>
+              <small class="muted" style="font-size: 0.75rem; margin-top: 2px;">Deixe vazio ou clique no ícone para usar o cálculo automático.</small>
+            </div>
             <button class="save-btn" @click="saveProfile" :disabled="isSaving">
               {{ isSaving ? 'A guardar...' : 'Guardar Alterações' }}
             </button>
@@ -501,6 +499,12 @@ onMounted(fetchProfileData)
             <p>Kcal normais (TDEE)</p>
             <strong>{{ tdee ? Math.round(tdee) : '-' }} kcal/dia</strong>
             <small>Manutenção diária com base no nível de atividade.</small>
+          </div>
+          <div class="metric-box">
+            <p>Calorias alvo</p>
+            <strong>{{ targetCalories ? targetCalories : '-' }} kcal/dia</strong>
+            <small v-if="userProfile.target_calories">Definido manualmente pelo utilizador.</small>
+            <small v-else>Ajustadas para o seu objetivo de {{ formatGoal(userProfile.goal).toLowerCase() }}.</small>
           </div>
         </article>
 
@@ -842,6 +846,15 @@ onMounted(fetchProfileData)
   transform: translateY(-2px);
 }
 
+.metric-box.highlight {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.metric-box.highlight strong {
+  color: #10b981;
+}
+
 .metric-box p {
   margin: 0;
   color: var(--text-muted);
@@ -898,6 +911,30 @@ onMounted(fetchProfileData)
   color: var(--text-main);
   font-family: inherit;
   font-size: 0.95rem;
+}
+
+.input-with-action {
+  display: flex;
+  gap: 8px;
+}
+
+.input-with-action input {
+  flex: 1;
+}
+
+.reset-btn {
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0 12px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: all 0.2s;
+}
+
+.reset-btn:hover {
+  background: var(--bg-main);
+  border-color: #0ea5a0;
 }
 
 .save-btn {

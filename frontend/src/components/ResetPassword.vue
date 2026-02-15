@@ -1,5 +1,5 @@
 <template>
-  <div class="auth-page">
+  <div class="auth-page" :class="{ 'theme-dark': isDarkTheme }">
     <div class="auth-form-container">
       <h2 class="form-title">Nova Palavra-passe</h2>
       <p class="form-subtitle">Defina uma nova palavra-passe para concluir a recuperação.</p>
@@ -47,8 +47,9 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
+import { API_URL } from '@/auth'
 
 const route = useRoute()
 
@@ -57,6 +58,40 @@ const confirmPassword = ref('')
 const errorMessage = ref('')
 const successMessage = ref('')
 const isLoading = ref(false)
+const isDarkTheme = ref(false)
+
+const handleThemeChange = (event) => {
+  const theme = event?.detail?.theme
+  if (theme === 'dark' || theme === 'light') {
+    isDarkTheme.value = theme === 'dark'
+  } else {
+    isDarkTheme.value = document.documentElement.classList.contains('dark')
+  }
+}
+
+const handleStorageThemeChange = (event) => {
+  if (event.key !== 'theme') return
+  isDarkTheme.value = event.newValue === 'dark'
+}
+
+const syncTheme = () => {
+  const savedTheme = localStorage.getItem('theme')
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+  const shouldUseDark = savedTheme ? savedTheme === 'dark' : prefersDark
+  document.documentElement.classList.toggle('dark', shouldUseDark)
+  isDarkTheme.value = shouldUseDark
+}
+
+onMounted(() => {
+  syncTheme()
+  window.addEventListener('theme-change', handleThemeChange)
+  window.addEventListener('storage', handleStorageThemeChange)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('theme-change', handleThemeChange)
+  window.removeEventListener('storage', handleStorageThemeChange)
+})
 
 const submitForm = async () => {
   errorMessage.value = ''
@@ -76,7 +111,7 @@ const submitForm = async () => {
   isLoading.value = true
 
   try {
-    const response = await fetch('http://localhost:8000/reset-password/', {
+    const response = await fetch(`${API_URL}/reset-password/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token, new_password: password.value })
@@ -128,19 +163,32 @@ const submitForm = async () => {
   --accent-hover: #0b5c56;
   --error: #e53e3e;
   --success: #38a169;
+  --bg-input: #fdfdfd;
+  --bg-container: rgba(255, 255, 255, 0.95);
 
   position: relative;
   z-index: 2;
   width: 100%;
   max-width: 480px;
   padding: 32px;
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--bg-container);
   backdrop-filter: blur(10px);
   border: 1px solid var(--line);
   border-radius: 20px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
   font-family: Sora, 'Segoe UI', Tahoma, sans-serif;
   color: var(--text-main);
+}
+
+.theme-dark .auth-form-container {
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --line: #1e293b;
+  --accent: #14b8a6;
+  --accent-hover: #0d9488;
+  --bg-input: #0f172a;
+  --bg-container: rgba(15, 23, 42, 0.95);
+  border-color: #334155;
 }
 
 .form-title {
@@ -175,7 +223,7 @@ const submitForm = async () => {
   padding: 12px 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fdfdfd;
+  background: var(--bg-input);
   font-size: 1rem;
   color: var(--text-main);
 }

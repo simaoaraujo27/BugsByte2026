@@ -1,8 +1,24 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { auth, API_URL } from '@/auth'
+import { useUser } from '@/store/userStore'
 
-const DEFAULT_GOAL = 1800
+const { 
+  targetCalories, 
+  customMacroPercents, 
+  saveMacroPercents 
+} = useUser()
+
+// Auto-save changes to server with a slight delay to avoid spamming
+let saveTimeout = null
+watch(customMacroPercents, (newVal) => {
+  if (saveTimeout) clearTimeout(saveTimeout)
+  saveTimeout = setTimeout(() => {
+    saveMacroPercents(newVal)
+  }, 1000)
+}, { deep: true })
+
+const DEFAULT_GOAL = computed(() => targetCalories.value || 1800)
 const mealSections = [
   { id: 'breakfast', label: 'Pequeno-almoço', icon: '🥣' },
   { id: 'lunch', label: 'Almoço', icon: '🍛' },
@@ -195,7 +211,7 @@ const formatMealGrams = (value) => {
 const formatMacro = (value) => `${round1(toNumber(value))}g`
 
 const buildEmptyDay = () => ({
-  goal: DEFAULT_GOAL,
+  goal: DEFAULT_GOAL.value,
   meals: {
     breakfast: [],
     lunch: [],
@@ -239,7 +255,7 @@ const consumedProtein = computed(() => round1(allMealsToday.value.reduce((acc, i
 const consumedCarbs = computed(() => round1(allMealsToday.value.reduce((acc, item) => acc + toNumber(item.carbs), 0)))
 const consumedFat = computed(() => round1(allMealsToday.value.reduce((acc, item) => acc + toNumber(item.fat), 0)))
 
-const calorieGoal = computed(() => Math.max(1, toNumber(currentDay.value.goal) || DEFAULT_GOAL))
+const calorieGoal = computed(() => Math.max(1, DEFAULT_GOAL.value || toNumber(currentDay.value.goal)))
 const deltaCalories = computed(() => calorieGoal.value - consumedCalories.value)
 
 const progressPercent = computed(() => {
@@ -276,12 +292,22 @@ const macroPercentages = computed(() => {
   }
 })
 
+const totalMacroPercent = computed(() => 
+  toNumber(customMacroPercents.value.protein) + 
+  toNumber(customMacroPercents.value.carbs) + 
+  toNumber(customMacroPercents.value.fat)
+)
+
 const macroGoals = computed(() => {
   const total = calorieGoal.value
+  const p = toNumber(customMacroPercents.value.protein) / 100
+  const c = toNumber(customMacroPercents.value.carbs) / 100
+  const f = toNumber(customMacroPercents.value.fat) / 100
+  
   return {
-    protein: Math.round((total * 0.30) / 4),
-    carbs: Math.round((total * 0.45) / 4),
-    fat: Math.round((total * 0.25) / 9)
+    protein: Math.round((total * p) / 4),
+    carbs: Math.round((total * c) / 4),
+    fat: Math.round((total * f) / 9)
   }
 })
 
@@ -295,7 +321,7 @@ const isDayOnTarget = (day) => {
   const mealsList = Array.isArray(day.meals) ? day.meals : []
   const total = mealsList.reduce((acc, item) => acc + toNumber(item.calories), 0)
   if (total === 0) return false
-  return total <= toNumber(day.goal || DEFAULT_GOAL)
+  return total <= toNumber(day.goal || DEFAULT_GOAL.value)
 }
 
 const weeklyDays = computed(() => {
@@ -595,7 +621,7 @@ const addMeal = async (sectionId, closeAfter = true) => {
       body: JSON.stringify({
         section: sectionId,
         name,
-        grams,
+        grams: Math.round(grams),
         calories: Math.round(calories),
         protein,
         carbs,
@@ -663,7 +689,7 @@ const setSelectedDay = (dateObj) => {
 }
 
 const updateGoal = async (event) => {
-  const next = Math.max(1000, Math.min(6000, toNumber(event.target.value) || DEFAULT_GOAL))
+  const next = Math.max(1000, Math.min(6000, toNumber(event.target.value) || DEFAULT_GOAL.value))
   try {
     const res = await fetch(`${API_URL}/diary/${dateKey.value}/goal`, {
       method: 'PUT',
@@ -830,15 +856,10 @@ watch(
 
     <article class="summary-card">
       <div class="summary-main">
-        <h2>{{ consumedCalories }} / {{ calorieGoal }} kcal</h2>
+        <h2>Objetivo diário:  {{ consumedCalories }} / {{ calorieGoal }} kcal</h2>
         <p v-if="deltaCalories >= 0" class="state-ok">Faltam {{ deltaCalories }} kcal para o objetivo.</p>
         <p v-else class="state-over">+{{ Math.abs(deltaCalories) }} kcal acima do objetivo.</p>
       </div>
-
-      <label class="goal-control">
-        Objetivo diário
-        <input type="number" :value="calorieGoal" min="1000" max="6000" step="50" @change="updateGoal" />
-      </label>
 
       <div class="progress-wrap" aria-label="Progresso calórico">
         <div class="progress-fill" :style="{ width: `${progressPercent}%` }"></div>
@@ -1010,6 +1031,32 @@ watch(
           </div>
         </article>
 
+        <article class="side-card customize-macros">
+          <h3>Personalizar Percentagens</h3>
+          <p class="sub-text">Ajuste a distribuição calórica dos seus macros.</p>
+          
+          <div class="macro-edit-grid">
+            <div class="form-group-diary">
+              <label>Proteína (%)</label>
+              <input v-model.number="customMacroPercents.protein" type="number" min="0" max="100" />
+            </div>
+            <div class="form-group-diary">
+              <label>Hidratos (%)</label>
+              <input v-model.number="customMacroPercents.carbs" type="number" min="0" max="100" />
+            </div>
+            <div class="form-group-diary">
+              <label>Gordura (%)</label>
+              <input v-model.number="customMacroPercents.fat" type="number" min="0" max="100" />
+            </div>
+          </div>
+
+          <div class="total-checker" :class="{ error: totalMacroPercent !== 100 }">
+            Total: <strong>{{ totalMacroPercent }}%</strong>
+            <span v-if="totalMacroPercent !== 100"> (Deve somar 100%)</span>
+            <span v-else class="success-text"> ✅</span>
+          </div>
+        </article>
+
         <article class="side-card">
           <h3>Sugestões</h3>
           <ul class="insights">
@@ -1148,6 +1195,15 @@ watch(
   background: transparent;
   color: var(--text-main);
   padding: 6px 8px;
+  /* Remove arrows */
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.goal-control input::-webkit-outer-spin-button,
+.goal-control input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .progress-wrap {
@@ -1621,6 +1677,50 @@ watch(
   background: var(--bg-elevated);
   border-radius: 12px;
   padding: 14px;
+}
+
+.customize-macros h3 {
+  margin: 0 0 4px;
+  font-size: 1.1rem;
+}
+
+.sub-text {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.macro-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.macro-edit-grid input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-main);
+  color: var(--text-main);
+}
+
+.total-checker {
+  font-size: 0.9rem;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(148, 163, 184, 0.1);
+  text-align: center;
+}
+
+.total-checker.error {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.success-text {
+  color: #10b981;
 }
 
 .macro-panel h3 {

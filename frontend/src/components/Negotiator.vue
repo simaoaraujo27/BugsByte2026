@@ -2,7 +2,6 @@
 import { ref, watch, onMounted, onUnmounted } from 'vue';
 import { auth, API_URL } from '@/auth';
 import { addRecipeToHistory } from '@/utils/recipeHistory';
-import { optimizeImageForVision } from '@/utils/imageUpload';
 
 const props = defineProps({
   routeMode: {
@@ -13,30 +12,22 @@ const props = defineProps({
 
 const emit = defineEmits(['choice', 'route-mode-change', 'navigate']);
 
-// Views: 'landing', 'text_input', 'vision_input', 'mood_select', 'mood_analysis', 'recipe', 'rejection'
+// Views: 'landing', 'text_input', 'mood_select', 'mood_analysis', 'recipe', 'rejection'
 const activeView = ref('landing');
 const loading = ref(false);
 const saving = ref(false);
 const error = ref(null);
 const feedbackDialog = ref(null);
-const isDragging = ref(false);
 
 const craving = ref('');
 const selectedMood = ref('');
 const moodAnalysis = ref(null);
 const recipeResult = ref(null);
 const detectedIngredients = ref([]);
+
+// Voice recognition
 const isListening = ref(false);
 let recognitionInstance = null;
-
-// Vision
-const fileInput = ref(null);
-const cameraInput = ref(null);
-const videoRef = ref(null);
-const canvasRef = ref(null);
-const previewImage = ref(null);
-const isCameraActive = ref(false);
-const stream = ref(null);
 
 const toggleListening = async () => {
   if (isListening.value) {
@@ -47,7 +38,7 @@ const toggleListening = async () => {
   }
 
   if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-    alert('O seu navegador não suporta reconhecimento de voz. Use Chrome, Edge ou Safari.')
+    alert('O seu navegador não suporta reconhecimento de voz.')
     return
   }
 
@@ -59,10 +50,6 @@ const toggleListening = async () => {
     recognitionInstance.continuous = false
     recognitionInstance.interimResults = true
     recognitionInstance.maxAlternatives = 1
-    
-    if ('lang' in recognitionInstance) {
-      recognitionInstance.lang = 'pt-PT'
-    }
     
     recognitionInstance.onstart = () => {
       isListening.value = true
@@ -110,127 +97,9 @@ const stopListening = () => {
   }
 }
 
-const onDragOver = (e) => {
-  e.preventDefault();
-  isDragging.value = true;
-};
-
-const onDragLeave = () => {
-  isDragging.value = false;
-};
-
-const onDrop = (e) => {
-  e.preventDefault();
-  isDragging.value = false;
-  const file = e.dataTransfer.files[0];
-  if (file && file.type.startsWith('image/')) {
-    processSelectedFile(file);
-  }
-};
-
-const onPaste = (e) => {
-  if (activeView.value !== 'vision_input') return;
-  const items = e.clipboardData?.items;
-  if (!items) return;
-  for (const item of items) {
-    if (item.type.startsWith('image/')) {
-      const file = item.getAsFile();
-      processSelectedFile(file);
-      break;
-    }
-  }
-};
-
-const processSelectedFile = async (file) => {
-  let uploadFile = file;
-  try {
-    uploadFile = await optimizeImageForVision(file);
-    console.log("Optimized image size:", uploadFile.size);
-  } catch (err) {
-    console.warn("Could not optimize image, using original file.", err);
-  }
-
-  const reader = new FileReader();
-  reader.onload = (e) => previewImage.value = e.target.result;
-  reader.readAsDataURL(uploadFile);
-  uploadAndAnalyze(uploadFile);
-};
-
-onMounted(() => {
-  window.addEventListener('paste', onPaste);
-});
-
 onUnmounted(() => {
-  window.removeEventListener('paste', onPaste);
   stopListening();
 });
-
-const startCamera = async () => {
-  // On mobile, try to use native camera interface first for better reliability
-  if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-    cameraInput.value.click();
-    return;
-  }
-
-  isCameraActive.value = true;
-  error.value = null;
-  try {
-    stream.value = await navigator.mediaDevices.getUserMedia({ 
-      video: { facingMode: 'environment' } 
-    });
-    if (videoRef.value) {
-      videoRef.value.srcObject = stream.value;
-    }
-  } catch (err) {
-    console.error("Error accessing camera:", err);
-    error.value = "Não foi possível aceder à câmara.";
-    isCameraActive.value = false;
-  }
-};
-
-const stopCamera = () => {
-  if (stream.value) {
-    stream.value.getTracks().forEach(track => track.stop());
-    stream.value = null;
-  }
-  isCameraActive.value = false;
-};
-
-const capturePhoto = () => {
-  console.log("Attempting to capture photo...");
-  const video = videoRef.value;
-  const canvas = canvasRef.value;
-  if (video && canvas) {
-    try {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const context = canvas.getContext('2d');
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
-      console.log("Drawing video to canvas successful, creating blob...");
-      canvas.toBlob((blob) => {
-        if (blob) {
-          console.log("Blob created successfully, size:", blob.size);
-          const file = new File([blob], "captured_ingredients.jpg", { type: "image/jpeg" });
-          processSelectedFile(file);
-          
-          // Stop camera before starting upload to free resources
-          stopCamera();
-        } else {
-          console.error("Failed to create blob from canvas");
-          error.value = "Erro ao processar a imagem capturada.";
-        }
-      }, 'image/jpeg', 0.8);
-    } catch (err) {
-      console.error("Error during capturePhoto:", err);
-      error.value = "Erro ao capturar foto: " + err.message;
-    }
-  } else {
-    console.error("Video or Canvas ref is missing", { video: !!video, canvas: !!canvas });
-  }
-};
-
-const triggerFileSelect = () => fileInput.value.click();
 
 const moods = [
   { id: 'stressado', label: 'Stressado(a)', icon: '🌋' },
@@ -245,15 +114,13 @@ const moods = [
 const routeModeToView = {
   '': 'landing',
   desejo: 'text_input',
-  estadoalma: 'mood_select',
-  visaochef: 'vision_input'
+  estadoalma: 'mood_select'
 };
 
 const viewToRouteMode = {
   landing: '',
   text_input: 'desejo',
-  mood_select: 'estadoalma',
-  vision_input: 'visaochef'
+  mood_select: 'estadoalma'
 };
 
 const setActiveView = (view) => {
@@ -347,64 +214,6 @@ const generateMoodRecipe = async () => {
     }
     activeView.value = 'recipe';
   } catch (e) {
-    error.value = e.message;
-  } finally {
-    loading.value = false;
-  }
-};
-
-// --- VISION FLOW ---
-const handleFileChange = (event) => {
-  const file = event.target.files[0];
-  if (file) {
-    processSelectedFile(file);
-  }
-};
-
-const uploadAndAnalyze = async (file) => {
-  console.log("uploadAndAnalyze called with file:", file.name, "size:", file.size);
-  loading.value = true;
-  error.value = null;
-  const formData = new FormData();
-  formData.append('file', file);
-
-  try {
-    const response = await fetch(`${API_URL}/vision/analyze`, {
-      method: 'POST',
-      headers: auth.getAuthHeaders(false),
-      body: formData,
-    });
-
-    console.log("Response status:", response.status);
-    if (!response.ok) {
-      let errorMessage = 'Erro ao analisar a imagem';
-      try {
-        const errData = await response.json();
-        if (response.status === 413) {
-          errorMessage = errData?.detail || 'A imagem é demasiado grande. Tenta novamente com outra imagem.';
-        } else if (errData?.detail) {
-          errorMessage = errData.detail;
-        }
-      } catch {
-        const errText = await response.text();
-        console.error("API Error response:", errText);
-      }
-      throw new Error(errorMessage);
-    }
-    
-    const data = await response.json();
-    console.log("Analysis successful, received data:", data);
-
-    if (!data.detected_ingredients || data.detected_ingredients.length === 0) {
-      throw new Error('O Chef não conseguiu identificar alimentos nesta foto. Tenta novamente com um ângulo diferente.');
-    }
-
-    detectedIngredients.value = data.detected_ingredients;
-    recipeResult.value = { recipe: data.recipe, message: data.message };
-    storeInHistory({ recipe: data.recipe, message: data.message }, 'vision');
-    activeView.value = 'recipe';
-  } catch (e) {
-    console.error("Error in uploadAndAnalyze:", e);
     error.value = e.message;
   } finally {
     loading.value = false;
@@ -530,7 +339,6 @@ const reset = () => {
   selectedMood.value = '';
   moodAnalysis.value = null;
   recipeResult.value = null;
-  previewImage.value = null;
   detectedIngredients.value = [];
   error.value = null;
 };
@@ -590,11 +398,11 @@ watch(
       <div class="hero-header-small">
         <div class="v-icon-top">🍔</div>
         <h2 class="title-bold">O QUE TE APETECE?</h2>
-        <p class="subtitle-muted">O Chef vai negociar uma alternativa irresistível e saudável.</p>
+        <p class="subtitle-muted">Diz-nos o que queres comer ou o que tens no frigorífico e o Chef trata do resto.</p>
       </div>
 
       <div class="search-box-premium">
-        <input v-model="craving" type="text" placeholder="Ex: Risotto de cogumelos..." @keyup.enter="generateTextRecipe" autofocus />
+        <input v-model="craving" type="text" placeholder="Ex: Risotto ou tenho ovos e tomate..." @keyup.enter="generateTextRecipe" autofocus />
         <button 
           type="button" 
           class="mic-btn-negotiator" 
@@ -605,7 +413,7 @@ watch(
           🎤
         </button>
         <button @click="generateTextRecipe" :disabled="loading" class="btn-primary-action">
-          {{ loading ? '...' : 'Negociar' }}
+          {{ loading ? '...' : 'Cozinhar' }}
         </button>
       </div>
 
@@ -637,64 +445,6 @@ watch(
       
       <div v-if="loading" class="spinner-wrap"><div class="spinner-dot"></div></div>
       <button @click="reset" class="btn-formatted-back">← Voltar</button>
-    </div>
-
-    <!-- SUBMENU: Vision Input -->
-    <div v-if="activeView === 'vision_input'" class="view-wrapper centered-view fade-in">
-      <div class="hero-header-small">
-        <div class="v-icon-top">📸</div>
-        <h2 class="title-bold">VISÃO DO FRIGORÍFICO</h2>
-        <p class="subtitle-muted">O reconhecimento visual irá ditar a ementa de hoje.</p>
-      </div>
-
-      <div 
-        v-if="!isCameraActive" 
-        class="premium-upload-zone"
-        :class="{ 'is-dragging': isDragging }"
-        @dragover="onDragOver"
-        @dragleave="onDragLeave"
-        @drop="onDrop"
-      >
-        <div v-if="!loading" class="u-content-box">
-          <div class="u-icon-pulse">📸</div>
-          <h3>Digitaliza os teus ingredientes</h3>
-          <p>Arraste uma foto, cole (Ctrl+V) ou use a câmara</p>
-          <div class="u-actions" style="display: flex; gap: 12px; justify-content: center; margin-top: 20px;">
-            <button @click="triggerFileSelect" class="btn-primary-action" style="padding: 12px 24px;">📁 Galeria</button>
-            <button @click="startCamera" class="btn-primary-action" style="padding: 12px 24px; background: #11263f;">📷 Câmara</button>
-          </div>
-        </div>
-        <div v-else class="u-loading-box">
-          <div class="spinner-dot"></div>
-          <p>A analisar ingredientes...</p>
-        </div>
-        <input type="file" ref="fileInput" style="display: none" accept="image/*" @change="handleFileChange" />
-        <input type="file" ref="cameraInput" style="display: none" accept="image/*" capture="environment" @change="handleFileChange" />
-      </div>
-
-      <!-- Error Message -->
-      <div v-if="error" class="error-toast-mini fade-in">
-        <span class="error-icon">⚠️</span>
-        <p>{{ error }}</p>
-        <button @click="error = null" class="btn-close-error">✕</button>
-      </div>
-
-      <!-- Camera View -->
-      <div v-if="isCameraActive" class="camera-view-negotiator fade-in">
-        <div class="camera-container-negotiator">
-          <video ref="videoRef" autoplay playsinline class="camera-video"></video>
-          <canvas ref="canvasRef" style="display: none"></canvas>
-          <div class="camera-controls-negotiator">
-            <button @click="stopCamera" class="btn-formatted-back" style="margin-top: 0;">Cancelar</button>
-            <button @click="capturePhoto" class="btn-capture-negotiator">
-              <div class="capture-inner"></div>
-            </button>
-            <div style="width: 100px;"></div>
-          </div>
-        </div>
-      </div>
-
-      <button v-if="!loading && !isCameraActive" @click="reset" class="btn-formatted-back">← Voltar</button>
     </div>
 
     <!-- VIEW: Mood Analysis Result -->
@@ -889,110 +639,6 @@ watch(
 .mood-pill-btn:hover { border-color: #e74c3c; transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0,0,0,0.05); }
 .m-pill-emoji { font-size: 1.6rem; }
 .m-pill-label { font-weight: 800; color: var(--text-main); font-size: 1rem; }
-
-/* 5. Vision Upload View */
-.premium-upload-zone { 
-  background: var(--bg-elevated); 
-  border: 2px dashed var(--line); 
-  border-radius: 40px; 
-  padding: 80px 40px; 
-  text-align: center; 
-  width: 100%; 
-  max-width: 700px; 
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.premium-upload-zone.is-dragging {
-  border-color: #07a374;
-  background: var(--menu-active-bg);
-  transform: scale(1.02);
-}
-
-.error-toast-mini {
-  margin-top: 24px;
-  background: #fff5f5;
-  border: 1px solid #feb2b2;
-  padding: 12px 20px;
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  max-width: 500px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-}
-
-.error-toast-mini p {
-  color: #c53030;
-  margin: 0;
-  font-size: 0.9rem;
-  font-weight: 600;
-  flex: 1;
-}
-
-.btn-close-error {
-  background: transparent;
-  border: none;
-  color: #c53030;
-  cursor: pointer;
-  font-weight: 800;
-  padding: 4px;
-}
-
-.camera-view-negotiator {
-  width: 100%;
-  max-width: 500px;
-  margin: 0 auto;
-}
-
-.camera-container-negotiator {
-  position: relative;
-  background: #000;
-  border-radius: 32px;
-  overflow: hidden;
-  aspect-ratio: 3/4;
-  display: flex;
-  flex-direction: column;
-}
-
-.camera-video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.camera-controls-negotiator {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 30px;
-  background: linear-gradient(transparent, rgba(0,0,0,0.7));
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.btn-capture-negotiator {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background: white;
-  border: 4px solid rgba(255,255,255,0.3);
-  padding: 4px;
-  cursor: pointer;
-}
-
-.capture-inner {
-  width: 100%;
-  height: 100%;
-  background: white;
-  border-radius: 50%;
-  border: 2px solid #000;
-}
-
-.premium-upload-zone:not(.loading):hover { border-color: #07a374; background: var(--bg-main); }
-.u-icon-pulse { font-size: 6rem; margin-bottom: 24px; animation: pulse 2s infinite; }
-@keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
 
 /* Standard Back Button */
 .btn-formatted-back { 

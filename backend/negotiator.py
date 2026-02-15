@@ -29,7 +29,7 @@ def analyze_mood(craving: str, mood: str) -> schemas.MoodAnalysisResponse:
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-def negotiate_craving(craving: str, target_calories: int = 600, mood: Optional[str] = None, favorite_recipes: List[schemas.Recipe] = []) -> schemas.NegotiatorResponse:
+def negotiate_craving(craving: str, target_calories: int = 600, mood: Optional[str] = None, favorite_recipes: List[schemas.Recipe] = [], allergens: List[str] = []) -> schemas.NegotiatorResponse:
     client, model = get_client_config()
     cuisine_focus = random.choice(["mediterrânica", "asiática leve", "mexicana equilibrada", "portuguesa moderna", "levantina"])
     technique_focus = random.choice(["forno", "grelhar", "saltear rápido", "estufar leve", "air fryer"])
@@ -47,22 +47,28 @@ def negotiate_craving(craving: str, target_calories: int = 600, mood: Optional[s
             f"{fav_list}\n\n"
         )
 
+    allergen_context = ""
+    if allergens:
+        allergen_list = ", ".join(allergens)
+        allergen_context = f"AVISO DE ALERGIA: O utilizador é alérgico a: {allergen_list}. NÃO uses estes ingredientes na receita.\n\n"
+
     prompt = (
         f"{fav_header}"
+        f"{allergen_context}"
         f"BRIEF CRIATIVO DESTA GERAÇÃO: cozinha {cuisine_focus}, técnica {technique_focus}, formato {format_focus}. "
         f"O utilizador enviou o seguinte: '{craving}'. Estado emocional: {mood}. "
         "\nINSTRUÇÕES: "
         "1. Se o utilizador descreveu um desejo específico, cria uma versão saudável. "
         "2. Se forneceu ingredientes, cria uma receita criativa com eles. "
         "3. Usa a lista de 'estilo' com peso BAIXO e gera propostas novas; evita repetições de títulos, combinações e passos. "
-        "3.1. Mantém identidade claramente diferente de receitas comuns anteriores (novo ângulo de sabor, técnica ou empratamento). "
+        "3.1. Se houver ALERGÉNIOS listados acima, ignora-os TOTALMENTE e não os uses. "
         "4. Se o pedido for inválido, define 'recipe' como null. "
         "5. IMPORTANTE: Responde sempre em PORTUGUÊS DE PORTUGAL (PT-PT). "
         "6. Em 'ingredients', usa SEMPRE quantidades realistas por ingrediente (g, ml, colheres, unidades parciais). "
         "7. Evita unidade inteira quando não fizer sentido para uma porção (ex: '1/4 abacate' em vez de '1 abacate'). "
         "8. Prefere porções equilibradas e proporcionais ao prato e ao objetivo calórico. "
         "9. PROIBIDO usar quinoa/qinoa em qualquer parte da receita (título, ingredientes ou passos). "
-        "\nRetorna RIGOROSAMENTE este JSON (define 'calories' como 0, pois será calculado externamente): "
+        "\nRetorna JSON (define 'calories' como 0): "
         "{ 'message': '...', 'recipe': { 'title': '...', 'calories': 0, 'time_minutes': 30, 'ingredients': ['200g arroz', '100g frango'], 'steps': [] }, 'restaurant_search_term': '...' }"
     )
 
@@ -70,7 +76,6 @@ def negotiate_craving(craving: str, target_calories: int = 600, mood: Optional[s
         "\nREGRAS JSON ESTRITAS: "
         "Retorna APENAS JSON válido, sem markdown e sem texto fora do objeto. "
         "Em 'ingredients' e 'steps', cada item deve ser APENAS uma string simples. "
-        "Não uses arrays aninhados, não mistures números soltos dentro de strings, não uses quebras inválidas. "
         "NÃO uses quinoa/qinoa."
     )
 
@@ -131,7 +136,7 @@ def analyze_nutrition(food_text: str) -> schemas.NutritionAnalysisResponse:
     prompt = (
         f"Analisa a informação nutricional para: '{food_text}'. "
         "Estima as calorias e macronutrientes totais para a quantidade indicada. "
-        "Se a quantidade não for explícita, assume uma porção padrão média. "
+        "Se a quantidade não for explícita, assume uma porção padrão média (ex: 1 banana = 120g). "
         "VALIDAÇÃO: Se o item indicado NÃO for um alimento ou for algo impossível de comer (ex: pedras, objetos), define 'is_food' como false e fornece uma 'error_message' explicativa em PT-PT. "
         "Responde APENAS com um objeto JSON com este formato (sem markdown): "
         "{ "
@@ -142,7 +147,7 @@ def analyze_nutrition(food_text: str) -> schemas.NutritionAnalysisResponse:
         "  'protein': 0.0, "
         "  'carbs': 0.0, "
         "  'fat': 0.0, "
-        "  'estimated_grams': 0 "
+        "  'estimated_grams': 100 "
         "}"
     )
 

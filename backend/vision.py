@@ -9,7 +9,7 @@ import food_data
 from fastapi import HTTPException, status
 from llm_client import get_client_config
 
-def analyze_image_ingredients(image_bytes: bytes, mode: str = "ingredients", api_key: Optional[str] = None, favorite_recipes: List[schemas.Recipe] = []) -> schemas.VisionResponse:
+def analyze_image_ingredients(image_bytes: bytes, mode: str = "ingredients", api_key: Optional[str] = None, favorite_recipes: List[schemas.Recipe] = [], allergens: List[str] = []) -> schemas.VisionResponse:
     client, model = get_client_config()
     cuisine_focus = random.choice(["mediterrânica", "asiática leve", "mexicana equilibrada", "portuguesa moderna", "levantina"])
     technique_focus = random.choice(["forno", "grelhar", "saltear rápido", "estufar leve", "air fryer"])
@@ -35,37 +35,42 @@ def analyze_image_ingredients(image_bytes: bytes, mode: str = "ingredients", api
             f"{fav_list}\n\n"
         )
 
+    allergen_context = ""
+    if allergens:
+        allergen_list = ", ".join(allergens)
+        allergen_context = f"AVISO DE ALERGIA: O utilizador é alérgico a: {allergen_list}. NÃO uses estes ingredientes na receita.\n\n"
+
     if mode == "plate":
         prompt = (
             f"{fav_header}"
+            f"{allergen_context}"
             f"BRIEF CRIATIVO DESTA GERAÇÃO: cozinha {cuisine_focus}, técnica {technique_focus}, formato {format_focus}. "
             "Analisa esta imagem de um prato já cozinhado. "
             "1. Identifica o nome do prato (ex: Lasanha, Sushi, Hambúrguer). "
             "2. Cria uma RECRIAÇÃO SAUDÁVEL desse exato prato. Não inventes uma receita aleatória; foca-te em tornar o prato da imagem mais nutritivo. "
-            "3. Usa a lista de 'REFERÊNCIA DE ESTILO' com peso baixo, evitando repetir pratos/títulos das favoritas. "
-            "3.1 Mantém identidade diferente de sugestões comuns (novo perfil de sabor, técnica ou empratamento). "
+            "3. Se houver ALERGÉNIOS listados acima, substitui-os por alternativas seguras. "
             "4. Responde sempre em PORTUGUÊS DE PORTUGAL (PT-PT). "
             "5. Em 'ingredients', usa quantidades realistas por ingrediente (g, ml, colheres, frações de unidade). "
             "6. Evita unidade inteira quando não fizer sentido para uma porção (ex: '1/4 abacate' em vez de '1 abacate'). "
             "7. PROIBIDO usar quinoa/qinoa em qualquer parte da receita (título, ingredientes ou passos). "
             "IMPORTANTE: Responde APENAS com um objeto JSON válido. Define 'calories' como 0. "
-            "\nEstrutura JSON esperada: { \"detected_ingredients\": [\"nome do prato\"], \"message\": \"...\", \"recipe\": { \"title\": \"Versão Saudável de...\", \"calories\": 0, \"time_minutes\": 25, \"ingredients\": [\"200g massa\", \"100g carne\"], \"steps\": [] } }"
+            "\nEstrutura JSON: { \"detected_ingredients\": [\"nome do prato\"], \"message\": \"...\", \"recipe\": { \"title\": \"Versão Saudável de...\", \"calories\": 0, \"time_minutes\": 25, \"ingredients\": [\"200g massa\", \"100g carne\"], \"steps\": [] } }"
         )
     else:
         prompt = (
             f"{fav_header}"
+            f"{allergen_context}"
             f"BRIEF CRIATIVO DESTA GERAÇÃO: cozinha {cuisine_focus}, técnica {technique_focus}, formato {format_focus}. "
             "Analisa esta imagem de ingredientes. "
             "1. Identifica os ingredientes presentes. "
             "2. Cria uma receita saudável que combine estes ingredientes. "
-            "3. Usa a lista de 'REFERÊNCIA DE ESTILO' com peso baixo e foca-te em máxima VARIAÇÃO e ORIGINALIDADE. "
-            "3.1 Evita repetir estrutura, passos e combinação típica; procura um ângulo novo. "
+            "3. Se houver ALERGÉNIOS listados acima, IGNORA-OS TOTALMENTE e não os uses na receita. "
             "4. Responde em PT-PT. "
             "5. Em 'ingredients', usa quantidades realistas por ingrediente (g, ml, colheres, frações de unidade). "
             "6. Evita unidade inteira quando não fizer sentido para uma porção (ex: '1/4 abacate' em vez de '1 abacate'). "
             "7. PROIBIDO usar quinoa/qinoa em qualquer parte da receita (título, ingredientes ou passos). "
             "IMPORTANTE: Responde APENAS com um objeto JSON válido. Define 'calories' como 0. "
-            "\nEstrutura JSON esperada: { \"detected_ingredients\": [], \"message\": \"...\", \"recipe\": { \"title\": \"...\", \"calories\": 0, \"time_minutes\": 25, \"ingredients\": [\"200g de arroz\", \"1 tomate\"], \"steps\": [] } }"
+            "\nEstrutura JSON: { \"detected_ingredients\": [], \"message\": \"...\", \"recipe\": { \"title\": \"...\", \"calories\": 0, \"time_minutes\": 25, \"ingredients\": [\"200g de arroz\", \"1 tomate\"], \"steps\": [] } }"
         )
 
     try:

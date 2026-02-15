@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUser } from '@/store/userStore'
 import SidebarNav from './SidebarNav.vue'
@@ -13,8 +13,86 @@ import VolumeComparison from './VolumeComparison.vue'
 import FavoritesPage from './FavoritesPage.vue'
 import HistoryPage from './HistoryPage.vue'
 import SettingsPage from './SettingsPage.vue'
+import { auth, API_URL } from '@/auth'
 
 const { fetchUser } = useUser()
+
+// Water Logic
+const waterLiters = ref(0)
+const dashboardKey = ref(0)
+const showWaterReminder = ref(false)
+const nextWaterTime = ref(null)
+let waterInterval = null
+
+const fetchWaterIntake = async () => {
+  try {
+    const today = new Date().toISOString().split('T')[0]
+    const res = await fetch(`${API_URL}/diary/${today}`, {
+      headers: auth.getAuthHeaders()
+    })
+    if (res.ok) {
+      const day = await res.json()
+      waterLiters.value = day.water_liters || 0
+    }
+  } catch (e) {
+    console.error("Failed to fetch water", e)
+  }
+}
+
+const addWaterGlobal = async () => {
+  const newAmount = Number((waterLiters.value + 0.25).toFixed(2))
+  waterLiters.value = newAmount
+  try {
+    const today = new Date().toISOString().split('T')[0]
+    await fetch(`${API_URL}/diary/${today}/water`, {
+      method: 'PUT',
+      headers: auth.getAuthHeaders(),
+      body: JSON.stringify({ water_liters: newAmount })
+    })
+    resetWaterTimer()
+    // Refresh dashboard if active
+    if (activeSection.value === 'inicio') {
+      dashboardKey.value++
+    }
+  } catch (e) {
+    console.error("Water update failed", e)
+  }
+}
+
+const removeWaterGlobal = async () => {
+  if (waterLiters.value <= 0) return
+  const newAmount = Number((waterLiters.value - 0.25).toFixed(2))
+  waterLiters.value = newAmount
+  try {
+    const today = new Date().toISOString().split('T')[0]
+    await fetch(`${API_URL}/diary/${today}/water`, {
+      method: 'PUT',
+      headers: auth.getAuthHeaders(),
+      body: JSON.stringify({ water_liters: newAmount })
+    })
+    resetWaterTimer()
+    // Refresh dashboard if active
+    if (activeSection.value === 'inicio') {
+      dashboardKey.value++
+    }
+  } catch (e) {
+    console.error("Water update failed", e)
+  }
+}
+
+const startWaterTimer = () => {
+  nextWaterTime.value = new Date(Date.now() + 30 * 60 * 1000)
+  waterInterval = setInterval(() => {
+    if (Date.now() >= nextWaterTime.value) {
+      showWaterReminder.value = true
+    }
+  }, 10000)
+}
+
+const resetWaterTimer = () => {
+  showWaterReminder.value = false
+  nextWaterTime.value = new Date(Date.now() + 30 * 60 * 1000)
+}
 
 const sections = [
   { id: 'inicio', label: 'Início', icon: '🏠' },
@@ -173,6 +251,9 @@ const containerStyle = computed(() => {
 onMounted(() => {
   console.log('SiteHomePage onMounted')
   fetchUser().catch(err => console.error('fetchUser failed in SiteHomePage:', err))
+  fetchWaterIntake()
+  startWaterTimer()
+  
   const initialSection = resolveSectionFromRoute(route.params.section)
   const initialSubsection = typeof route.params.subsection === 'string' ? route.params.subsection : ''
   activeSection.value = initialSection
@@ -235,6 +316,10 @@ watch(
     }
   }
 )
+
+onUnmounted(() => {
+  if (waterInterval) clearInterval(waterInterval)
+})
 </script>
 
 <template>
@@ -256,12 +341,32 @@ watch(
     </defs>
   </svg>
 
+  <!-- Water Reminder Toast (Global) -->
+  <div v-if="showWaterReminder" class="water-toast-global">
+    <div class="water-content">
+      <span class="water-icon">💧</span>
+      <div>
+        <h4>Hora de beber água!</h4>
+        <p>Mantém-te hidratado. Já passaram 30 minutos.</p>
+      </div>
+    </div>
+    <div class="water-actions">
+      <button @click="removeWaterGlobal" class="btn-snooze" style="border-color: #0891b2; color: #0891b2;">Remover (-250ml)</button>
+      <button @click="addWaterGlobal" class="btn-drink">Beber (+250ml)</button>
+      <button @click="showWaterReminder = false" class="btn-snooze">Agora não</button>
+    </div>
+  </div>
+
   <div class="site-layout" :class="{ 'theme-dark': isDarkMode }" :style="containerStyle">
     <SidebarNav :sections="sections" :active-section="activeSection" @select="selectSection" />
 
     <main class="content">
       <div v-if="activeSection === 'inicio'">
-        <DashboardHome @navigate="selectSection" />
+        <DashboardHome 
+          :key="dashboardKey"
+          @navigate="selectSection" 
+          @update-water="fetchWaterIntake"
+        />
       </div>
 
       <div v-else-if="activeSection === 'tenho-fome'">
@@ -428,4 +533,85 @@ watch(
     grid-template-columns: 1fr;
   }
 }
+
+/* Water Toast Global Styles */
+.water-toast-global {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--bg-elevated);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(8, 145, 178, 0.25);
+  border: 1px solid var(--line);
+  z-index: 2000;
+  width: 320px;
+  animation: slideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.water-content {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.water-icon {
+  font-size: 2rem;
+  background: #ecfeff;
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.water-content h4 {
+  margin: 0 0 4px;
+  font-size: 1.1rem;
+  color: var(--text-main);
+}
+
+.water-content p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.water-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-drink {
+  flex: 1;
+  background: #0891b2;
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-drink:hover { background: #0e7490; }
+
+.btn-snooze {
+  flex: 1;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--text-muted);
+  padding: 10px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-snooze:hover { background: var(--bg-main); }
 </style>

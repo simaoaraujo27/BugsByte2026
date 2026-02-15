@@ -35,6 +35,10 @@ def sync_sqlite_schema() -> None:
             "reset_token": "ALTER TABLE users ADD COLUMN reset_token VARCHAR",
             "goal": "ALTER TABLE users ADD COLUMN goal VARCHAR",
             "activity_level": "ALTER TABLE users ADD COLUMN activity_level VARCHAR",
+            "target_calories": "ALTER TABLE users ADD COLUMN target_calories INTEGER",
+            "macro_protein_percent": "ALTER TABLE users ADD COLUMN macro_protein_percent INTEGER DEFAULT 30",
+            "macro_carbs_percent": "ALTER TABLE users ADD COLUMN macro_carbs_percent INTEGER DEFAULT 45",
+            "macro_fat_percent": "ALTER TABLE users ADD COLUMN macro_fat_percent INTEGER DEFAULT 25",
         },
         "food_history": {
             "source": "ALTER TABLE food_history ADD COLUMN source VARCHAR DEFAULT 'search'",
@@ -190,7 +194,23 @@ def get_or_create_diary_day(db: Session, user_id: int, date_key: str) -> models.
     if day:
         return day
 
-    day = models.DiaryDay(user_id=user_id, date_key=date_key, goal=1800)
+    # Get user to use their target_calories as default goal
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    default_goal = 1800
+    if user:
+        # Calculate auto goal if target_calories not set
+        if user.target_calories:
+            default_goal = user.target_calories
+        elif user.peso and user.altura and user.idade:
+            # Simple BMR + Activity logic similar to frontend for fallback
+            bmr = 10 * user.peso + 6.25 * user.altura - 5 * user.idade + (5 if user.sexo == 'male' else -161)
+            factors = {'sedentary': 1.2, 'light': 1.375, 'moderate': 1.55, 'high': 1.725}
+            tdee = bmr * factors.get(user.activity_level, 1.2)
+            if user.goal == 'lose': default_goal = int(tdee - 500)
+            elif user.goal == 'gain': default_goal = int(tdee + 300)
+            else: default_goal = int(tdee)
+
+    day = models.DiaryDay(user_id=user_id, date_key=date_key, goal=max(1000, default_goal))
     db.add(day)
     db.commit()
     db.refresh(day)
@@ -214,7 +234,8 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
         sexo=user.sexo,
         idade=user.idade,
         goal=user.goal,
-        activity_level=user.activity_level
+        activity_level=user.activity_level,
+        target_calories=user.target_calories
     )
     db.add(new_user)
     
@@ -276,6 +297,18 @@ def update_user_me(update_data: schemas.UserUpdate, db: Session = Depends(get_db
     if update_data.activity_level is not None:
         current_user.activity_level = str(update_data.activity_level)
     
+    # Check if target_calories was explicitly sent in the request (even if null)
+    update_dict = update_data.model_dump(exclude_unset=True)
+    if update_data.target_calories is not None or "target_calories" in update_dict:
+        current_user.target_calories = update_data.target_calories
+    
+    if update_data.macro_protein_percent is not None:
+        current_user.macro_protein_percent = update_data.macro_protein_percent
+    if update_data.macro_carbs_percent is not None:
+        current_user.macro_carbs_percent = update_data.macro_carbs_percent
+    if update_data.macro_fat_percent is not None:
+        current_user.macro_fat_percent = update_data.macro_fat_percent
+    
     db.commit()
     db.refresh(current_user)
     return current_user
@@ -316,12 +349,12 @@ def get_dashboard_summary(db: Session = Depends(get_db), current_user: models.Us
             
     return {
         "consumed_calories": consumed_calories,
-        "calorie_goal": day.goal,
+        "calorie_goal": current_user.target_calories if current_user.target_calories else day.goal,
         "protein": protein,
         "carbs": carbs,
         "fat": fat,
         "streak_days": streak,
-        "water_liters": 0.0,
+        "water_liters": day.water_liters,
         "weight_history": weight_history
     }
 
@@ -390,6 +423,15 @@ def update_diary_goal(date_key: str, payload: schemas.DiaryGoalUpdate, db: Sessi
     db.refresh(day)
     return day
 
+@app.put("/diary/{date_key}/water", response_model=schemas.DiaryDay)
+def update_diary_water(date_key: str, payload: schemas.DiaryWaterUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    validate_date_key(date_key)
+    day = get_or_create_diary_day(db, current_user.id, date_key)
+    day.water_liters = payload.water_liters
+    db.commit()
+    db.refresh(day)
+    return day
+
 @app.post("/diary/{date_key}/meals", response_model=schemas.DiaryDay)
 def add_diary_meal(date_key: str, payload: schemas.DiaryMealCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     validate_date_key(date_key)
@@ -433,7 +475,8 @@ def analyze_mood(request: schemas.NegotiatorRequest, current_user: models.User =
 
 @app.post("/negotiator/negotiate", response_model=schemas.NegotiatorResponse)
 def negotiate_craving(request: schemas.NegotiatorRequest, current_user: models.User = Depends(auth.get_current_user)):
-    return negotiator.negotiate_craving(request.craving, request.target_calories, request.mood, favorite_recipes=current_user.favorite_recipes)
+    allergens = [a.name for a in current_user.allergens]
+    return negotiator.negotiate_craving(request.craving, request.target_calories, request.mood, favorite_recipes=current_user.favorite_recipes, allergens=allergens)
 
 @app.post("/negotiator/nutrition", response_model=schemas.NutritionAnalysisResponse)
 def analyze_nutrition_endpoint(request: schemas.NutritionAnalysisRequest, current_user: models.User = Depends(auth.get_current_user)):
@@ -442,7 +485,8 @@ def analyze_nutrition_endpoint(request: schemas.NutritionAnalysisRequest, curren
 @app.post("/vision/analyze", response_model=schemas.VisionResponse)
 async def analyze_ingredients_photo(mode: str = "ingredients", file: UploadFile = File(...), current_user: models.User = Depends(auth.get_current_user)):
     contents = await file.read()
-    return vision.analyze_image_ingredients(contents, mode=mode, favorite_recipes=current_user.favorite_recipes)
+    allergens = [a.name for a in current_user.allergens]
+    return vision.analyze_image_ingredients(contents, mode=mode, favorite_recipes=current_user.favorite_recipes, allergens=allergens)
 
 @app.post("/shops/find", response_model=list[schemas.Shop])
 def find_shops(request: schemas.ShopSearchRequest, current_user: models.User = Depends(auth.get_current_user)):

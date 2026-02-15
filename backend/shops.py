@@ -51,14 +51,14 @@ def get_shop_type(ingredients: List[str], api_key: Optional[str] = None) -> str:
 
     ingredients_str = ", ".join(ingredients)
     prompt = (
-        f"Analyze this list of ingredients/terms: {ingredients_str}. "
-        "1. Extract the likely FOOD/SHOP intent even if the text has typos, mixed language, or noisy words. "
-        "2. Ignore filler or nonsensical fragments around valid food terms (example: 'milk on darty' still implies buying milk). "
-        "3. If there is at least one valid food-shopping intent, determine the single best OpenStreetMap 'shop' tag key. "
-        "4. Return exactly 'invalid' only when all terms are nonsensical, inappropriate, offensive, or unrelated to food shopping. "
-        "Examples: 'supermarket', 'convenience', 'greengrocer', 'butcher', 'health_food', 'delicatessen'. "
-        "Examples of noisy input handling: 'milk on darty' -> supermarket, 'chiken brest' -> butcher/supermarket, 'apple banana' -> greengrocer/supermarket. "
-        "Return ONLY the clean string of the tag (or 'invalid') with no punctuation or extra text."
+        f"Analyze this query: {ingredients_str}. "
+        "The query may be a specific item (e.g., '1l milk'), a category (e.g., 'dairy'), or a generic term (e.g., 'bread'). "
+        "It can be in Portuguese, English, or mixed. "
+        "1. Extract the likely FOOD/SHOP intent even if the text has typos or noisy words. "
+        "2. If it's clearly non-food related, return 'invalid'. "
+        "3. Otherwise, return the most appropriate single OpenStreetMap 'shop' tag key. "
+        "Options: 'supermarket', 'convenience', 'greengrocer', 'butcher', 'bakery', 'health_food', 'dairy', 'deli', 'beverages', 'seafood'. "
+        "Return ONLY the tag name (or 'invalid')."
     )
 
     try:
@@ -115,7 +115,7 @@ def find_nearby_shops(tag_value: str, lat: float, lon: float, radius: int = 3000
 
             for element in data.get('elements', []):
                 shop_lat = element.get('lat') or element.get('center', {}).get('lat')
-                shop_lon = element.get('lon') or element.get('center', {}).get('lon')
+                shop_lon = element.get('lon') or element.get('center', {}).get('get_lon')
                 
                 if shop_lat is None or shop_lon is None:
                     continue

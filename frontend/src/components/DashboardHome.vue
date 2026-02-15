@@ -3,14 +3,54 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { auth, API_URL } from '@/auth'
 import { useUser } from '@/store/userStore'
 
-const emit = defineEmits(['navigate'])
+const emit = defineEmits(['navigate', 'update-water'])
 
-const userStore = useUser()
-const displayName = computed(() => userStore.displayName.value)
+const { 
+  displayName, 
+  targetCalories,
+  customMacroPercents
+} = useUser()
 
 const goToDiary = () => emit('navigate', 'diario')
 const goToHungryMode = () => emit('navigate', 'tenho-fome')
 const goToFridgeMode = () => emit('navigate', 'tenho-fome')
+
+const addWater = async () => {
+  const newAmount = Math.min(5.0, dashboardData.value.water_liters + 0.25)
+  // Optimistic update
+  dashboardData.value.water_liters = Number(newAmount.toFixed(2))
+  
+  try {
+    const today = new Date().toISOString().split('T')[0]
+    await fetch(`${API_URL}/diary/${today}/water`, {
+      method: 'PUT',
+      headers: auth.getAuthHeaders(),
+      body: JSON.stringify({ water_liters: newAmount })
+    })
+    emit('update-water') // Tell parent to refresh its global state
+  } catch (e) {
+    console.error("Water update failed", e)
+  }
+}
+
+const removeWater = async () => {
+  if (dashboardData.value.water_liters <= 0) return
+  const newAmount = Math.max(0, dashboardData.value.water_liters - 0.25)
+  // Optimistic update
+  dashboardData.value.water_liters = Number(newAmount.toFixed(2))
+  
+  try {
+    const today = new Date().toISOString().split('T')[0]
+    await fetch(`${API_URL}/diary/${today}/water`, {
+      method: 'PUT',
+      headers: auth.getAuthHeaders(),
+      body: JSON.stringify({ water_liters: newAmount })
+    })
+    emit('update-water') // Tell parent to refresh its global state
+  } catch (e) {
+    console.error("Water update failed", e)
+  }
+}
 
 const dashboardData = ref({
   consumed_calories: 0,
@@ -23,22 +63,30 @@ const dashboardData = ref({
   weight_history: { labels: [], values: [] }
 })
 
-const nutritionCards = computed(() => [
-  {
-    title: 'Calorias',
-    value: String(dashboardData.value.consumed_calories),
-    unit: ' kcal',
-    goalLabel: `Meta: ${dashboardData.value.calorie_goal} kcal`,
-    percent: Math.min(100, Math.round((dashboardData.value.consumed_calories / (dashboardData.value.calorie_goal || 1)) * 100)),
-    accent: '#16a34a',
-    icon: '🔥'
-  },
+const nutritionCards = computed(() => {
+  const goal = targetCalories.value || dashboardData.value.calorie_goal || 2000
+  
+  // Calculate goals based on custom percentages
+  const proteinGoal = Math.round((goal * (customMacroPercents.value.protein / 100)) / 4)
+  const carbsGoal = Math.round((goal * (customMacroPercents.value.carbs / 100)) / 4)
+  const fatGoal = Math.round((goal * (customMacroPercents.value.fat / 100)) / 9)
+
+  return [
+    {
+      title: 'Calorias',
+      value: String(dashboardData.value.consumed_calories),
+      unit: ' kcal',
+      goalLabel: `Meta: ${goal} kcal`,
+      percent: Math.min(100, Math.round((dashboardData.value.consumed_calories / (goal || 1)) * 100)),
+      accent: '#16a34a',
+      icon: '🔥'
+    },
   {
     title: 'Proteínas',
     value: String(Math.round(dashboardData.value.protein)),
     unit: 'g',
-    goalLabel: 'Meta: 120g',
-    percent: Math.min(100, Math.round((dashboardData.value.protein / 120) * 100)),
+    goalLabel: `Meta: ${proteinGoal}g`,
+    percent: Math.min(100, Math.round((dashboardData.value.protein / (proteinGoal || 1)) * 100)),
     accent: '#2563eb',
     icon: '💪'
   },
@@ -46,10 +94,19 @@ const nutritionCards = computed(() => [
     title: 'Carboidratos',
     value: String(Math.round(dashboardData.value.carbs)),
     unit: 'g',
-    goalLabel: 'Meta: 250g',
-    percent: Math.min(100, Math.round((dashboardData.value.carbs / 250) * 100)),
+    goalLabel: `Meta: ${carbsGoal}g`,
+    percent: Math.min(100, Math.round((dashboardData.value.carbs / (carbsGoal || 1)) * 100)),
     accent: '#14b8a6',
     icon: '🍎'
+  },
+  {
+    title: 'Gorduras',
+    value: String(Math.round(dashboardData.value.fat)),
+    unit: 'g',
+    goalLabel: `Meta: ${fatGoal}g`,
+    percent: Math.min(100, Math.round((dashboardData.value.fat / (fatGoal || 1)) * 100)),
+    accent: '#f59e0b',
+    icon: '🥑'
   },
   {
     title: 'Água',
@@ -58,10 +115,11 @@ const nutritionCards = computed(() => [
     goalLabel: 'Meta: 2.5L',
     percent: Math.min(100, Math.round((dashboardData.value.water_liters / 2.5) * 100)),
     accent: '#0891b2',
-    icon: '💧'
+    icon: '💧',
+    action: true // Marker for template
   }
-])
-
+]
+})
 const chartPeriods = [
   { id: '1S', label: '1S' },
   { id: '1M', label: '1M' },
@@ -286,7 +344,9 @@ const loadData = async () => {
 }
 
 onMounted(loadData)
-onUnmounted(stopListening)
+onUnmounted(() => {
+  stopListening()
+})
 </script>
 
 <template>
@@ -305,7 +365,15 @@ onUnmounted(stopListening)
           <div class="stat-icon" :style="{ backgroundColor: card.accent }">{{ card.icon }}</div>
           <div>
             <p class="stat-label">{{ card.title }}</p>
-            <h3>{{ card.value }}<span class="stat-unit">{{ card.unit }}</span></h3>
+            <h3>
+              <button v-if="card.action" @click="removeWater" class="btn-water-mini" title="Remover 250ml">
+                -
+              </button>
+              {{ card.value }}<span class="stat-unit">{{ card.unit }}</span>
+              <button v-if="card.action" @click="addWater" class="btn-water-mini plus" title="Adicionar 250ml">
+                +
+              </button>
+            </h3>
           </div>
         </div>
         <div class="stat-meta">
@@ -425,6 +493,14 @@ onUnmounted(stopListening)
 .dashboard-home {
   max-width: 1180px;
   margin: 0 auto;
+  color: var(--text-main);
+}
+
+.dashboard-home h1,
+.dashboard-home h2,
+.dashboard-home h3,
+.dashboard-home h4 {
+  color: var(--text-main);
 }
 
 .header-row {
@@ -504,6 +580,44 @@ onUnmounted(stopListening)
   display: flex;
   align-items: baseline;
   gap: 2px;
+}
+
+.btn-water-mini {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: none;
+  background: var(--bg-main);
+  color: #0891b2;
+  font-weight: 800;
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  margin: 0 6px;
+  vertical-align: middle;
+}
+
+.btn-water-mini:hover {
+  background: #0891b2;
+  color: white;
+  transform: scale(1.1);
+}
+
+.btn-water-mini.plus {
+  background: #e0f2fe;
+}
+
+:global(.theme-dark) .btn-water-mini {
+  background: #1e293b;
+  color: #22d3ee;
+}
+
+:global(.theme-dark) .btn-water-mini:hover {
+  background: #22d3ee;
+  color: #0f172a;
 }
 
 .stat-unit {
