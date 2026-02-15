@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from 'vue';
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue';
 import { auth, API_URL } from '@/auth';
 import { addRecipeToHistory } from '@/utils/recipeHistory';
 
@@ -11,8 +11,17 @@ const props = defineProps({
   initialCraving: {
     type: String,
     default: ''
+  },
+  isDarkMode: {
+    type: Boolean,
+    default: null
   }
 });
+
+const resolvedDarkMode = computed(() => {
+  if (typeof props.isDarkMode === 'boolean') return props.isDarkMode
+  return document.documentElement.classList.contains('dark')
+})
 
 const emit = defineEmits(['choice', 'route-mode-change', 'navigate', 'negotiated']);
 
@@ -381,7 +390,7 @@ watch(
 </script>
 
 <template>
-  <div class="negotiator-container">
+  <div class="negotiator-container" :class="resolvedDarkMode ? 'neg-dark' : 'neg-light'">
     
     <!-- MAIN LANDING -->
     <div v-if="activeView === 'landing'" class="view-wrapper fade-in">
@@ -816,9 +825,17 @@ watch(
   transform: translateY(-2px);
 }
 
-:global(.theme-dark) .rec-final-action {
-  background: linear-gradient(180deg, rgba(4, 9, 26, 0.95), rgba(2, 6, 18, 0.98));
-  border-top: 1px solid var(--line);
+:global(.site-layout.theme-dark) .rec-final-action,
+:global(html.dark) .rec-final-action,
+:global(.theme-dark) .rec-final-action,
+:global(.dark) .rec-final-action {
+  background: linear-gradient(180deg, rgba(4, 9, 26, 0.95), rgba(2, 6, 18, 0.98)) !important;
+  border-top: 1px solid var(--line) !important;
+}
+
+.negotiator-container.neg-dark .rec-final-action {
+  background: linear-gradient(180deg, rgba(4, 9, 26, 0.95), rgba(2, 6, 18, 0.98)) !important;
+  border-top: 1px solid var(--line) !important;
 }
 
 .btn-save {
@@ -934,25 +951,52 @@ watch(
   cursor: pointer;
 }
 
-:global(.theme-dark) .ui-feedback-modal {
+:global(.theme-dark) .ui-feedback-modal,
+:global(.dark) .ui-feedback-modal {
   border: 1px solid rgba(255, 255, 255, 0.14);
   background: linear-gradient(165deg, rgba(18, 31, 62, 0.97), rgba(10, 19, 40, 0.97));
   box-shadow: 0 24px 46px rgba(0, 0, 0, 0.35);
 }
 
-:global(.theme-dark) .ui-feedback-modal.success {
+.negotiator-container.neg-dark .ui-feedback-modal {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(165deg, rgba(18, 31, 62, 0.97), rgba(10, 19, 40, 0.97));
+  box-shadow: 0 24px 46px rgba(0, 0, 0, 0.35);
+}
+
+:global(.theme-dark) .ui-feedback-modal.success,
+:global(.dark) .ui-feedback-modal.success {
   border-color: rgba(52, 211, 153, 0.42);
 }
 
-:global(.theme-dark) .ui-feedback-modal.error {
+.negotiator-container.neg-dark .ui-feedback-modal.success {
+  border-color: rgba(52, 211, 153, 0.42);
+}
+
+:global(.theme-dark) .ui-feedback-modal.error,
+:global(.dark) .ui-feedback-modal.error {
   border-color: rgba(255, 127, 127, 0.36);
 }
 
-:global(.theme-dark) .ui-feedback-modal h3 {
+.negotiator-container.neg-dark .ui-feedback-modal.error {
+  border-color: rgba(255, 127, 127, 0.36);
+}
+
+:global(.theme-dark) .ui-feedback-modal h3,
+:global(.dark) .ui-feedback-modal h3 {
   color: var(--text-main);
 }
 
-:global(.theme-dark) .ui-feedback-modal p {
+.negotiator-container.neg-dark .ui-feedback-modal h3 {
+  color: var(--text-main);
+}
+
+:global(.theme-dark) .ui-feedback-modal p,
+:global(.dark) .ui-feedback-modal p {
+  color: var(--text-muted);
+}
+
+.negotiator-container.neg-dark .ui-feedback-modal p {
   color: var(--text-muted);
 }
 
