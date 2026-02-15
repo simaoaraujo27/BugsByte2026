@@ -1,78 +1,106 @@
-# BugsByte2026
+# 🍎 BugsByte 2026 - Nutrium Challenge 🚀
 
-Repositório para a Hackathon Bugsbyte 2026
+[![Hackathon Bugsbyte](https://img.shields.io/badge/Hackathon-Bugsbyte%202026-blueviolet?style=for-the-badge)](https://bugsbyte.pt/)
+[![Vue.js](https://img.shields.io/badge/Vue.js-3.5+-4FC08D?style=for-the-badge&logo=vue.js&logoColor=white)](https://vuejs.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.129+-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![OpenAI](https://img.shields.io/badge/AI-Powered-FF6600?style=for-the-badge&logo=openai&logoColor=white)](https://openai.com/)
 
-## Project Overview
-
-This project consists of a Python FastAPI backend with a SQLite database and a Vue.js frontend.
-
-## Prerequisites
-
-Before you begin, ensure you have the following installed:
-
-*   **Node.js & npm (or Yarn/pnpm):** Required for the Vue.js frontend.
-    *   [Node.js Download](https://nodejs.org/)
-*   **Python (3.14.0 recommended):** Required for the FastAPI backend.
-    *   It is highly recommended to use a Python version manager like `pyenv` to manage your Python versions.
-    *   [pyenv GitHub](https://github.com/pyenv/pyenv)
-*   **Poetry:** Python dependency management tool for the backend.
-    *   [Poetry Installation](https://python-poetry.org/docs/#installation)
-    *   You can install it using: `curl -sSL https://install.python-poetry.org | python -`
-
-## Getting Started
-
-### 1. Backend Setup & Run (FastAPI with Poetry)
-
-1.  **Navigate to the backend directory:**
-    ```bash
-    cd backend
-    ```
-
-2.  **Install Python dependencies using Poetry:**
-    This will create a virtual environment (if one doesn't exist) and install all required packages.
-    ```bash
-    poetry install
-    ```
-
-3.  **Run the FastAPI application:**
-    ```bash
-    ./start.sh
-    ```
-    The backend will start on `http://localhost:8000`. A `sql_app.db` file will be created in the `backend/` directory upon the first database interaction.
-
-### 2. Frontend Setup & Run (Vue.js)
-
-1.  **Open a new terminal and navigate to the frontend directory:**
-    ```bash
-    cd frontend
-    ```
-
-2.  **Install Node.js dependencies:**
-    ```bash
-    npm install
-    ```
-
-3.  **Run the Vue.js development server:**
-    ```bash
-    ./start.sh
-    ```
-    The frontend will typically start on `http://localhost:5173`.
-
-## How to Develop
-
-### Backend Development
-
-*   **Dependencies:** Use `poetry add <package-name>` to add new Python dependencies.
-*   **Running commands:** Use `poetry run <command>` (e.g., `poetry run python my_script.py`) to execute commands within the Poetry-managed environment.
-*   **API Endpoints:** Modify `backend/main.py` to add or change API routes.
-*   **Database Models:** Update `backend/models.py` for changes to your database schema.
-*   **Data Validation:** Adjust `backend/schemas.py` for request and response data validation.
-
-### Frontend Development
-
-*   **Dependencies:** Use `npm install <package-name>` to add new Node.js dependencies.
-*   **Components:** Create and modify Vue components in `frontend/src/components/`.
-*   **Views/Pages:** Update `frontend/src/App.vue` or create new views/pages with `vue-router` if your application grows.
-*   **API Interaction:** The frontend interacts with the backend at `http://localhost:8000`.
+> **Nutrição Inteligente, Decisões Conscientes.**
+> Uma solução completa desenvolvida para a Hackathon Bugsbyte 2026, focada em transformar a relação das pessoas com a alimentação através de Inteligência Artificial e Gamificação.
 
 ---
+
+## 📽️ Pitch & Vision
+
+Este projeto foi desenhado para resolver a fricção entre o **querer ser saudável** e o **saber como ser saudável** no dia-a-dia corrido. Combinamos tracking rigoroso com assistentes IA que não apenas contam calorias, mas "negociam" e visualizam o teu progresso.
+
+### 🚩 O Problema
+A maioria das apps de nutrição são apenas bases de dados passivas. Os utilizadores sentem-se perdidos na escolha de receitas, na gestão de sobras e na visualização real do seu progresso físico.
+
+### ✨ A Nossa Solução
+Uma plataforma holística que atua como um nutricionista de bolso, capaz de:
+1.  **Ver** o que tens no frigorífico (Computer Vision).
+2.  **Negociar** as tuas vontades vs. os teus objetivos (AI Negotiator).
+3.  **Projetar** o teu futuro corpo (3D Body Evolution).
+
+---
+
+## 🌟 Funcionalidades Principais
+
+### 🤖 AI Negotiator (O teu Mediador de Nutrição)
+Não sabes o que comer mas tens um desejo específico? O nosso Negotiator utiliza LLMs para encontrar o equilíbrio perfeito entre o teu *craving* e as tuas metas diárias. Ele sugere receitas dinâmicas baseadas no que realmente tens disponível.
+
+### 👁️ Vision Recipe (IA Visual)
+Tira uma foto ao teu frigorífico ou a um prato pronto. A nossa IA identifica ingredientes, estima macros e sugere receitas instantâneas. Desperdício zero, saúde máxima.
+
+### 🧍 Body Evolution (Visualização 3D)
+Utilizando modelos 3D (`Three.js`), o utilizador pode visualizar a evolução do seu biótipo com base nos dados antropométricos e progresso real. Ver para crer!
+
+### 📊 Dashboard Holístico
+*   **Diário Nutricional:** Registo de refeições com cálculo automático de macros.
+*   **Fasting Timer:** Controlo de jejum intermitente com lembretes inteligentes.
+*   **Water Tracker:** Gestão de hidratação com notificações.
+*   **Shop Finder:** Encontra lojas saudáveis perto de ti.
+
+### 🎮 Gamificação e Ferramentas
+*   **Nutrition Quiz:** Aprende enquanto jogas.
+*   **Casino Game:** Uma forma divertida de ganhar badges e motivação.
+*   **Unit Converter:** Converte medidas de culinária num clique.
+
+---
+
+## 🛠️ Stack Tecnológica
+
+### Frontend
+- **Framework:** Vue.js 3 (Composition API)
+- **Estilização:** Tailwind CSS (Moderno & Responsivo)
+- **Gráficos:** Chart.js (Visualização de Macros/Peso)
+- **3D:** Three.js (Evolução de corpo)
+- **Mapas:** Leaflet (Shop Finder)
+
+### Backend
+- **Linguagem:** Python 3.14 (Bleeding edge!)
+- **Framework:** FastAPI (Alta performance, Async)
+- **Base de Dados:** PostgreSQL / SQLite (SQLAlchemy ORM)
+- **IA:** Integração com OpenAI (GPT-4o / Vision) e Groq (Llama-3)
+- **Gestão de Dependências:** Poetry
+
+---
+
+## 🚀 Como Executar
+
+### Pré-requisitos
+- Node.js (v20+)
+- Python (3.14+)
+- Poetry
+
+### Backend
+```bash
+cd backend
+poetry install
+./start.sh
+```
+
+### Frontend
+```bash
+cd frontend
+npm install
+./start.sh
+```
+
+---
+
+## 🎯 Slides & Pitch Support (Cheat Sheet)
+
+Se estiveres a usar este README para gerar a tua apresentação, foca nestes 3 pontos:
+1.  **Tecnologia:** Uso de Computer Vision para eliminar a barreira da introdução manual de dados.
+2.  **Retenção:** A visualização 3D do corpo cria um laço emocional e motivacional único.
+3.  **Utilidade:** O AI Negotiator resolve o dilema diário do "O que vou jantar?".
+
+---
+
+## 👥 Equipa - BugsByte 2026
+Desenvolvido com ❤️ por uma equipa focada em inovação e saúde.
+
+---
+*Este projeto foi desenvolvido durante a Hackathon Bugsbyte 2026.*
