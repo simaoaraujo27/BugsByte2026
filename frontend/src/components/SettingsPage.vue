@@ -129,6 +129,30 @@ export default {
   cursor: pointer;
 }
 
+@media (max-width: 860px) {
+  .settings-panel {
+    max-width: none;
+  }
+
+  .settings-card {
+    margin-top: 16px;
+    padding: 14px;
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .theme-toggle {
+    align-self: flex-end;
+  }
+
+  .mode-select {
+    width: 100%;
+    min-height: 42px;
+    font-size: 1rem;
+  }
+}
+
 .profile-section {
   flex-direction: column;
   align-items: flex-start;
