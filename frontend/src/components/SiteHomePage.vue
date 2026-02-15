@@ -748,9 +748,15 @@ onUnmounted(() => {
   min-height: 100vh;
   display: grid;
   grid-template-columns: 240px 1fr;
+  width: 100%;
+  overflow-x: clip;
   background: linear-gradient(160deg, #f8fbff 0%, var(--bg-main) 100%);
   color: var(--text-main);
   font-family: Sora, 'Segoe UI', Tahoma, sans-serif;
+}
+
+.site-layout > * {
+  min-width: 0;
 }
 
 .site-layout.theme-dark {
@@ -774,6 +780,9 @@ onUnmounted(() => {
 
 .content {
   padding: 44px;
+  min-width: 0;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 .content h1 {
@@ -832,6 +841,16 @@ onUnmounted(() => {
 @media (max-width: 860px) {
   .site-layout {
     grid-template-columns: 1fr;
+  }
+
+  .content {
+    padding: 22px 16px 104px;
+  }
+}
+
+@media (max-width: 480px) {
+  .content {
+    padding: 16px 12px 96px;
   }
 }
 
@@ -1151,6 +1170,29 @@ onUnmounted(() => {
 }
 
 @media (max-width: 450px) {
+  .water-toast-global {
+    left: 12px;
+    right: 12px;
+    bottom: 84px;
+    width: auto;
+    padding: 14px;
+  }
+
+  .water-content {
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .water-actions {
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .btn-drink,
+  .btn-snooze {
+    min-width: 120px;
+  }
+
   .chat-assistant-window {
     right: 0;
     bottom: 0;
