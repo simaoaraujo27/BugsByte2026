@@ -36,7 +36,6 @@ const isChatOpen = ref(false)
 const chatInput = ref('')
 const isChatLoading = ref(false)
 const isListening = ref(false)
-const isVoiceEnabled = ref(false)
 const diaryKey = ref(0) // Used to refresh diary if needed
 const chatMessages = ref([
   { role: 'assistant', content: 'Olá! Eu sou a Nutra. Estou aqui para te ajudar a tirar o máximo partido da NutriVentures. O que precisas de saber?' }
@@ -44,55 +43,6 @@ const chatMessages = ref([
 
 const toggleChat = () => {
   isChatOpen.value = !isChatOpen.value
-}
-
-// Voice Synthesis (TTS) - Native Implementation
-const speak = (text) => {
-  if (!isVoiceEnabled.value || !window.speechSynthesis) return
-  
-  console.log('[Nutra Voice] Attempting to speak:', text.substring(0, 30))
-  
-  try {
-    // Cancel any previous speech to avoid overlap or blocking
-    window.speechSynthesis.cancel()
-    
-    const utterance = new SpeechSynthesisUtterance(text)
-    utterance.lang = 'pt-PT'
-    utterance.rate = 1.0
-    utterance.pitch = 1.0
-    
-    // Attempt to pick a PT-PT voice
-    const voices = window.speechSynthesis.getVoices()
-    const ptVoice = voices.find(v => v.lang.includes('pt-PT')) || voices.find(v => v.lang.startsWith('pt'))
-    if (ptVoice) utterance.voice = ptVoice
-    
-    window.speechSynthesis.speak(utterance)
-  } catch (e) {
-    console.warn('[Nutra Voice] Native TTS failed:', e)
-  }
-}
-
-// Function to "unlock" audio (browsers require user gesture)
-const toggleVoiceAndUnlock = () => {
-  isVoiceEnabled.value = !isVoiceEnabled.value
-  console.log('[Nutra Voice] Voice enabled:', isVoiceEnabled.value)
-
-  if (isVoiceEnabled.value) {
-    // Speak a tiny message to unlock the context
-    if (window.speechSynthesis) {
-      window.speechSynthesis.cancel()
-      const unlock = new SpeechSynthesisUtterance('Voz ligada')
-      unlock.lang = 'pt-PT'
-      unlock.volume = 0.5
-      window.speechSynthesis.speak(unlock)
-    }
-    
-    // Speak last message if available
-    if (chatMessages.value.length > 0) {
-      const lastMsg = chatMessages.value[chatMessages.value.length - 1]
-      if (lastMsg.role === 'assistant') speak(lastMsg.content)
-    }
-  }
 }
 
 // Voice Recognition (STT)
@@ -132,29 +82,19 @@ const sendChatMessage = async () => {
     
     if (res.ok) {
       const data = await res.json()
-      // PUSH TEXT FIRST
       chatMessages.value.push({ role: 'assistant', content: data.content })
       
-      // TRIGGER VOICE SECOND (Safely)
-      try {
-        speak(data.content)
-      } catch (voiceErr) {
-        console.warn('Voice output failed, but message was shown:', voiceErr)
-      }
-
       if (data.action) {
         executeNutraAction(data.action)
       }
     } else {
       const errText = 'Desculpa, tive um problema ao processar a tua mensagem.'
       chatMessages.value.push({ role: 'assistant', content: errText })
-      try { speak(errText) } catch (e) {}
     }
   } catch (e) {
     console.error('Chat processing error:', e)
     const errText = 'Erro de ligação com o servidor.'
     chatMessages.value.push({ role: 'assistant', content: errText })
-    try { speak(errText) } catch (e) {}
   } finally {
     isChatLoading.value = false
     // Scroll to bottom
@@ -541,14 +481,6 @@ onMounted(() => {
   fetchUser().catch(err => console.error('fetchUser failed in SiteHomePage:', err))
   fetchWaterIntake()
   startWaterTimer()
-
-  // Pre-load voices for TTS
-  if (window.speechSynthesis) {
-    window.speechSynthesis.getVoices()
-    if (window.speechSynthesis.onvoiceschanged !== undefined) {
-      window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices()
-    }
-  }
   
   const initialSection = resolveSectionFromRoute(route.params.section)
   const initialSubsection = typeof route.params.subsection === 'string' ? route.params.subsection : ''
@@ -741,14 +673,6 @@ onUnmounted(() => {
             <p>Assistente Inteligente</p>
           </div>
         </div>
-        <button 
-          class="voice-toggle-btn" 
-          @click="toggleVoiceAndUnlock"
-          :class="{ 'voice-active': isVoiceEnabled }"
-          title="Ativar/Desativar Voz"
-        >
-          {{ isVoiceEnabled ? '🔊' : '🔈' }}
-        </button>
       </header>
       
       <div class="chat-messages-box">
@@ -1043,27 +967,7 @@ onUnmounted(() => {
   background: var(--menu-active-text);
   color: white;
   padding: 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 }
-
-.voice-toggle-btn {
-  background: rgba(255,255,255,0.15);
-  border: none;
-  font-size: 1.2rem;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.voice-toggle-btn:hover { background: rgba(255,255,255,0.25); }
-.voice-toggle-btn.voice-active { background: white; }
 
 .chat-header-info {
   display: flex;
