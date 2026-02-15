@@ -62,8 +62,12 @@ def negotiate_craving(craving: str, target_calories: int = 600, mood: Optional[s
         f"\nNOTAS ADICIONAIS (Secundárias):\n"
         f"- Estilo: {cuisine_focus}, técnica {technique_focus}, formato {format_focus}.\n"
         f"- {style_inspiration}\n"
+        "\nREGRAS DE RESPOSTA:\n"
+        "1. O campo 'message' deve ser EXCLUSIVAMENTE texto natural e conversacional (ex: 'Aqui tens uma versão saudável do teu bolo!').\n"
+        "2. NUNCA coloques JSON, markdown, ou blocos de código dentro do campo 'message'.\n"
+        "3. O resultado final deve ser um JSON puro, sem prefixos ou sufixos.\n"
         "\nRetorna JSON:\n"
-        "{ 'message': '...', 'recipe': { 'title': '...', 'calories': 0, 'time_minutes': 30, 'ingredients': ['...'], 'steps': [] } ou null, 'restaurant_search_term': '...' }"
+        "{ 'message': 'Texto conversacional aqui', 'recipe': { 'title': '...', 'calories': 0, 'time_minutes': 30, 'ingredients': ['...'], 'steps': [] } ou null, 'restaurant_search_term': '...' }"
     )
 
     strict_json_rules = (
