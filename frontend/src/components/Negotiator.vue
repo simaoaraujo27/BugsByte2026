@@ -786,9 +786,9 @@ watch(
 
 .rec-final-action {
   padding: 34px 40px;
-  background: linear-gradient(180deg, rgba(4, 9, 26, 0.95), rgba(2, 6, 18, 0.98));
+  background: linear-gradient(180deg, #f5f9ff 0%, #eaf2ff 100%);
   text-align: center;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid #d5e3f7;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -814,6 +814,11 @@ watch(
   border-color: rgba(161, 200, 255, 0.8);
   background: linear-gradient(135deg, rgba(39, 84, 160, 0.98), rgba(24, 58, 120, 0.98));
   transform: translateY(-2px);
+}
+
+:global(.theme-dark) .rec-final-action {
+  background: linear-gradient(180deg, rgba(4, 9, 26, 0.95), rgba(2, 6, 18, 0.98));
+  border-top: 1px solid var(--line);
 }
 
 .btn-save {
@@ -887,17 +892,17 @@ watch(
   width: min(430px, 100%);
   border-radius: 18px;
   padding: 22px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: linear-gradient(165deg, rgba(18, 31, 62, 0.97), rgba(10, 19, 40, 0.97));
-  box-shadow: 0 24px 46px rgba(0, 0, 0, 0.35);
+  border: 1px solid #d7e4f5;
+  background: linear-gradient(165deg, #ffffff, #edf5ff);
+  box-shadow: 0 20px 40px rgba(28, 57, 98, 0.18);
 }
 
 .ui-feedback-modal.success {
-  border-color: rgba(52, 211, 153, 0.42);
+  border-color: rgba(16, 185, 129, 0.38);
 }
 
 .ui-feedback-modal.error {
-  border-color: rgba(255, 127, 127, 0.36);
+  border-color: rgba(244, 63, 94, 0.35);
 }
 
 .ui-feedback-icon {
@@ -907,13 +912,13 @@ watch(
 
 .ui-feedback-modal h3 {
   margin: 0 0 6px 0;
-  color: var(--text-main);
+  color: #10203f;
   font-weight: 900;
 }
 
 .ui-feedback-modal p {
   margin: 0;
-  color: var(--text-muted);
+  color: #4b6287;
   line-height: 1.5;
 }
 
@@ -927,6 +932,28 @@ watch(
   color: #fff;
   font-weight: 700;
   cursor: pointer;
+}
+
+:global(.theme-dark) .ui-feedback-modal {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(165deg, rgba(18, 31, 62, 0.97), rgba(10, 19, 40, 0.97));
+  box-shadow: 0 24px 46px rgba(0, 0, 0, 0.35);
+}
+
+:global(.theme-dark) .ui-feedback-modal.success {
+  border-color: rgba(52, 211, 153, 0.42);
+}
+
+:global(.theme-dark) .ui-feedback-modal.error {
+  border-color: rgba(255, 127, 127, 0.36);
+}
+
+:global(.theme-dark) .ui-feedback-modal h3 {
+  color: var(--text-main);
+}
+
+:global(.theme-dark) .ui-feedback-modal p {
+  color: var(--text-muted);
 }
 
 /* Utils */
