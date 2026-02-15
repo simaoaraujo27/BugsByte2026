@@ -1,7 +1,7 @@
 <template>
-  <div class="history-page">
-    <div class="header-row">
-      <div>
+  <div class="history-page" :class="{ embedded }">
+    <div v-if="!embedded || history.length" class="header-row" :class="{ embedded }">
+      <div v-if="!embedded">
         <h1>Histórico de Receitas</h1>
         <p>Receitas recomendadas automaticamente no "Tenho Fome".</p>
       </div>
@@ -13,23 +13,50 @@
       <button class="action-btn" @click="$emit('navigate', 'tenho-fome')">Ir para Tenho Fome</button>
     </div>
 
-    <div v-else class="history-grid">
-      <article v-for="item in history" :key="item.id" class="card">
-        <div>
-          <div class="card-top">
-            <span class="source">{{ sourceLabel(item.source) }}</span>
-            <span v-if="item.calories" class="kcal">{{ item.calories }} kcal</span>
+    <div v-else class="history-carousel-wrap">
+      <div ref="historyScroller" class="cards-row" @scroll="updateHistoryScrollState">
+        <article v-for="item in history" :key="item.id" class="card">
+          <div>
+            <div class="card-top">
+              <span class="source">{{ sourceLabel(item.source) }}</span>
+              <span v-if="item.calories" class="kcal">{{ item.calories }} kcal</span>
+            </div>
+            <h3>{{ item.name }}</h3>
+            <p class="meta">{{ formatDate(item.created_at) }}</p>
+            <p class="description">{{ truncate(item.instructions.join(' '), 110) }}</p>
           </div>
-          <h3>{{ item.name }}</h3>
-          <p class="meta">{{ formatDate(item.created_at) }}</p>
-          <p class="description">{{ truncate(item.instructions.join(' '), 110) }}</p>
-        </div>
 
-        <div class="actions">
-          <button class="btn-expand" @click="open(item)">Expandir</button>
-          <button class="btn-remove" @click="remove(item)">🗑️</button>
-        </div>
-      </article>
+          <div class="actions">
+            <button class="btn-expand" @click="open(item)">Expandir</button>
+            <button class="btn-remove" @click="remove(item)">🗑️</button>
+          </div>
+        </article>
+      </div>
+
+      <div v-if="showHistoryScrollLeft" class="carousel-fade carousel-fade-left"></div>
+      <div v-if="showHistoryScrollRight" class="carousel-fade carousel-fade-right"></div>
+
+      <button
+        v-if="hasHorizontalOverflow"
+        class="scroll-arrow scroll-arrow-left"
+        @click="scrollHistoryLeft"
+        :disabled="!showHistoryScrollLeft"
+        aria-label="Ver receitas anteriores"
+        title="Ver receitas anteriores"
+      >
+        ‹
+      </button>
+
+      <button
+        v-if="hasHorizontalOverflow"
+        class="scroll-arrow scroll-arrow-right"
+        @click="scrollHistoryRight"
+        :disabled="!showHistoryScrollRight"
+        aria-label="Ver mais receitas"
+        title="Ver mais receitas"
+      >
+        ›
+      </button>
     </div>
 
     <div v-if="selected" class="modal-overlay" @click.self="close">
@@ -72,23 +99,36 @@ import { clearRecipeHistory, loadRecipeHistory, removeRecipeFromHistory } from '
 export default {
   name: 'HistoryPage',
   emits: ['navigate'],
+  props: {
+    embedded: {
+      type: Boolean,
+      default: false
+    }
+  },
   data() {
     return {
       history: [],
       selected: null,
-      pendingRemoval: null
+      pendingRemoval: null,
+      showHistoryScrollLeft: false,
+      showHistoryScrollRight: false,
+      hasHorizontalOverflow: false
     };
   },
   mounted() {
     this.reload();
     window.addEventListener('storage', this.reload);
+    window.addEventListener('resize', this.updateHistoryScrollState);
+    this.$nextTick(() => this.updateHistoryScrollState());
   },
   beforeUnmount() {
     window.removeEventListener('storage', this.reload);
+    window.removeEventListener('resize', this.updateHistoryScrollState);
   },
   methods: {
     reload() {
       this.history = loadRecipeHistory();
+      this.$nextTick(() => this.updateHistoryScrollState());
     },
     truncate(text, length) {
       if (!text) return '';
@@ -133,6 +173,38 @@ export default {
       clearRecipeHistory();
       this.close();
       this.reload();
+    },
+    updateHistoryScrollState() {
+      const scroller = this.$refs.historyScroller;
+      if (!scroller) {
+        this.showHistoryScrollLeft = false;
+        this.showHistoryScrollRight = false;
+        this.hasHorizontalOverflow = false;
+        return;
+      }
+
+      this.hasHorizontalOverflow = scroller.scrollWidth > scroller.clientWidth + 6;
+      this.showHistoryScrollLeft = scroller.scrollLeft > 6;
+      const remaining = scroller.scrollWidth - (scroller.scrollLeft + scroller.clientWidth);
+      this.showHistoryScrollRight = remaining > 6;
+    },
+    scrollHistoryLeft() {
+      const scroller = this.$refs.historyScroller;
+      if (!scroller) return;
+
+      scroller.scrollBy({
+        left: -Math.max(scroller.clientWidth * 0.85, 260),
+        behavior: 'smooth'
+      });
+    },
+    scrollHistoryRight() {
+      const scroller = this.$refs.historyScroller;
+      if (!scroller) return;
+
+      scroller.scrollBy({
+        left: Math.max(scroller.clientWidth * 0.85, 260),
+        behavior: 'smooth'
+      });
     }
   }
 };
@@ -144,6 +216,10 @@ export default {
   margin: 0 auto;
 }
 
+.history-page.embedded {
+  max-width: none;
+}
+
 .header-row {
   display: flex;
   justify-content: space-between;
@@ -152,15 +228,39 @@ export default {
   margin-bottom: 26px;
 }
 
+.header-row.embedded {
+  justify-content: flex-end;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
 .header-row p {
   margin-top: 8px;
   color: var(--text-muted);
 }
 
-.history-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+.history-carousel-wrap {
+  position: relative;
+}
+
+.cards-row {
+  display: flex;
   gap: 20px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+  padding-bottom: 6px;
+  padding-right: 54px;
+  scroll-snap-type: x proximity;
+}
+
+.cards-row::-webkit-scrollbar {
+  height: 8px;
+}
+
+.cards-row::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 99px;
 }
 
 .card {
@@ -171,6 +271,8 @@ export default {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  flex: 0 0 330px;
+  scroll-snap-align: start;
 }
 
 .card-top {
@@ -301,6 +403,63 @@ export default {
   border-color: transparent;
 }
 
+.carousel-fade {
+  position: absolute;
+  top: 0;
+  bottom: 14px;
+  width: 88px;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.carousel-fade-left {
+  left: 0;
+  background: linear-gradient(to right, rgba(6, 13, 33, 0.92), rgba(6, 13, 33, 0));
+}
+
+.carousel-fade-right {
+  right: 0;
+  background: linear-gradient(to left, rgba(6, 13, 33, 0.92), rgba(6, 13, 33, 0));
+}
+
+.scroll-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(11, 20, 43, 0.92);
+  color: #e4f5ff;
+  font-size: 2rem;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  transition: transform 0.18s ease, background 0.18s ease;
+}
+
+.scroll-arrow:hover {
+  background: rgba(20, 37, 75, 0.96);
+  transform: translateY(-50%) scale(1.04);
+}
+
+.scroll-arrow:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: translateY(-50%);
+}
+
+.scroll-arrow-left {
+  left: 8px;
+}
+
+.scroll-arrow-right {
+  right: 8px;
+}
+
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -371,8 +530,14 @@ export default {
     flex-direction: column;
   }
 
-  .history-grid {
-    grid-template-columns: 1fr;
+  .card {
+    flex-basis: 280px;
+  }
+
+  .scroll-arrow {
+    width: 38px;
+    height: 38px;
+    font-size: 1.6rem;
   }
 }
 </style>

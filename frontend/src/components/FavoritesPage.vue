@@ -1,8 +1,8 @@
 <template>
-  <div class="favorites-page">
-    <div class="header">
+  <div class="favorites-page" :class="{ embedded }">
+    <div v-if="!embedded" class="header">
       <h1>Os Meus Favoritos</h1>
-      <p class="subtitle">Aqui encontras as receitas e restaurantes que guardaste.</p>
+      <p class="subtitle">Aqui encontras as receitas que guardaste.</p>
     </div>
 
     <div v-if="loading" class="loading-state">
@@ -13,7 +13,6 @@
     <div v-else class="favorites-content">
       <section class="favorites-section">
         <div class="section-header">
-          <h2>🍽️ Receitas Guardadas</h2>
           <span class="count-badge">{{ favoriteRecipes.length }}</span>
         </div>
 
@@ -76,34 +75,6 @@
         </div>
       </section>
 
-      <section class="favorites-section">
-        <div class="section-header">
-          <h2>🏪 Restaurantes Guardados</h2>
-          <span class="count-badge">{{ favoriteRestaurants.length }}</span>
-        </div>
-
-        <div v-if="favoriteRestaurants.length === 0" class="empty-state">
-          <p>Ainda não guardaste nenhum restaurante.</p>
-          <button @click="$emit('navigate', 'tenho-fome')" class="action-btn">
-            Procurar Restaurantes
-          </button>
-        </div>
-
-        <div v-else class="cards-grid">
-          <div v-for="restaurant in favoriteRestaurants" :key="restaurant.id" class="card restaurant-card">
-            <div class="card-content">
-              <h3>{{ restaurant.name }}</h3>
-              <p class="address" v-if="restaurant.address">📍 {{ restaurant.address }}</p>
-              <p class="phone" v-if="restaurant.phone">📞 {{ restaurant.phone }}</p>
-            </div>
-            <div class="card-actions">
-              <button class="btn-remove" @click="requestRemoveRestaurant(restaurant)" title="Remover dos favoritos">
-                🗑️
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
     </div>
 
     <div v-if="selectedRecipe" class="modal-overlay" @click.self="closeRecipeModal">
@@ -151,10 +122,15 @@ import { auth, API_URL } from '@/auth.js';
 
 export default {
   name: 'FavoritesPage',
+  props: {
+    embedded: {
+      type: Boolean,
+      default: false
+    }
+  },
   data() {
     return {
       favoriteRecipes: [],
-      favoriteRestaurants: [],
       loading: true,
       error: null,
       selectedRecipe: null,
@@ -202,14 +178,6 @@ export default {
       };
     },
 
-    requestRemoveRestaurant(restaurant) {
-      this.confirmDialog = {
-        type: 'restaurant',
-        id: restaurant.id,
-        name: restaurant.name
-      };
-    },
-
     closeConfirmDialog() {
       this.confirmDialog = null;
     },
@@ -217,14 +185,9 @@ export default {
     async confirmRemoval() {
       if (!this.confirmDialog) return;
 
-      const { type, id } = this.confirmDialog;
+      const { id } = this.confirmDialog;
       this.closeConfirmDialog();
-
-      if (type === 'recipe') {
-        await this.deleteRecipe(id);
-      } else {
-        await this.deleteRestaurant(id);
-      }
+      await this.deleteRecipe(id);
     },
 
     updateRecipeScrollState() {
@@ -271,7 +234,6 @@ export default {
 
         const data = await response.json();
         this.favoriteRecipes = data.favorite_recipes || [];
-        this.favoriteRestaurants = data.favorite_restaurants || [];
         this.$nextTick(() => this.updateRecipeScrollState());
       } catch (err) {
         console.error('Error fetching favorites:', err);
@@ -298,21 +260,6 @@ export default {
       } catch (err) {
         console.error('Error removing recipe:', err);
       }
-    },
-
-    async deleteRestaurant(id) {
-      try {
-        const response = await fetch(`${API_URL}/users/me/favorites/restaurants/${id}`, {
-          method: 'DELETE',
-          headers: auth.getAuthHeaders(false)
-        });
-
-        if (response.ok) {
-          this.favoriteRestaurants = this.favoriteRestaurants.filter(r => r.id !== id);
-        }
-      } catch (err) {
-        console.error('Error removing restaurant:', err);
-      }
     }
   }
 };
@@ -322,6 +269,10 @@ export default {
 .favorites-page {
   max-width: 1000px;
   margin: 0 auto;
+}
+
+.favorites-page.embedded {
+  max-width: none;
 }
 
 .header {

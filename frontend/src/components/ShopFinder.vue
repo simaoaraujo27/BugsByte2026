@@ -36,6 +36,7 @@ const locationSuggestions = ref([]);
 const showSuggestions = ref(false);
 const savingId = ref(null);
 const isListening = ref(false);
+const voiceNotice = ref('');
 let recognitionInstance = null;
 
 const toggleListening = async () => {
@@ -47,7 +48,7 @@ const toggleListening = async () => {
   }
 
   if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-    alert('O seu navegador não suporta reconhecimento de voz. Use Chrome, Edge ou Safari.')
+    voiceNotice.value = 'Reconhecimento de voz não suportado neste navegador. Use Chrome, Edge ou Safari.'
     return
   }
 
@@ -66,6 +67,7 @@ const toggleListening = async () => {
     
     recognitionInstance.onstart = () => {
       isListening.value = true
+      voiceNotice.value = ''
     }
     
     recognitionInstance.onresult = (event) => {
@@ -98,6 +100,7 @@ const toggleListening = async () => {
     recognitionInstance.start()
   } catch (err) {
     console.error('Failed to start speech recognition:', err)
+    voiceNotice.value = 'Não foi possível iniciar o reconhecimento de voz.'
     stopListening()
   }
 }
@@ -174,11 +177,42 @@ const askForLocation = () => {
       
       if (ingredients.value) findShops();
     },
-    (err) => {
+    async (err) => {
       console.warn("Location error:", err);
+      
+      // Fallback to IP Geolocation if native GPS fails (common on Linux/Chromium)
+      if (err.code === 2 || err.code === 3 || err.message.includes('429')) {
+        console.log("Attempting IP-based geolocation fallback...");
+        try {
+          const res = await fetch('https://ipapi.co/json/');
+          const data = await res.json();
+          if (data.latitude && data.longitude) {
+            userLocation.value = { lat: data.latitude, lon: data.longitude };
+            manualQuery.value = `${data.city}, ${data.country_name} (Aprox.)`;
+            locationConsent.value = 'granted';
+            await nextTick();
+            initMap(userLocation.value.lat, userLocation.value.lon);
+            error.value = "GPS indisponível. A usar localização aproximada por IP.";
+            if (ingredients.value) findShops();
+            return;
+          }
+        } catch (ipErr) {
+          console.error("IP Fallback failed:", ipErr);
+        }
+      }
+
+      let msg = "Não foi possível obter a sua localização.";
+      if (err.code === 1) {
+        msg = "Permissão de localização negada. Ative-a nas definições do seu navegador.";
+      } else {
+        msg = "Localização indisponível. Por favor, use a pesquisa manual abaixo.";
+      }
+      
+      error.value = msg;
       locationConsent.value = 'denied'; 
       localStorage.setItem('locationConsent', 'denied');
-    }
+    },
+    { timeout: 10000 }
   );
 };
 
@@ -415,6 +449,12 @@ onUnmounted(() => {
           <label>Raio de Pesquisa: <strong>{{ searchRadius }}m</strong></label>
           <input type="range" v-model="searchRadius" min="500" max="5000" step="100">
         </div>
+      </div>
+
+      <div v-if="voiceNotice" class="voice-notice" role="status" aria-live="polite">
+        <span class="voice-notice-icon">🎤</span>
+        <span>{{ voiceNotice }}</span>
+        <button type="button" class="voice-notice-close" @click="voiceNotice = ''" aria-label="Fechar aviso">✕</button>
       </div>
 
       <div v-if="error" class="error-msg">{{ error }}</div>
@@ -732,6 +772,42 @@ onUnmounted(() => {
   margin-bottom: 16px;
   font-size: 0.9rem;
   font-weight: 600;
+}
+
+.voice-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: color-mix(in srgb, var(--primary) 20%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 45%, var(--line));
+  color: var(--text-main);
+  padding: 12px 14px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.voice-notice-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--primary) 40%, transparent);
+}
+
+.voice-notice-close {
+  margin-left: auto;
+  border: 1px solid var(--line);
+  background: var(--bg-elevated);
+  color: var(--text-main);
+  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  line-height: 1;
 }
 
 .empty-state {

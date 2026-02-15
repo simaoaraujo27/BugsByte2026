@@ -1,8 +1,24 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { auth, API_URL } from '@/auth'
+import { useUser } from '@/store/userStore'
 
-const DEFAULT_GOAL = 1800
+const { 
+  targetCalories, 
+  customMacroPercents, 
+  saveMacroPercents 
+} = useUser()
+
+// Auto-save changes to server with a slight delay to avoid spamming
+let saveTimeout = null
+watch(customMacroPercents, (newVal) => {
+  if (saveTimeout) clearTimeout(saveTimeout)
+  saveTimeout = setTimeout(() => {
+    saveMacroPercents(newVal)
+  }, 1000)
+}, { deep: true })
+
+const DEFAULT_GOAL = computed(() => targetCalories.value || 1800)
 const mealSections = [
   { id: 'breakfast', label: 'Pequeno-almoço', icon: '🥣' },
   { id: 'lunch', label: 'Almoço', icon: '🍛' },
@@ -195,7 +211,7 @@ const formatMealGrams = (value) => {
 const formatMacro = (value) => `${round1(toNumber(value))}g`
 
 const buildEmptyDay = () => ({
-  goal: DEFAULT_GOAL,
+  goal: DEFAULT_GOAL.value,
   meals: {
     breakfast: [],
     lunch: [],
@@ -239,7 +255,7 @@ const consumedProtein = computed(() => round1(allMealsToday.value.reduce((acc, i
 const consumedCarbs = computed(() => round1(allMealsToday.value.reduce((acc, item) => acc + toNumber(item.carbs), 0)))
 const consumedFat = computed(() => round1(allMealsToday.value.reduce((acc, item) => acc + toNumber(item.fat), 0)))
 
-const calorieGoal = computed(() => Math.max(1, toNumber(currentDay.value.goal) || DEFAULT_GOAL))
+const calorieGoal = computed(() => Math.max(1, DEFAULT_GOAL.value || toNumber(currentDay.value.goal)))
 const deltaCalories = computed(() => calorieGoal.value - consumedCalories.value)
 
 const progressPercent = computed(() => {
@@ -276,12 +292,22 @@ const macroPercentages = computed(() => {
   }
 })
 
+const totalMacroPercent = computed(() => 
+  toNumber(customMacroPercents.value.protein) + 
+  toNumber(customMacroPercents.value.carbs) + 
+  toNumber(customMacroPercents.value.fat)
+)
+
 const macroGoals = computed(() => {
   const total = calorieGoal.value
+  const p = toNumber(customMacroPercents.value.protein) / 100
+  const c = toNumber(customMacroPercents.value.carbs) / 100
+  const f = toNumber(customMacroPercents.value.fat) / 100
+  
   return {
-    protein: Math.round((total * 0.30) / 4),
-    carbs: Math.round((total * 0.45) / 4),
-    fat: Math.round((total * 0.25) / 9)
+    protein: Math.round((total * p) / 4),
+    carbs: Math.round((total * c) / 4),
+    fat: Math.round((total * f) / 9)
   }
 })
 
@@ -295,7 +321,7 @@ const isDayOnTarget = (day) => {
   const mealsList = Array.isArray(day.meals) ? day.meals : []
   const total = mealsList.reduce((acc, item) => acc + toNumber(item.calories), 0)
   if (total === 0) return false
-  return total <= toNumber(day.goal || DEFAULT_GOAL)
+  return total <= toNumber(day.goal || DEFAULT_GOAL.value)
 }
 
 const weeklyDays = computed(() => {
@@ -433,6 +459,20 @@ const saveFoodHistory = async (food) => {
     })
     // Refresh history silently
     fetchFoodHistory()
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+const removeFoodHistory = async (food) => {
+  if (!food?.id) return
+  try {
+    const res = await fetch(`${API_URL}/users/me/food-history/${food.id}`, {
+      method: 'DELETE',
+      headers: auth.getAuthHeaders()
+    })
+    if (!res.ok) throw new Error('Falha ao remover histórico')
+    foodHistory.value = foodHistory.value.filter(item => item.id !== food.id)
   } catch (err) {
     console.error(err)
   }
@@ -595,7 +635,7 @@ const addMeal = async (sectionId, closeAfter = true) => {
       body: JSON.stringify({
         section: sectionId,
         name,
-        grams,
+        grams: Math.round(grams),
         calories: Math.round(calories),
         protein,
         carbs,
@@ -656,6 +696,10 @@ const shiftDay = (delta) => {
   selectedDate.value = d
 }
 
+const shiftWeek = (deltaWeeks) => {
+  shiftDay(deltaWeeks * 7)
+}
+
 const setSelectedDay = (dateObj) => {
   const d = new Date(dateObj)
   d.setHours(12, 0, 0, 0)
@@ -663,7 +707,7 @@ const setSelectedDay = (dateObj) => {
 }
 
 const updateGoal = async (event) => {
-  const next = Math.max(1000, Math.min(6000, toNumber(event.target.value) || DEFAULT_GOAL))
+  const next = Math.max(1000, Math.min(6000, toNumber(event.target.value) || DEFAULT_GOAL.value))
   try {
     const res = await fetch(`${API_URL}/diary/${dateKey.value}/goal`, {
       method: 'PUT',
@@ -830,15 +874,10 @@ watch(
 
     <article class="summary-card">
       <div class="summary-main">
-        <h2>{{ consumedCalories }} / {{ calorieGoal }} kcal</h2>
+        <h2>Objetivo diário:  {{ consumedCalories }} / {{ calorieGoal }} kcal</h2>
         <p v-if="deltaCalories >= 0" class="state-ok">Faltam {{ deltaCalories }} kcal para o objetivo.</p>
         <p v-else class="state-over">+{{ Math.abs(deltaCalories) }} kcal acima do objetivo.</p>
       </div>
-
-      <label class="goal-control">
-        Objetivo diário
-        <input type="number" :value="calorieGoal" min="1000" max="6000" step="50" @change="updateGoal" />
-      </label>
 
       <div class="progress-wrap" aria-label="Progresso calórico">
         <div class="progress-fill" :style="{ width: `${progressPercent}%` }"></div>
@@ -846,17 +885,39 @@ watch(
       </div>
     </article>
 
-    <div class="weekly-strip">
+    <div class="weekly-nav">
       <button
-        v-for="day in weeklyDays"
-        :key="day.key"
         type="button"
-        class="week-day"
-        :class="{ active: day.active, good: day.hasMeals && day.onTarget, over: day.hasMeals && !day.onTarget }"
-        @click="setSelectedDay(day.date)"
+        class="week-nav-btn"
+        @click="shiftWeek(-1)"
+        aria-label="Semana anterior"
+        title="Semana anterior"
       >
-        <span>{{ day.dayName }}</span>
-        <strong>{{ day.dayNum }}</strong>
+        ‹
+      </button>
+
+      <div class="weekly-strip">
+        <button
+          v-for="day in weeklyDays"
+          :key="day.key"
+          type="button"
+          class="week-day"
+          :class="{ active: day.active, good: day.hasMeals && day.onTarget, over: day.hasMeals && !day.onTarget }"
+          @click="setSelectedDay(day.date)"
+        >
+          <span>{{ day.dayName }}</span>
+          <strong>{{ day.dayNum }}</strong>
+        </button>
+      </div>
+
+      <button
+        type="button"
+        class="week-nav-btn"
+        @click="shiftWeek(1)"
+        aria-label="Próxima semana"
+        title="Próxima semana"
+      >
+        ›
       </button>
     </div>
 
@@ -1010,6 +1071,32 @@ watch(
           </div>
         </article>
 
+        <article class="side-card customize-macros">
+          <h3>Personalizar Percentagens</h3>
+          <p class="sub-text">Ajuste a distribuição calórica dos seus macros.</p>
+          
+          <div class="macro-edit-grid">
+            <div class="form-group-diary">
+              <label>Proteína (%)</label>
+              <input v-model.number="customMacroPercents.protein" type="number" min="0" max="100" />
+            </div>
+            <div class="form-group-diary">
+              <label>Hidratos (%)</label>
+              <input v-model.number="customMacroPercents.carbs" type="number" min="0" max="100" />
+            </div>
+            <div class="form-group-diary">
+              <label>Gordura (%)</label>
+              <input v-model.number="customMacroPercents.fat" type="number" min="0" max="100" />
+            </div>
+          </div>
+
+          <div class="total-checker" :class="{ error: totalMacroPercent !== 100 }">
+            Total: <strong>{{ totalMacroPercent }}%</strong>
+            <span v-if="totalMacroPercent !== 100"> (Deve somar 100%)</span>
+            <span v-else class="success-text"> ✅</span>
+          </div>
+        </article>
+
         <article class="side-card">
           <h3>Sugestões</h3>
           <ul class="insights">
@@ -1042,13 +1129,22 @@ watch(
           <p v-if="!foodSearch.query.trim()" class="search-empty">Sugestões do seu histórico:</p>
           
           <ul v-if="displayedFoodResults.length > 0" class="food-suggestions">
-            <li v-for="food in displayedFoodResults" :key="`${food.source}-${food.name}`">
+            <li v-for="food in displayedFoodResults" :key="food.id ? `history-${food.id}` : `${food.source}-${food.name}`">
               <button type="button" @click="chooseFoodSuggestion(food)">
                 <div class="food-info">
                   <strong>{{ food.name }}</strong>
                   <span class="food-source-badge">{{ food.source === 'manual' ? 'recente' : food.source }}</span>
                 </div>
                 <small>{{ food.calories_per_100g }} kcal · P {{ food.protein_per_100g }}g · H {{ food.carbs_per_100g }}g · G {{ food.fat_per_100g }}g (100g)</small>
+              </button>
+              <button
+                v-if="food.id"
+                type="button"
+                class="food-remove-btn"
+                @click.stop="removeFoodHistory(food)"
+                title="Remover do histórico"
+              >
+                remover
               </button>
             </li>
           </ul>
@@ -1148,6 +1244,15 @@ watch(
   background: transparent;
   color: var(--text-main);
   padding: 6px 8px;
+  /* Remove arrows */
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.goal-control input::-webkit-outer-spin-button,
+.goal-control input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .progress-wrap {
@@ -1172,11 +1277,34 @@ watch(
   background: linear-gradient(90deg, #fb7185, #ef4444);
 }
 
-.weekly-strip {
+.weekly-nav {
   margin-top: 14px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.weekly-strip {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 8px;
+}
+
+.week-nav-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--bg-elevated);
+  color: var(--text-main);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.week-nav-btn:hover {
+  border-color: #14b8a6;
 }
 
 .week-day {
@@ -1310,11 +1438,17 @@ watch(
   padding: 0;
   display: grid;
   gap: 6px;
-  max-height: 190px;
+  max-height: 340px;
   overflow: auto;
 }
 
-.food-suggestions li button {
+.food-suggestions li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.food-suggestions li > button:first-child {
   width: 100%;
   text-align: left;
   border: 1px solid var(--line);
@@ -1325,8 +1459,25 @@ watch(
   cursor: pointer;
 }
 
-.food-suggestions li button:hover {
+.food-suggestions li > button:first-child:hover {
   border-color: #14b8a6;
+}
+
+.food-remove-btn {
+  border: 1px solid color-mix(in srgb, #ef4444, var(--line) 40%);
+  background: color-mix(in srgb, #ef4444, transparent 92%);
+  color: #ef5b74;
+  border-radius: 8px;
+  padding: 0 10px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 100%;
+  text-transform: lowercase;
+}
+
+.food-remove-btn:hover {
+  background: color-mix(in srgb, #ef4444, transparent 84%);
 }
 
 .food-suggestions strong {
@@ -1363,15 +1514,15 @@ watch(
 }
 
 .food-modal {
-  width: min(880px, 100%);
-  max-height: 82vh;
+  width: min(1100px, 96vw);
+  max-height: 90vh;
   overflow: auto;
   border: 1px solid var(--line);
   background: var(--bg-elevated);
   border-radius: 14px;
-  padding: 14px;
+  padding: 18px;
   display: grid;
-  gap: 10px;
+  gap: 14px;
 }
 
 .food-modal-head {
@@ -1621,6 +1772,50 @@ watch(
   background: var(--bg-elevated);
   border-radius: 12px;
   padding: 14px;
+}
+
+.customize-macros h3 {
+  margin: 0 0 4px;
+  font-size: 1.1rem;
+}
+
+.sub-text {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.macro-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.macro-edit-grid input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-main);
+  color: var(--text-main);
+}
+
+.total-checker {
+  font-size: 0.9rem;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(148, 163, 184, 0.1);
+  text-align: center;
+}
+
+.total-checker.error {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.success-text {
+  color: #10b981;
 }
 
 .macro-panel h3 {

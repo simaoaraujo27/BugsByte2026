@@ -3,14 +3,58 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { auth, API_URL } from '@/auth'
 import { useUser } from '@/store/userStore'
 
-const emit = defineEmits(['navigate'])
+const emit = defineEmits(['navigate', 'update-water'])
 
-const userStore = useUser()
-const displayName = computed(() => userStore.displayName.value)
+const { 
+  user,
+  displayName, 
+  targetCalories,
+  customMacroPercents
+} = useUser()
 
 const goToDiary = () => emit('navigate', 'diario')
 const goToHungryMode = () => emit('navigate', 'tenho-fome')
-const goToFridgeMode = () => emit('navigate', 'tenho-fome')
+const goToFridgeMode = () => emit('navigate', 'gerar-receita')
+const waterDraft = ref('0.0')
+
+const saveWater = async (amount) => {
+  const safeAmount = Math.max(0, Math.min(10, amount))
+  dashboardData.value.water_liters = Number(safeAmount.toFixed(2))
+  waterDraft.value = dashboardData.value.water_liters.toFixed(1)
+
+  try {
+    const today = new Date().toISOString().split('T')[0]
+    await fetch(`${API_URL}/diary/${today}/water`, {
+      method: 'PUT',
+      headers: auth.getAuthHeaders(),
+      body: JSON.stringify({ water_liters: safeAmount })
+    })
+    emit('update-water')
+  } catch (e) {
+    console.error("Water update failed", e)
+  }
+}
+
+const addWater = async () => {
+  const newAmount = Math.min(10, dashboardData.value.water_liters + 0.25)
+  await saveWater(newAmount)
+}
+
+const removeWater = async () => {
+  if (dashboardData.value.water_liters <= 0) return
+  const newAmount = Math.max(0, dashboardData.value.water_liters - 0.25)
+  await saveWater(newAmount)
+}
+
+const applyWaterInput = async () => {
+  const normalized = String(waterDraft.value || '').replace(',', '.')
+  const parsed = Number(normalized)
+  if (!Number.isFinite(parsed)) {
+    waterDraft.value = dashboardData.value.water_liters.toFixed(1)
+    return
+  }
+  await saveWater(parsed)
+}
 
 const dashboardData = ref({
   consumed_calories: 0,
@@ -23,22 +67,30 @@ const dashboardData = ref({
   weight_history: { labels: [], values: [] }
 })
 
-const nutritionCards = computed(() => [
-  {
-    title: 'Calorias',
-    value: String(dashboardData.value.consumed_calories),
-    unit: ' kcal',
-    goalLabel: `Meta: ${dashboardData.value.calorie_goal} kcal`,
-    percent: Math.min(100, Math.round((dashboardData.value.consumed_calories / (dashboardData.value.calorie_goal || 1)) * 100)),
-    accent: '#16a34a',
-    icon: '🔥'
-  },
+const nutritionCards = computed(() => {
+  const goal = targetCalories.value || dashboardData.value.calorie_goal || 2000
+  
+  // Calculate goals based on custom percentages
+  const proteinGoal = Math.round((goal * (customMacroPercents.value.protein / 100)) / 4)
+  const carbsGoal = Math.round((goal * (customMacroPercents.value.carbs / 100)) / 4)
+  const fatGoal = Math.round((goal * (customMacroPercents.value.fat / 100)) / 9)
+
+  return [
+    {
+      title: 'Calorias',
+      value: String(dashboardData.value.consumed_calories),
+      unit: ' kcal',
+      goalLabel: `Meta: ${goal} kcal`,
+      percent: Math.min(100, Math.round((dashboardData.value.consumed_calories / (goal || 1)) * 100)),
+      accent: '#16a34a',
+      icon: '🔥'
+    },
   {
     title: 'Proteínas',
     value: String(Math.round(dashboardData.value.protein)),
     unit: 'g',
-    goalLabel: 'Meta: 120g',
-    percent: Math.min(100, Math.round((dashboardData.value.protein / 120) * 100)),
+    goalLabel: `Meta: ${proteinGoal}g`,
+    percent: Math.min(100, Math.round((dashboardData.value.protein / (proteinGoal || 1)) * 100)),
     accent: '#2563eb',
     icon: '💪'
   },
@@ -46,10 +98,19 @@ const nutritionCards = computed(() => [
     title: 'Carboidratos',
     value: String(Math.round(dashboardData.value.carbs)),
     unit: 'g',
-    goalLabel: 'Meta: 250g',
-    percent: Math.min(100, Math.round((dashboardData.value.carbs / 250) * 100)),
+    goalLabel: `Meta: ${carbsGoal}g`,
+    percent: Math.min(100, Math.round((dashboardData.value.carbs / (carbsGoal || 1)) * 100)),
     accent: '#14b8a6',
     icon: '🍎'
+  },
+  {
+    title: 'Gorduras',
+    value: String(Math.round(dashboardData.value.fat)),
+    unit: 'g',
+    goalLabel: `Meta: ${fatGoal}g`,
+    percent: Math.min(100, Math.round((dashboardData.value.fat / (fatGoal || 1)) * 100)),
+    accent: '#f59e0b',
+    icon: '🥑'
   },
   {
     title: 'Água',
@@ -58,82 +119,57 @@ const nutritionCards = computed(() => [
     goalLabel: 'Meta: 2.5L',
     percent: Math.min(100, Math.round((dashboardData.value.water_liters / 2.5) * 100)),
     accent: '#0891b2',
-    icon: '💧'
+    icon: '💧',
+    action: true // Marker for template
   }
-])
-
-const chartPeriods = [
-  { id: '1S', label: '1S' },
-  { id: '1M', label: '1M' },
-  { id: '3M', label: '3M' },
-  { id: 'ALL', label: 'Tudo' }
 ]
-
-const selectedPeriod = ref('1M')
-
-const chartData = computed(() => {
-  if (dashboardData.value.weight_history && dashboardData.value.weight_history.labels && dashboardData.value.weight_history.labels.length > 0) {
-    return dashboardData.value.weight_history
-  }
-  return {
-    labels: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'],
-    values: [78.5, 77.9, 77.4, 76.9]
-  }
 })
-
-const currentSeries = computed(() => chartData.value)
-
-const yRange = computed(() => {
-  const values = currentSeries.value.values
-  const min = Math.min(...values)
-  const max = Math.max(...values)
-  const padding = 0.6
-  return {
-    min: Number((min - padding).toFixed(1)),
-    max: Number((max + padding).toFixed(1))
+const weightProjection = computed(() => {
+  const weight = user.value?.peso || 70
+  const height = user.value?.altura || 175
+  const age = user.value?.idade || 25
+  const gender = user.value?.sexo || 'male'
+  const activityLevel = user.value?.activity_level || 'moderate'
+  
+  // Harris-Benedict Equation for BMR
+  let bmr = 0
+  if (gender === 'male') {
+    bmr = 88.362 + (13.397 * weight) + (4.799 * height) - (5.677 * age)
+  } else {
+    bmr = 447.593 + (9.247 * weight) + (3.098 * height) - (4.330 * age)
   }
-})
-
-const chartPoints = computed(() => {
-  const { values } = currentSeries.value
-  const min = yRange.value.min
-  const max = yRange.value.max
-  const span = Math.max(0.001, max - min)
-  const top = 10
-  const bottom = 16
-  const left = 8
-  const right = 92
-  const usableHeight = 100 - top - bottom
-
-  return values.map((value, index) => {
-    const x = values.length === 1 ? 50 : left + (index / (values.length - 1)) * (right - left)
-    const y = top + ((max - value) / span) * usableHeight
-    return { x, y, value }
+  
+  const multipliers = {
+    sedentary: 1.2,
+    light: 1.375,
+    moderate: 1.55,
+    high: 1.725
+  }
+  
+  const maintenance = bmr * (multipliers[activityLevel] || 1.2)
+  const goal = targetCalories.value || dashboardData.value.calorie_goal || 2000
+  const dailyDeficit = maintenance - goal
+  
+  // 7700 kcal approx = 1kg
+  const kgPerDay = dailyDeficit / 7700
+  
+  const periods = [
+    { label: '1 Semana', days: 7, icon: '📅', color: 'text-emerald-500' },
+    { label: '1 Mês', days: 30, icon: '🗓️', color: 'text-emerald-500' },
+    { label: '3 Meses', days: 90, icon: '🚀', color: 'text-blue-500' },
+    { label: '1 Ano', days: 365, icon: '🏆', color: 'text-purple-500' }
+  ]
+  
+  return periods.map(p => {
+    const totalLost = kgPerDay * p.days
+    const finalWeight = Math.max(40, weight - totalLost)
+    return {
+      ...p,
+      lost: totalLost.toFixed(1),
+      weight: finalWeight.toFixed(1),
+      isLoss: totalLost >= 0
+    }
   })
-})
-
-const chartLinePath = computed(() => {
-  return chartPoints.value
-    .map((point, idx) => `${idx === 0 ? 'M' : 'L'} ${point.x} ${point.y}`)
-    .join(' ')
-})
-
-const areaPath = computed(() => {
-  if (!chartPoints.value.length) return ''
-  const first = chartPoints.value[0]
-  const last = chartPoints.value[chartPoints.value.length - 1]
-  const baselineY = 84
-  return `${chartLinePath.value} L ${last.x} ${baselineY} L ${first.x} ${baselineY} Z`
-})
-
-const yTicks = computed(() => {
-  const steps = 4
-  const values = []
-  for (let i = 0; i <= steps; i += 1) {
-    const v = yRange.value.max - ((yRange.value.max - yRange.value.min) / steps) * i
-    values.push(Number(v.toFixed(1)))
-  }
-  return values
 })
 
 const streakDays = computed(() => dashboardData.value.streak_days)
@@ -274,6 +310,7 @@ const fetchDashboardData = async () => {
     })
     if (res.ok) {
       dashboardData.value = await res.json()
+      waterDraft.value = Number(dashboardData.value.water_liters || 0).toFixed(1)
     }
   } catch (err) {
     console.error('Error fetching dashboard data:', err)
@@ -286,7 +323,9 @@ const loadData = async () => {
 }
 
 onMounted(loadData)
-onUnmounted(stopListening)
+onUnmounted(() => {
+  stopListening()
+})
 </script>
 
 <template>
@@ -305,7 +344,23 @@ onUnmounted(stopListening)
           <div class="stat-icon" :style="{ backgroundColor: card.accent }">{{ card.icon }}</div>
           <div>
             <p class="stat-label">{{ card.title }}</p>
-            <h3>{{ card.value }}<span class="stat-unit">{{ card.unit }}</span></h3>
+            <h3 v-if="card.action" class="water-value-row">
+              <button @click="removeWater" class="btn-water-mini" title="Remover 250ml">−</button>
+              <input
+                v-model="waterDraft"
+                type="text"
+                inputmode="decimal"
+                class="water-input"
+                aria-label="Litros de água"
+                @blur="applyWaterInput"
+                @keyup.enter="applyWaterInput"
+              />
+              <span class="stat-unit">L</span>
+              <button @click="addWater" class="btn-water-mini plus" title="Adicionar 250ml">+</button>
+            </h3>
+            <h3 v-else>
+              {{ card.value }}<span class="stat-unit">{{ card.unit }}</span>
+            </h3>
           </div>
         </div>
         <div class="stat-meta">
@@ -319,51 +374,32 @@ onUnmounted(stopListening)
     </section>
 
     <section class="middle-grid">
-      <article class="card chart-card">
+      <article class="card projection-card">
         <div class="chart-head">
           <div>
-            <h3>Evolução do Peso</h3>
-            <p>Acompanha o teu progresso real 🎉</p>
+            <h3>Projeção de Resultados</h3>
+            <p>O que acontece se mantiveres o foco 🔥</p>
           </div>
-          <div class="periods">
-            <button
-              v-for="period in chartPeriods"
-              :key="period.id"
-              :class="['period-btn', { active: selectedPeriod === period.id }]"
-              @click="selectedPeriod = period.id"
-            >
-              {{ period.label }}
-            </button>
+          <div class="info-tag">Baseado no teu metabolismo</div>
+        </div>
+
+        <div class="projection-grid">
+          <div v-for="item in weightProjection" :key="item.label" class="projection-item">
+            <div class="proj-icon">{{ item.icon }}</div>
+            <div class="proj-label">{{ item.label }}</div>
+            <div class="proj-value" :class="item.color">
+              {{ item.isLoss ? '-' : '+' }}{{ Math.abs(item.lost) }}kg
+            </div>
+            <div class="proj-footer">Peso est.: <strong>{{ item.weight }}kg</strong></div>
           </div>
         </div>
 
-        <div class="chart-wrap">
-          <div class="y-axis">
-            <span v-for="tick in yTicks" :key="tick">{{ tick }}kg</span>
-          </div>
-
-          <div class="plot">
-            <div class="grid-lines">
-              <span v-for="tick in yTicks" :key="`grid-${tick}`"></span>
-            </div>
-
-            <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="Gráfico do peso">
-              <path :d="areaPath" class="area" />
-              <path :d="chartLinePath" class="line" />
-              <circle
-                v-for="(point, idx) in chartPoints"
-                :key="`point-${idx}`"
-                :cx="point.x"
-                :cy="point.y"
-                r="1.4"
-                class="dot"
-              />
-            </svg>
-
-            <div class="x-axis" :style="{ gridTemplateColumns: `repeat(${currentSeries.labels.length}, minmax(0, 1fr))` }">
-              <span v-for="label in currentSeries.labels" :key="label">{{ label }}</span>
-            </div>
-          </div>
+        <div class="projection-tip">
+          <span class="tip-icon">💡</span>
+          <p>
+            Ao manteres o teu objetivo de <strong>{{ targetCalories || 2000 }} kcal</strong>, 
+            estás a criar um impacto real. Esta projeção baseia-se na tua taxa metabólica e nível de atividade.
+          </p>
         </div>
       </article>
 
@@ -425,6 +461,14 @@ onUnmounted(stopListening)
 .dashboard-home {
   max-width: 1180px;
   margin: 0 auto;
+  color: var(--text-main);
+}
+
+.dashboard-home h1,
+.dashboard-home h2,
+.dashboard-home h3,
+.dashboard-home h4 {
+  color: var(--text-main);
 }
 
 .header-row {
@@ -506,6 +550,61 @@ onUnmounted(stopListening)
   gap: 2px;
 }
 
+.btn-water-mini {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, #0891b2, transparent 55%);
+  background: color-mix(in srgb, #0891b2, transparent 88%);
+  color: #22d3ee;
+  font-weight: 800;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  margin: 0;
+}
+
+.btn-water-mini:hover {
+  background: #0ea5e9;
+  color: white;
+  transform: translateY(-1px);
+}
+
+.btn-water-mini.plus {
+  background: color-mix(in srgb, #10b981, transparent 84%);
+  border-color: color-mix(in srgb, #10b981, transparent 52%);
+  color: #34d399;
+}
+
+.water-value-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.water-input {
+  width: 66px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg-main), transparent 20%);
+  color: var(--text-main);
+  padding: 5px 8px;
+  font: inherit;
+  font-size: 1.25rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.water-input:focus {
+  outline: none;
+  border-color: #22d3ee;
+  box-shadow: 0 0 0 2px color-mix(in srgb, #22d3ee, transparent 75%);
+}
+
 .stat-unit {
   font-size: 0.9rem;
   font-weight: 600;
@@ -540,9 +639,10 @@ onUnmounted(stopListening)
   gap: 16px;
 }
 
-.chart-card {
-  min-height: 430px;
-  overflow: hidden;
+.projection-card {
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
 }
 
 .chart-head {
@@ -550,111 +650,60 @@ onUnmounted(stopListening)
   justify-content: space-between;
   align-items: flex-start;
   gap: 14px;
+  margin-bottom: 24px;
 }
 
-.chart-head h3 {
-  margin: 0;
-  font-size: 1.9rem;
+.info-tag {
+  background: var(--menu-active-bg);
+  color: var(--menu-active-text);
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
 }
 
-.chart-head p {
-  margin: 6px 0 0;
-  color: var(--text-muted);
+.projection-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  flex: 1;
 }
 
-.periods {
-  display: inline-flex;
-  gap: 6px;
+.projection-item {
   background: var(--bg-main);
   border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 4px;
-}
-
-.period-btn {
-  border: 0;
-  background: transparent;
-  color: var(--text-muted);
-  border-radius: 10px;
-  padding: 7px 13px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.period-btn.active {
-  background: var(--bg-elevated);
-  color: var(--menu-active-text);
-}
-
-.chart-wrap {
-  margin-top: 18px;
-  display: grid;
-  grid-template-columns: 70px 1fr;
-  gap: 12px;
-  height: 310px;
-}
-
-.y-axis {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  color: var(--text-muted);
-  font-size: 0.85rem;
-  padding-top: 6px;
-}
-
-.plot {
-  position: relative;
-  display: grid;
-  grid-template-rows: 1fr auto;
-  overflow: hidden;
-  border-radius: 12px;
-}
-
-.grid-lines {
-  position: absolute;
-  inset: 0 0 32px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  pointer-events: none;
-}
-
-.grid-lines span {
-  border-top: 1px dashed color-mix(in srgb, var(--line), transparent 15%);
-}
-
-.plot svg {
-  width: 100%;
-  height: calc(100% - 32px);
-  position: relative;
-  z-index: 1;
-}
-
-.area {
-  fill: rgba(16, 185, 129, 0.13);
-}
-
-.line {
-  fill: none;
-  stroke: #10b981;
-  stroke-width: 1.2;
-  vector-effect: non-scaling-stroke;
-}
-
-.dot {
-  fill: #10b981;
-}
-
-.x-axis {
-  display: grid;
-  gap: 6px;
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
-
-.x-axis span {
+  padding: 20px;
+  border-radius: 20px;
   text-align: center;
+  transition: transform 0.2s;
+}
+
+.projection-item:hover {
+  transform: scale(1.02);
+  border-color: var(--menu-active-text);
+}
+
+.proj-icon { font-size: 1.5rem; margin-bottom: 8px; }
+.proj-label { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; }
+.proj-value { font-size: 1.8rem; font-weight: 900; margin: 4px 0; }
+.proj-footer { font-size: 0.8rem; color: var(--text-muted); }
+
+.projection-tip {
+  margin-top: 24px;
+  background: color-mix(in srgb, var(--menu-active-text), transparent 92%);
+  padding: 16px;
+  border-radius: 16px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.projection-tip p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-main);
+  line-height: 1.4;
 }
 
 .side-stack {

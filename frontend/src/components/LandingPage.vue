@@ -1,9 +1,15 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import logo from '@/assets/logo.png'
+// import logo from '@/assets/logo.png' // Temporarily commented out to debug
+
+const logo = '/src/assets/logo.png' // Direct path fallback
 
 const router = useRouter()
+
+onMounted(() => {
+  console.log('Landing Page Component Mounted!')
+})
 
 const getInitialTheme = () => {
   if (typeof window === 'undefined') return false

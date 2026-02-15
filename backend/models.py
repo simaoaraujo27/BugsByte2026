@@ -48,6 +48,10 @@ class User(Base):
     reset_token = Column(String, nullable=True)
     goal = Column(String, nullable=True)
     activity_level = Column(String, nullable=True)
+    target_calories = Column(Integer, nullable=True)
+    macro_protein_percent = Column(Integer, nullable=True, default=30)
+    macro_carbs_percent = Column(Integer, nullable=True, default=45)
+    macro_fat_percent = Column(Integer, nullable=True, default=25)
 
     allergens = relationship("Allergen", secondary=user_allergens, back_populates="users")
     diary_days = relationship("DiaryDay", back_populates="user", cascade="all, delete-orphan")
@@ -97,6 +101,7 @@ class DiaryDay(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     date_key = Column(String, nullable=False, index=True)  # YYYY-MM-DD
     goal = Column(Integer, nullable=False, default=1800)
+    water_liters = Column(Float, nullable=False, default=0.0)
 
     user = relationship("User", back_populates="diary_days")
     meals = relationship("DiaryMeal", back_populates="day", cascade="all, delete-orphan")
@@ -109,7 +114,7 @@ class DiaryMeal(Base):
     day_id = Column(Integer, ForeignKey("diary_days.id"), nullable=False, index=True)
     section = Column(String, nullable=False, index=True)  # breakfast/lunch/snack/dinner/extras
     name = Column(String, nullable=False)
-    grams = Column(Float, nullable=True)
+    grams = Column(Float, nullable=False, default=0)
     calories = Column(Integer, nullable=False, default=0)
     protein = Column(Float, nullable=False, default=0)
     carbs = Column(Float, nullable=False, default=0)

@@ -1,5 +1,5 @@
 <template>
-  <div class="auth-page">
+  <div class="auth-page" :class="{ 'theme-dark': isDarkTheme }">
     <div class="auth-form-container">
       <h2 class="form-title">Reset Password</h2>
       <p class="form-subtitle">Vamos enviar um link de recuperação para o email associado.</p>
@@ -32,7 +32,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue';
+import { onMounted, onBeforeUnmount, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { API_URL } from '@/auth';
 
@@ -42,6 +42,29 @@ const errorMessage = ref('');
 const successMessage = ref('');
 const isLoading = ref(false);
 const hasAutoSent = ref(false);
+const isDarkTheme = ref(false);
+
+const handleThemeChange = (event) => {
+  const theme = event?.detail?.theme;
+  if (theme === 'dark' || theme === 'light') {
+    isDarkTheme.value = theme === 'dark';
+  } else {
+    isDarkTheme.value = document.documentElement.classList.contains('dark');
+  }
+};
+
+const handleStorageThemeChange = (event) => {
+  if (event.key !== 'theme') return;
+  isDarkTheme.value = event.newValue === 'dark';
+};
+
+const syncTheme = () => {
+  const savedTheme = localStorage.getItem('theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const shouldUseDark = savedTheme ? savedTheme === 'dark' : prefersDark;
+  document.documentElement.classList.toggle('dark', shouldUseDark);
+  isDarkTheme.value = shouldUseDark;
+};
 
 const submitForm = async () => {
   if (!targetEmail.value || isLoading.value) return;
@@ -75,6 +98,10 @@ const submitForm = async () => {
 };
 
 onMounted(async () => {
+  syncTheme();
+  window.addEventListener('theme-change', handleThemeChange);
+  window.addEventListener('storage', handleStorageThemeChange);
+
   const routeEmail = typeof route.query.email === 'string' ? route.query.email : '';
   const rememberedEmail = localStorage.getItem('rememberedEmail') || '';
   targetEmail.value = (routeEmail || rememberedEmail).trim();
@@ -83,6 +110,11 @@ onMounted(async () => {
     errorMessage.value = 'Não foi possível detetar o email. Volta ao login e preenche o email da conta.';
     return;
   }
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('theme-change', handleThemeChange);
+  window.removeEventListener('storage', handleStorageThemeChange);
 });
 </script>
 
@@ -136,6 +168,17 @@ onMounted(async () => {
   color: var(--text-main);
 }
 
+.theme-dark .auth-form-container {
+  --bg-soft: #0f172a;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --accent: #14b8a6;
+  --accent-hover: #0d9488;
+  --line: #334155;
+  background: rgba(15, 23, 42, 0.95);
+  border-color: #334155;
+}
+
 .form-title {
   margin: 0 0 8px;
   font-size: 1.8rem;
@@ -170,6 +213,18 @@ onMounted(async () => {
   background-color: #f0fff4;
   color: var(--success);
   border: 1px solid #9ae6b4;
+}
+
+.theme-dark .message.error {
+  background-color: rgba(127, 29, 29, 0.25);
+  color: #fecaca;
+  border-color: rgba(248, 113, 113, 0.45);
+}
+
+.theme-dark .message.success {
+  background-color: rgba(20, 83, 45, 0.25);
+  color: #bbf7d0;
+  border-color: rgba(74, 222, 128, 0.45);
 }
 
 .form-group {
@@ -213,6 +268,11 @@ onMounted(async () => {
   font-size: 1rem;
   color: var(--text-main);
   word-break: break-all;
+}
+
+.theme-dark .email-target {
+  background: #1e293b;
+  color: #f8fafc;
 }
 
 .form-actions {
@@ -260,5 +320,15 @@ onMounted(async () => {
 
 .login-link a:hover {
     text-decoration: underline;
+}
+
+.theme-dark .form-group input {
+  background: #1e293b;
+  color: #f8fafc;
+  border-color: #334155;
+}
+
+.theme-dark .form-group input:focus {
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.25);
 }
 </style>

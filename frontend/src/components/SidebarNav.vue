@@ -152,6 +152,7 @@ const handleSelect = (id) => {
   flex-direction: column;
   flex: 1;
   width: 100%;
+  min-height: 0;
 }
 
 .menu-divider {
@@ -167,8 +168,11 @@ const handleSelect = (id) => {
   flex-direction: column;
   gap: 10px;
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  padding-bottom: 10px;
+  overscroll-behavior: contain;
 }
 
 .sidebar-footer {

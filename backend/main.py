@@ -1,5 +1,6 @@
 import sys
 import os
+import json
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import hashlib
@@ -17,7 +18,7 @@ from typing import List
 load_dotenv()
 
 # Use absolute imports
-import models, schemas, shops, negotiator, food_data, auth, vision
+import models, schemas, shops, negotiator, food_data, auth, vision, llm_client
 from database import SessionLocal, engine, get_db
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -33,10 +34,17 @@ def sync_database_schema() -> None:
             "reset_token": "ALTER TABLE users ADD COLUMN reset_token VARCHAR",
             "goal": "ALTER TABLE users ADD COLUMN goal VARCHAR",
             "activity_level": "ALTER TABLE users ADD COLUMN activity_level VARCHAR",
+            "target_calories": "ALTER TABLE users ADD COLUMN target_calories INTEGER",
+            "macro_protein_percent": "ALTER TABLE users ADD COLUMN macro_protein_percent INTEGER DEFAULT 30",
+            "macro_carbs_percent": "ALTER TABLE users ADD COLUMN macro_carbs_percent INTEGER DEFAULT 45",
+            "macro_fat_percent": "ALTER TABLE users ADD COLUMN macro_fat_percent INTEGER DEFAULT 25",
         },
         "food_history": {
             "source": "ALTER TABLE food_history ADD COLUMN source VARCHAR DEFAULT 'search'",
             "created_at": "ALTER TABLE food_history ADD COLUMN created_at TIMESTAMP",
+        },
+        "diary_days": {
+            "water_liters": "ALTER TABLE diary_days ADD COLUMN water_liters FLOAT DEFAULT 0.0",
         },
         "diary_meals": {
             "grams": "ALTER TABLE diary_meals ADD COLUMN grams FLOAT",
@@ -212,7 +220,23 @@ def get_or_create_diary_day(db: Session, user_id: int, date_key: str) -> models.
     if day:
         return day
 
-    day = models.DiaryDay(user_id=user_id, date_key=date_key, goal=1800)
+    # Get user to use their target_calories as default goal
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    default_goal = 1800
+    if user:
+        # Calculate auto goal if target_calories not set
+        if user.target_calories:
+            default_goal = user.target_calories
+        elif user.peso and user.altura and user.idade:
+            # Simple BMR + Activity logic similar to frontend for fallback
+            bmr = 10 * user.peso + 6.25 * user.altura - 5 * user.idade + (5 if user.sexo == 'male' else -161)
+            factors = {'sedentary': 1.2, 'light': 1.375, 'moderate': 1.55, 'high': 1.725}
+            tdee = bmr * factors.get(user.activity_level, 1.2)
+            if user.goal == 'lose': default_goal = int(tdee - 500)
+            elif user.goal == 'gain': default_goal = int(tdee + 300)
+            else: default_goal = int(tdee)
+
+    day = models.DiaryDay(user_id=user_id, date_key=date_key, goal=max(1000, default_goal))
     db.add(day)
     db.commit()
     db.refresh(day)
@@ -247,7 +271,8 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
         sexo=user.sexo,
         idade=user.idade,
         goal=user.goal,
-        activity_level=user.activity_level
+        activity_level=user.activity_level,
+        target_calories=user.target_calories
     )
     db.add(new_user)
     
@@ -274,6 +299,50 @@ def login(request: schemas.LoginRequest, db: Session = Depends(get_db)):
         data={"sub": db_user.username}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
+
+@app.post("/assistant/chat", response_model=schemas.ChatResponse)
+def help_assistant_chat(request: schemas.ChatRequest, current_user: models.User = Depends(auth.get_current_user)):
+    system_prompt = (
+        "O teu nome é Nutra, a Assistente Inteligente Suprema da NutriVentures (PT-PT). "
+        "Quando o utilizador te perguntar o que sabes fazer, deves mencionar que podes: "
+        "1. Registar refeições e água; 2. Gerir o peso e diário; 3. Mudar temas; 4. Iniciar negociações de comida; "
+        "5. E as tuas novas funcionalidades interativas: Jogar Casino (Slots), fazer Quizzes de nutrição, usar o Conversor de Medidas e o Cronómetro de Jejum. "
+        "REGRAS CRÍTICAS: "
+        "1. Sê EXTREMAMENTE HONESTA. Se o utilizador pedir algo que não podes fazer (não está na lista de ações abaixo), diz explicitamente: 'Desculpa, ainda não tenho capacidade para fazer isso.' "
+        "2. NUNCA digas que fizeste algo se não incluíres a respetiva 'action' no JSON. "
+        "AÇÕES DISPONÍVEIS: "
+        "- Navegação: {'type': 'NAVIGATE', 'value': 'ID'} (inicio, tenhofome, gerarreceita, supermercados, diario, favoritos, historico, perfil, definicoes) "
+        "- Pesquisa Lojas/Produtos: {'type': 'FIND_SHOPS', 'value': 'produtos', 'mode': 'shop'|'restaurant'} (Usa isto se o user quiser saber onde comprar algo ou encontrar um restaurante) "
+        "- Registo Refeição: {'type': 'ADD_MEAL', 'value': 'texto', 'section': 'breakfast'|'lunch'|'snack'|'dinner'|'extras'} "
+        "- Limpar Diário: {'type': 'CLEAR_MEALS'} (Usa isto se o user pedir para apagar tudo o que comeu hoje) "
+        "- Casino (EASTER EGG): {'type': 'OPEN_CASINO'} (Abre um simulador de casino real para o user jogar.) "
+        "- Quiz Nutritivo: {'type': 'OPEN_QUIZ'} (Abre um jogo de perguntas e respostas sobre nutrição.) "
+        "- Conversor de Medidas: {'type': 'OPEN_CONVERTER'} (Abre uma ferramenta para converter colheres em gramas e calorias.) "
+        "- Cronómetro de Jejum: {'type': 'OPEN_FASTING_TIMER'} (Abre um temporizador de jejum intermitente.) "
+        "- Negociação/Receitas: {'type': 'START_NEGOTIATION', 'value': 'prato'} (Usa isto sempre que o utilizador pedir uma receita ou disser que quer comer algo específico) "
+        "- Tema: {'type': 'SET_THEME', 'value': 'light'|'dark'} "
+        "- Modo Daltonismo: {'type': 'SET_COLOR_MODE', 'value': 'none'|'protanopia'|'deuteranopia'|'tritanopia'|'achromatopsia'} "
+        "- Água: {'type': 'ADD_WATER'} | {'type': 'REMOVE_WATER'} "
+        "- Peso: {'type': 'LOG_WEIGHT', 'value': número} "
+        "- Sessão: {'type': 'LOGOUT'} "
+        "\nRetorna SEMPRE JSON: { \"content\": \"...\", \"action\": { \"type\": \"...\", \"value\": \"...\" } ou null }"
+    )
+
+    messages = [{"role": "system", "content": system_prompt}]
+    for msg in request.messages:
+        messages.append({"role": msg.role, "content": msg.content})
+
+    try:
+        response = llm_client.get_chat_completion(
+            messages=messages,
+            temperature=0.3,
+            response_format={"type": "json_object"},
+            max_tokens=500
+        )
+        return json.loads(response.choices[0].message.content)
+    except Exception as e:
+        print(f"Chat Error: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao comunicar com a Nutra.")
 
 @app.get("/users/me", response_model=schemas.User)
 def read_user_me(current_user: models.User = Depends(auth.get_current_user)):
@@ -309,54 +378,75 @@ def update_user_me(update_data: schemas.UserUpdate, db: Session = Depends(get_db
     if update_data.activity_level is not None:
         current_user.activity_level = str(update_data.activity_level)
     
+    # Check if target_calories was explicitly sent in the request (even if null)
+    update_dict = update_data.model_dump(exclude_unset=True)
+    if update_data.target_calories is not None or "target_calories" in update_dict:
+        current_user.target_calories = update_data.target_calories
+    
+    if update_data.macro_protein_percent is not None:
+        current_user.macro_protein_percent = update_data.macro_protein_percent
+    if update_data.macro_carbs_percent is not None:
+        current_user.macro_carbs_percent = update_data.macro_carbs_percent
+    if update_data.macro_fat_percent is not None:
+        current_user.macro_fat_percent = update_data.macro_fat_percent
+    
     db.commit()
     db.refresh(current_user)
     return current_user
 
 @app.get("/users/me/dashboard", response_model=schemas.DashboardResponse)
 def get_dashboard_summary(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    date_key = datetime.now().strftime("%Y-%m-%d")
-    day = get_or_create_diary_day(db, current_user.id, date_key)
-    
-    consumed_calories = sum(m.calories for m in day.meals)
-    protein = sum(m.protein for m in day.meals)
-    carbs = sum(m.carbs for m in day.meals)
-    fat = sum(m.fat for m in day.meals)
-    
-    streak = 0
-    curr = datetime.now()
-    for i in range(365):
-        dk = (curr - timedelta(days=i)).strftime("%Y-%m-%d")
-        d = db.query(models.DiaryDay).filter(models.DiaryDay.user_id == current_user.id, models.DiaryDay.date_key == dk).first()
-        if d and sum(m.calories for m in d.meals) > 0:
-            streak += 1
+    try:
+        date_key = datetime.now().strftime("%Y-%m-%d")
+        day = get_or_create_diary_day(db, current_user.id, date_key)
+        
+        consumed_calories = sum(m.calories for m in day.meals)
+        protein = sum(m.protein for m in day.meals)
+        carbs = sum(m.carbs for m in day.meals)
+        fat = sum(m.fat for m in day.meals)
+        
+        streak = 0
+        curr = datetime.now()
+        for i in range(365):
+            dk = (curr - timedelta(days=i)).strftime("%Y-%m-%d")
+            d = db.query(models.DiaryDay).filter(models.DiaryDay.user_id == current_user.id, models.DiaryDay.date_key == dk).first()
+            if d and sum(m.calories for m in d.meals) > 0:
+                streak += 1
+            else:
+                if i == 0: continue
+                break
+        
+        # Safely try to get weights, return empty if table missing or error
+        try:
+            weights = db.query(models.WeightEntry).filter(models.WeightEntry.user_id == current_user.id).order_by(models.WeightEntry.date.asc()).all()
+        except Exception as e:
+            print(f"Error fetching weights: {e}")
+            weights = []
+        
+        if not weights:
+            weight_history = {
+                "labels": ["Sem 1", "Sem 2", "Sem 3", "Sem 4"],
+                "values": [current_user.peso] * 4 if current_user.peso else [70.0] * 4
+            }
         else:
-            if i == 0: continue
-            break
-    
-    weights = db.query(models.WeightEntry).filter(models.WeightEntry.user_id == current_user.id).order_by(models.WeightEntry.date.asc()).all()
-    
-    if not weights:
-        weight_history = {
-            "labels": ["Sem 1", "Sem 2", "Sem 3", "Sem 4"],
-            "values": [current_user.peso] * 4 if current_user.peso else [70.0] * 4
+            weight_history = {
+                "labels": [w.date for w in weights[-7:]],
+                "values": [w.weight for w in weights[-7:]]
+            }
+                
+        return {
+            "consumed_calories": consumed_calories,
+            "calorie_goal": current_user.target_calories if current_user.target_calories else day.goal,
+            "protein": protein,
+            "carbs": carbs,
+            "fat": fat,
+            "streak_days": streak,
+            "water_liters": day.water_liters,
+            "weight_history": weight_history
         }
-    else:
-        weight_history = {
-            "labels": [w.date for w in weights[-7:]],
-            "values": [w.weight for w in weights[-7:]]
-        }
-            
-    return {
-        "consumed_calories": consumed_calories,
-        "calorie_goal": day.goal,
-        "protein": protein,
-        "carbs": carbs,
-        "fat": fat,
-        "streak_days": streak,
-        "water_liters": 0.0,
-        "weight_history": weight_history
-    }
+    except Exception as e:
+        print(f"DASHBOARD ERROR: {e}")
+        raise HTTPException(status_code=500, detail=f"Dashboard Error: {str(e)}")
 
 @app.post("/forgot-password/")
 def forgot_password(request: schemas.ForgotPasswordRequest, db: Session = Depends(get_db)):
@@ -429,6 +519,15 @@ def update_diary_goal(date_key: str, payload: schemas.DiaryGoalUpdate, db: Sessi
     db.refresh(day)
     return day
 
+@app.put("/diary/{date_key}/water", response_model=schemas.DiaryDay)
+def update_diary_water(date_key: str, payload: schemas.DiaryWaterUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    validate_date_key(date_key)
+    day = get_or_create_diary_day(db, current_user.id, date_key)
+    day.water_liters = payload.water_liters
+    db.commit()
+    db.refresh(day)
+    return day
+
 @app.post("/diary/{date_key}/meals", response_model=schemas.DiaryDay)
 def add_diary_meal(date_key: str, payload: schemas.DiaryMealCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     validate_date_key(date_key)
@@ -447,6 +546,15 @@ def add_diary_meal(date_key: str, payload: schemas.DiaryMealCreate, db: Session 
         fat=payload.fat,
     )
     db.add(meal)
+    db.commit()
+    db.refresh(day)
+    return day
+
+@app.delete("/diary/{date_key}/meals", response_model=schemas.DiaryDay)
+def clear_day_meals(date_key: str, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    validate_date_key(date_key)
+    day = get_or_create_diary_day(db, current_user.id, date_key)
+    db.query(models.DiaryMeal).filter(models.DiaryMeal.day_id == day.id).delete()
     db.commit()
     db.refresh(day)
     return day
@@ -472,7 +580,8 @@ def analyze_mood(request: schemas.NegotiatorRequest, current_user: models.User =
 
 @app.post("/negotiator/negotiate", response_model=schemas.NegotiatorResponse)
 def negotiate_craving(request: schemas.NegotiatorRequest, current_user: models.User = Depends(auth.get_current_user)):
-    return negotiator.negotiate_craving(request.craving, request.target_calories, request.mood, favorite_recipes=current_user.favorite_recipes)
+    allergens = [a.name for a in current_user.allergens]
+    return negotiator.negotiate_craving(request.craving, request.target_calories, request.mood, favorite_recipes=current_user.favorite_recipes, allergens=allergens)
 
 @app.post("/negotiator/nutrition", response_model=schemas.NutritionAnalysisResponse)
 def analyze_nutrition_endpoint(request: schemas.NutritionAnalysisRequest, current_user: models.User = Depends(auth.get_current_user)):
@@ -481,7 +590,8 @@ def analyze_nutrition_endpoint(request: schemas.NutritionAnalysisRequest, curren
 @app.post("/vision/analyze", response_model=schemas.VisionResponse)
 async def analyze_ingredients_photo(mode: str = "ingredients", file: UploadFile = File(...), current_user: models.User = Depends(auth.get_current_user)):
     contents = await file.read()
-    return vision.analyze_image_ingredients(contents, mode=mode, favorite_recipes=current_user.favorite_recipes)
+    allergens = [a.name for a in current_user.allergens]
+    return vision.analyze_image_ingredients(contents, mode=mode, favorite_recipes=current_user.favorite_recipes, allergens=allergens)
 
 @app.post("/shops/find", response_model=list[schemas.Shop])
 def find_shops(request: schemas.ShopSearchRequest, current_user: models.User = Depends(auth.get_current_user)):
@@ -559,6 +669,26 @@ def get_food_history(
         .limit(limit)
         .all()
     )
+
+@app.delete("/users/me/food-history/{item_id}", status_code=204)
+def delete_food_history_item(
+    item_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    item = (
+        db.query(models.FoodHistory)
+        .filter(
+            models.FoodHistory.id == item_id,
+            models.FoodHistory.user_id == current_user.id
+        )
+        .first()
+    )
+    if not item:
+        raise HTTPException(status_code=404, detail="Item de histórico não encontrado")
+
+    db.delete(item)
+    db.commit()
 
 @app.post("/recipes/", response_model=schemas.Recipe)
 def create_recipe(recipe: schemas.RecipeCreate, db: Session = Depends(get_db)):
