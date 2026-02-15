@@ -509,10 +509,11 @@ onMounted(fetchProfileData)
                 <strong>{{ tdee ? Math.round(tdee) : '-' }} kcal</strong>
                 <small>Necessidades diárias</small>
               </div>
-              <div class="metric-box full-width" v-if="userProfile.target_calories">
+              <div class="metric-box full-width">
                  <p>Calorias Alvo</p>
-                 <strong>{{ userProfile.target_calories }} kcal</strong>
-                 <small>Definido manualmente</small>
+                 <strong>{{ targetCalories ? Math.round(targetCalories) : '-' }} kcal/dia</strong>
+                 <small v-if="userProfile.target_calories">Definido manualmente</small>
+                 <small v-else>Ajustado para o objetivo ({{ formatGoal(userProfile.goal) }})</small>
               </div>
             </div>
           </article>

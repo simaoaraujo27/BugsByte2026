@@ -281,13 +281,50 @@ const updateBodyShape = () => {
 }
 
 const resetSimulation = () => {
-  simState.value = {
-    calories: 0,
-    protein: 0,
-    water: 50,
-    timeframe: 6
-  }
+  initializeBodyFromProfile()
 }
+
+const initializeBodyFromProfile = () => {
+  if (!user.value || !user.value.peso || !user.value.altura) {
+    // Default fallback if no data
+    simState.value = { calories: 0, protein: 0, water: 50, timeframe: 6 }
+    return
+  }
+
+  // 1. Calculate BMI to estimate initial "Fat" (Calories slider)
+  // Standard BMI is approx 22. We map deviation from 22 to the slider (-50 to 50)
+  const heightM = Number(user.value.altura) / 100
+  const weight = Number(user.value.peso)
+  const bmi = weight / (heightM * heightM)
+  
+  // Logic: BMI 22 = 0 on slider. 
+  // BMI 35 (Obese) -> should be near +50. Diff is 13. Factor ~3.8.
+  let fatVal = (bmi - 22) * 3.8
+  fatVal = Math.max(-50, Math.min(50, fatVal))
+
+  // 2. Map Activity Level to "Protein" (Muscle slider)
+  const activityMap = {
+    'sedentary': 10,
+    'light': 25,
+    'moderate': 50,
+    'high': 80
+  }
+  const muscleVal = activityMap[user.value.activity_level] || 15
+
+  simState.value = {
+    calories: Math.round(fatVal),
+    protein: muscleVal,
+    water: 50,
+    timeframe: 6 
+  }
+  
+  updateBodyShape()
+}
+
+// Watch user data to initialize model when profile loads
+watch(() => user.value, (newUser) => {
+    if (newUser) initializeBodyFromProfile()
+}, { immediate: true })
 
 watch(simState, () => {
     updateBodyShape()
