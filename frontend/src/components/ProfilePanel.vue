@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { auth, API_URL } from '@/auth'
 import { useUser } from '@/store/userStore'
@@ -45,6 +45,34 @@ const videoRef = ref(null)
 const canvasRef = ref(null)
 const isCameraActive = ref(false)
 const stream = ref(null)
+const toast = ref({
+  show: false,
+  type: 'success',
+  title: '',
+  message: ''
+})
+let toastTimer = null
+
+const closeToast = () => {
+  toast.value.show = false
+}
+
+const showToast = (type, title, message) => {
+  if (toastTimer) {
+    clearTimeout(toastTimer)
+    toastTimer = null
+  }
+  toast.value = {
+    show: true,
+    type,
+    title,
+    message
+  }
+  toastTimer = setTimeout(() => {
+    toast.value.show = false
+    toastTimer = null
+  }, 3200)
+}
 
 // Local directive for clicking outside
 const vClickOutside = {
@@ -87,7 +115,7 @@ const startCamera = async () => {
     }
   } catch (err) {
     console.error("Error accessing camera:", err);
-    alert("Não foi possível aceder à câmara.");
+    showToast('error', 'Câmara indisponível', 'Não foi possível aceder à câmara.')
     isCameraActive.value = false;
   }
 };
@@ -137,7 +165,7 @@ const uploadProfileImage = async (base64Image) => {
     setUser(updatedUser)
   } catch (err) {
     console.error('Upload error:', err);
-    alert(err.message)
+    showToast('error', 'Falha no upload', err.message || 'Não foi possível atualizar a imagem.')
   }
 };
 
@@ -255,9 +283,9 @@ const saveProfile = async () => {
     const updatedUser = await res.json()
     setUser(updatedUser)
     isEditing.value = false
-    alert('Perfil atualizado com sucesso!')
+    showToast('success', 'Perfil atualizado', 'As alterações foram guardadas com sucesso.')
   } catch (err) {
-    alert(err.message)
+    showToast('error', 'Erro ao guardar', err.message || 'Falha ao atualizar perfil.')
   } finally {
     isSaving.value = false
   }
@@ -274,12 +302,12 @@ const handleImageUpload = async (event) => {
 
   // Basic validation
   if (!file.type.startsWith('image/')) {
-    alert('Por favor, selecione uma imagem.')
+    showToast('error', 'Ficheiro inválido', 'Por favor, selecione uma imagem.')
     return
   }
 
   if (file.size > 2 * 1024 * 1024) {
-    alert('A imagem deve ter no máximo 2MB.')
+    showToast('error', 'Imagem muito grande', 'A imagem deve ter no máximo 2MB.')
     return
   }
 
@@ -319,10 +347,27 @@ const requestPasswordChange = async () => {
 }
 
 onMounted(fetchProfileData)
+onUnmounted(() => {
+  if (toastTimer) {
+    clearTimeout(toastTimer)
+    toastTimer = null
+  }
+})
 </script>
 
 <template>
   <section class="profile-panel">
+    <transition name="toast-pop">
+      <div v-if="toast.show" class="profile-toast" :class="toast.type" role="status" aria-live="polite">
+        <div class="toast-icon">{{ toast.type === 'success' ? '✅' : '⚠️' }}</div>
+        <div class="toast-body">
+          <p class="toast-title">{{ toast.title }}</p>
+          <p class="toast-text">{{ toast.message }}</p>
+        </div>
+        <button class="toast-close" @click="closeToast" aria-label="Fechar">✕</button>
+      </div>
+    </transition>
+
     <header class="panel-header">
       <div class="header-content">
         <div>
@@ -541,6 +586,87 @@ onMounted(fetchProfileData)
 .profile-panel {
   max-width: 1400px; /* Increased for side-by-side layout */
   margin: 0 auto;
+  position: relative;
+}
+
+.profile-toast {
+  position: fixed;
+  top: 22px;
+  right: 22px;
+  z-index: 1400;
+  width: min(420px, calc(100vw - 28px));
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: linear-gradient(160deg, rgba(16, 28, 56, 0.97), rgba(8, 16, 34, 0.97));
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.38);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 14px 14px 12px;
+}
+
+.profile-toast.success {
+  border-color: rgba(52, 211, 153, 0.45);
+}
+
+.profile-toast.error {
+  border-color: rgba(255, 127, 127, 0.45);
+}
+
+.toast-icon {
+  font-size: 1.2rem;
+  line-height: 1;
+  margin-top: 2px;
+}
+
+.toast-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.toast-title {
+  margin: 0;
+  color: #ecf8ff;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.toast-text {
+  margin: 4px 0 0;
+  color: #b8c8de;
+  font-size: 0.92rem;
+  line-height: 1.35;
+}
+
+.toast-close {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.06);
+  color: #d8e7ff;
+  border-radius: 8px;
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.toast-close:hover {
+  background: rgba(255, 255, 255, 0.14);
+  transform: translateY(-1px);
+}
+
+.toast-pop-enter-active,
+.toast-pop-leave-active {
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.toast-pop-enter-from,
+.toast-pop-leave-to {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.98);
 }
 
 .main-profile-layout {
