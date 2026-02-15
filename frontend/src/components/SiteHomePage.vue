@@ -18,6 +18,7 @@ import UnitConverter from './UnitConverter.vue'
 import FastingTimer from './FastingTimer.vue'
 import { auth, API_URL } from '@/auth'
 import chatbotImg from '@/assets/chatbot.png'
+import EasySpeech from 'easy-speech'
 
 const { fetchUser } = useUser()
 
@@ -48,121 +49,57 @@ const toggleChat = () => {
   isChatOpen.value = !isChatOpen.value
 }
 
-// Voice Synthesis (TTS)
-const speak = (text) => {
-  console.log('[TTS] Requested speech for:', text.substring(0, 30) + '...')
-  
-  if (!isVoiceEnabled.value) {
-    console.log('[TTS] Speech skipped: Voice is disabled.')
-    return
+// Voice Synthesis (TTS) using EasySpeech
+const speak = async (text) => {
+  console.log('[Nutra Voice] Speaking:', text.substring(0, 30))
+  if (!isVoiceEnabled.value) return
+
+  try {
+    const voices = EasySpeech.voices()
+    // Find best PT-PT voice
+    const ptPtVoice = voices.find(v => v.lang.includes('pt-PT')) || 
+                      voices.find(v => v.lang.startsWith('pt'))
+    
+    await EasySpeech.speak({
+      text: text,
+      voice: ptPtVoice,
+      pitch: 1,
+      rate: 1,
+      volume: 1
+    })
+  } catch (e) {
+    console.error('[Nutra Voice] Error:', e)
   }
-  
-  if (!window.speechSynthesis) {
-    console.error('[TTS] Error: window.speechSynthesis not supported in this browser.')
-    return
-  }
-
-  // Cancel any ongoing speech
-  window.speechSynthesis.cancel()
-  
-  // Bug fix for Chrome: resume if paused
-  if (window.speechSynthesis.paused) {
-    window.speechSynthesis.resume()
-  }
-
-  // Small delay ensures previous cancel is processed
-  setTimeout(() => {
-    try {
-      currentUtterance = new SpeechSynthesisUtterance(text)
-      currentUtterance.lang = 'pt-PT'
-      currentUtterance.rate = 0.95 // Slightly slower for better clarity
-      currentUtterance.pitch = 1.0
-      currentUtterance.volume = 1.0
-
-      const voices = window.speechSynthesis.getVoices()
-      console.log('[TTS] Found ' + voices.length + ' voices.')
-
-      // Improved female Portuguese voice selection (European PT prioritized)
-      // Maria/Helena are common names for high-quality PT-PT voices
-      const preferredVoices = voices.filter(v => 
-        v.lang.includes('pt-PT') || v.lang.includes('pt_PT')
-      )
-      
-      const femalePtPt = preferredVoices.find(v => 
-        v.name.includes('Maria') || v.name.includes('Helena') || v.name.includes('Joana') || 
-        v.name.includes('Raquel') || v.name.includes('Female')
-      )
-
-      if (femalePtPt) {
-        console.log('[TTS] Selected preferred voice:', femalePtPt.name)
-        currentUtterance.voice = femalePtPt
-      } else if (preferredVoices.length > 0) {
-        console.log('[TTS] Preferred female voice not found, using first PT-PT voice:', preferredVoices[0].name)
-        currentUtterance.voice = preferredVoices[0]
-      } else {
-        // Fallback to any Portuguese (including Brazil if PT-PT is missing)
-        const anyPt = voices.find(v => v.lang.toLowerCase().startsWith('pt'))
-        if (anyPt) {
-          console.log('[TTS] PT-PT not found, using fallback Portuguese voice:', anyPt.name)
-          currentUtterance.voice = anyPt
-        } else {
-          console.warn('[TTS] No Portuguese voice found at all.')
-        }
-      }
-
-      currentUtterance.onstart = () => console.log('[TTS] Playing...')
-      currentUtterance.onend = () => {
-        console.log('[TTS] Done.')
-        currentUtterance = null
-      }
-      currentUtterance.onerror = (event) => {
-        console.error('[TTS] Utterance error:', event)
-        currentUtterance = null
-      }
-
-      window.speechSynthesis.speak(currentUtterance)
-    } catch (err) {
-      console.error('[TTS] Failed to initialize speech:', err)
-    }
-  }, 100)
 }
 
 // Function to "unlock" audio (browsers require user gesture)
-const toggleVoiceAndUnlock = () => {
+const toggleVoiceAndUnlock = async () => {
   isVoiceEnabled.value = !isVoiceEnabled.value
-  console.log('[TTS] Voice enabled:', isVoiceEnabled.value)
-  
+  console.log('[Nutra Voice] Enabled:', isVoiceEnabled.value)
+
   if (isVoiceEnabled.value) {
-    // Basic test speech to unlock engine
-    window.speechSynthesis.cancel()
-    const unlock = new SpeechSynthesisUtterance('Voz ativada')
-    unlock.lang = 'pt-PT'
-    unlock.volume = 0.01 // Very quiet but not silent
-    
-    // Attempt to pick a voice for the unlock utterance too
-    const voices = window.speechSynthesis.getVoices()
-    const ptVoice = voices.find(v => v.lang.startsWith('pt'))
-    if (ptVoice) unlock.voice = ptVoice
-    
-    window.speechSynthesis.speak(unlock)
-    
-    // Speak first message if it's there
-    if (chatMessages.value.length > 0) {
-      speak(chatMessages.value[chatMessages.value.length - 1].content)
+    try {
+      const status = EasySpeech.status()
+      if (!status.initialized) {
+        console.log('[Nutra Voice] Initializing EasySpeech...')
+        await EasySpeech.init({ maxTimeout: 5000, interval: 250 })
+      }
+      
+      // Feedback to user that voice is now active
+      await EasySpeech.speak({ text: 'Voz ativada', volume: 0.5 })
+      
+      if (chatMessages.value.length > 0) {
+        speak(chatMessages.value[chatMessages.value.length - 1].content)
+      }
+    } catch (e) {
+      console.error('[Nutra Voice] Init Error:', e)
+      isVoiceEnabled.value = false
+      alert('Não foi possível ativar a voz. Verifique as permissões do navegador.')
     }
   }
 }
 
-// Pre-load voices
-if (typeof window !== 'undefined' && window.speechSynthesis) {
-  // Some browsers need this event to populate voices
-  window.speechSynthesis.onvoiceschanged = () => {
-    const v = window.speechSynthesis.getVoices()
-    console.log('[TTS] Voices loaded asynchronously:', v.length)
-  }
-  // Initial call
-  window.speechSynthesis.getVoices()
-}
+// Pre-load voices logic removed in favor of EasySpeech init in onMounted and toggle
 
 // Voice Recognition (STT)
 const startListening = () => {
@@ -590,11 +527,18 @@ const containerStyle = computed(() => {
   return { filter: `url(#${colorBlindnessMode.value})` }
 })
 
-onMounted(() => {
+onMounted(async () => {
   console.log('SiteHomePage onMounted')
   fetchUser().catch(err => console.error('fetchUser failed in SiteHomePage:', err))
   fetchWaterIntake()
   startWaterTimer()
+
+  // Silent init attempt on mount
+  try {
+    await EasySpeech.init({ maxTimeout: 5000, interval: 250 })
+  } catch (e) {
+    console.warn('[Nutra Voice] Auto-init failed, will retry on click.')
+  }
   
   const initialSection = resolveSectionFromRoute(route.params.section)
   const initialSubsection = typeof route.params.subsection === 'string' ? route.params.subsection : ''
