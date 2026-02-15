@@ -194,7 +194,23 @@ def get_or_create_diary_day(db: Session, user_id: int, date_key: str) -> models.
     if day:
         return day
 
-    day = models.DiaryDay(user_id=user_id, date_key=date_key, goal=1800)
+    # Get user to use their target_calories as default goal
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    default_goal = 1800
+    if user:
+        # Calculate auto goal if target_calories not set
+        if user.target_calories:
+            default_goal = user.target_calories
+        elif user.peso and user.altura and user.idade:
+            # Simple BMR + Activity logic similar to frontend for fallback
+            bmr = 10 * user.peso + 6.25 * user.altura - 5 * user.idade + (5 if user.sexo == 'male' else -161)
+            factors = {'sedentary': 1.2, 'light': 1.375, 'moderate': 1.55, 'high': 1.725}
+            tdee = bmr * factors.get(user.activity_level, 1.2)
+            if user.goal == 'lose': default_goal = int(tdee - 500)
+            elif user.goal == 'gain': default_goal = int(tdee + 300)
+            else: default_goal = int(tdee)
+
+    day = models.DiaryDay(user_id=user_id, date_key=date_key, goal=max(1000, default_goal))
     db.add(day)
     db.commit()
     db.refresh(day)
