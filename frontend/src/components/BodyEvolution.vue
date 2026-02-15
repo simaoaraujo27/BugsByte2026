@@ -7,12 +7,23 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { useUser } from '@/store/userStore'
 
+const props = defineProps({
+  isDarkMode: {
+    type: Boolean,
+    default: null
+  }
+})
+
 const router = useRouter()
 const { user } = useUser()
 const canvasContainer = ref(null)
 const isLoading = ref(true)
 const loadError = ref(null)
-const isDarkMode = ref(document.documentElement.classList.contains('dark'))
+const resolveInitialTheme = () => {
+  if (typeof props.isDarkMode === 'boolean') return props.isDarkMode
+  return document.documentElement.classList.contains('dark') || !!document.querySelector('.site-layout.theme-dark')
+}
+const isDarkMode = ref(resolveInitialTheme())
 
 // Simulation State
 const simState = ref({
@@ -31,6 +42,10 @@ let animationId
 let gridHelper
 
 const handleThemeChange = (event) => {
+  if (typeof props.isDarkMode === 'boolean') {
+    isDarkMode.value = props.isDarkMode
+    return
+  }
   const theme = event?.detail?.theme
   if (theme === 'dark' || theme === 'light') {
     isDarkMode.value = theme === 'dark'
@@ -40,6 +55,10 @@ const handleThemeChange = (event) => {
 }
 
 const handleStorageChange = (event) => {
+  if (typeof props.isDarkMode === 'boolean') {
+    isDarkMode.value = props.isDarkMode
+    return
+  }
   if (event.key !== 'theme') return
   if (event.newValue === 'dark' || event.newValue === 'light') {
     isDarkMode.value = event.newValue === 'dark'
@@ -446,6 +465,15 @@ onBeforeUnmount(() => {
 watch(isDarkMode, () => {
   applySceneTheme()
 })
+
+watch(
+  () => props.isDarkMode,
+  (value) => {
+    if (typeof value === 'boolean') {
+      isDarkMode.value = value
+    }
+  }
+)
 </script>
 
 <template>
@@ -497,7 +525,7 @@ watch(isDarkMode, () => {
                 </div>
                 <button 
                     @click="resetSimulation"
-                    class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-red-500/10 border border-slate-700 hover:border-red-500/30 text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-red-400 transition-all flex items-center gap-1.5 group"
+                    class="be-reset-btn px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 group"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 group-hover:rotate-180 transition-transform duration-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -841,6 +869,18 @@ watch(isDarkMode, () => {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
+.be-reset-btn {
+  background: #173454;
+  border: 1px solid #2a4f78;
+  color: #a9c3e3;
+}
+
+.be-reset-btn:hover {
+  background: #1e446d;
+  border-color: #3b6da4;
+  color: #d9ebff;
+}
+
 /* Light Theme */
 .be-light.body-evolution-container {
   background: linear-gradient(180deg, #f7fbff 0%, #eef5ff 100%);
@@ -884,6 +924,18 @@ watch(isDarkMode, () => {
 .be-light .be-controls {
   background: rgba(242, 248, 255, 0.96);
   border-left-color: #d4e3fa;
+}
+
+.be-light .be-reset-btn {
+  background: #e7f0ff;
+  border-color: #bfd2ef;
+  color: #2a5f9c;
+}
+
+.be-light .be-reset-btn:hover {
+  background: #d8e9ff;
+  border-color: #9abbe7;
+  color: #1f4f85;
 }
 
 .be-light .control-group {
