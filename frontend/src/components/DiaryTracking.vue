@@ -682,6 +682,10 @@ const shiftDay = (delta) => {
   selectedDate.value = d
 }
 
+const shiftWeek = (deltaWeeks) => {
+  shiftDay(deltaWeeks * 7)
+}
+
 const setSelectedDay = (dateObj) => {
   const d = new Date(dateObj)
   d.setHours(12, 0, 0, 0)
@@ -867,17 +871,39 @@ watch(
       </div>
     </article>
 
-    <div class="weekly-strip">
+    <div class="weekly-nav">
       <button
-        v-for="day in weeklyDays"
-        :key="day.key"
         type="button"
-        class="week-day"
-        :class="{ active: day.active, good: day.hasMeals && day.onTarget, over: day.hasMeals && !day.onTarget }"
-        @click="setSelectedDay(day.date)"
+        class="week-nav-btn"
+        @click="shiftWeek(-1)"
+        aria-label="Semana anterior"
+        title="Semana anterior"
       >
-        <span>{{ day.dayName }}</span>
-        <strong>{{ day.dayNum }}</strong>
+        ‹
+      </button>
+
+      <div class="weekly-strip">
+        <button
+          v-for="day in weeklyDays"
+          :key="day.key"
+          type="button"
+          class="week-day"
+          :class="{ active: day.active, good: day.hasMeals && day.onTarget, over: day.hasMeals && !day.onTarget }"
+          @click="setSelectedDay(day.date)"
+        >
+          <span>{{ day.dayName }}</span>
+          <strong>{{ day.dayNum }}</strong>
+        </button>
+      </div>
+
+      <button
+        type="button"
+        class="week-nav-btn"
+        @click="shiftWeek(1)"
+        aria-label="Próxima semana"
+        title="Próxima semana"
+      >
+        ›
       </button>
     </div>
 
@@ -1228,11 +1254,34 @@ watch(
   background: linear-gradient(90deg, #fb7185, #ef4444);
 }
 
-.weekly-strip {
+.weekly-nav {
   margin-top: 14px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.weekly-strip {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 8px;
+}
+
+.week-nav-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--bg-elevated);
+  color: var(--text-main);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.week-nav-btn:hover {
+  border-color: #14b8a6;
 }
 
 .week-day {

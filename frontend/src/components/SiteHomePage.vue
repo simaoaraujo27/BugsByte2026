@@ -10,8 +10,7 @@ import ProfilePanel from './ProfilePanel.vue'
 import DiaryTracking from './DiaryTracking.vue'
 import VisionRecipe from './VisionRecipe.vue'
 import VolumeComparison from './VolumeComparison.vue'
-import FavoritesPage from './FavoritesPage.vue'
-import HistoryPage from './HistoryPage.vue'
+import YourRecipesPage from './YourRecipesPage.vue'
 import SettingsPage from './SettingsPage.vue'
 import CasinoGame from './CasinoGame.vue'
 import NutritionQuiz from './NutritionQuiz.vue'
@@ -28,6 +27,8 @@ const dashboardKey = ref(0)
 const showWaterReminder = ref(false)
 const nextWaterTime = ref(null)
 let waterInterval = null
+const WATER_REMINDER_INTERVAL_MS = 30 * 60 * 1000
+const WATER_SNOOZE_MS = 30 * 1000
 
 // Chat Assistant Logic
 const isChatOpen = ref(false)
@@ -312,9 +313,9 @@ const removeWaterGlobal = async () => {
 }
 
 const startWaterTimer = () => {
-  nextWaterTime.value = new Date(Date.now() + 30 * 60 * 1000)
+  nextWaterTime.value = new Date(Date.now() + WATER_REMINDER_INTERVAL_MS)
   waterInterval = setInterval(() => {
-    if (Date.now() >= nextWaterTime.value) {
+    if (nextWaterTime.value && Date.now() >= nextWaterTime.value.getTime()) {
       showWaterReminder.value = true
     }
   }, 10000)
@@ -322,7 +323,12 @@ const startWaterTimer = () => {
 
 const resetWaterTimer = () => {
   showWaterReminder.value = false
-  nextWaterTime.value = new Date(Date.now() + 30 * 60 * 1000)
+  nextWaterTime.value = new Date(Date.now() + WATER_REMINDER_INTERVAL_MS)
+}
+
+const snoozeWaterReminder = () => {
+  showWaterReminder.value = false
+  nextWaterTime.value = new Date(Date.now() + WATER_SNOOZE_MS)
 }
 
 const sections = [
@@ -332,8 +338,7 @@ const sections = [
   { id: 'visualizador', label: 'Volume das Calorias', icon: '🥗' },
   { id: 'supermercados', label: 'Supermercados & Compras', icon: '🛒' },
   { id: 'diario', label: 'Diário / Tracking', icon: '📊' },
-  { id: 'favoritos', label: 'Favoritos', icon: '❤️' },
-  { id: 'historico', label: 'Histórico', icon: '🕘' },
+  { id: 'tuas-receitas', label: 'Tuas Receitas', icon: '📚' },
   { id: 'perfil', label: 'Perfil', icon: '👤' },
   { id: 'definicoes', label: 'Definições', icon: '⚙️' }
 ]
@@ -360,8 +365,7 @@ const sectionIdToSlug = {
   'visualizador': 'volumecalorias',
   supermercados: 'supermercados',
   diario: 'diario',
-  favoritos: 'favoritos',
-  historico: 'historico',
+  'tuas-receitas': 'tuasreceitas',
   perfil: 'perfil',
   definicoes: 'definicoes',
   'gerar-receita': 'gerarreceita'
@@ -384,6 +388,7 @@ const negotiatorSubSlugToMode = Object.fromEntries(
 
 const resolveSectionFromRoute = (routeSection) => {
   if (!routeSection) return 'inicio'
+  if (routeSection === 'favoritos' || routeSection === 'historico') return 'tuas-receitas'
   return sectionSlugToId[routeSection] || 'inicio'
 }
 
@@ -412,10 +417,15 @@ const handleNegotiationChoice = (choice) => {
 
 // When manually clicking supermarket or restaurant, maybe reset params?
 // Or keep them. Usually better to reset if not coming from Negotiator.
-const selectSection = (id) => {
+const selectSection = (target) => {
+  const id = typeof target === 'string' ? target : target?.id
+  if (!id) return
+
   activeSection.value = id
   if (id !== 'tenho-fome') {
     negotiatorRouteMode.value = ''
+  } else if (typeof target === 'object' && target?.subsection) {
+    negotiatorRouteMode.value = negotiatorSubSlugToMode[target.subsection] || ''
   }
   syncRouteWithSection(id, false, id === 'tenho-fome' ? negotiatorModeToSubSlug[negotiatorRouteMode.value] : '')
 }
@@ -457,13 +467,9 @@ const sectionContent = {
     title: 'Diário / Tracking',
     subtitle: 'Acompanha as tuas calorias, o histórico semanal e o teu progresso.'
   },
-  favoritos: {
-    title: 'Favoritos',
-    subtitle: 'Receitas e restaurantes guardados.'
-  },
-  historico: {
-    title: 'Histórico',
-    subtitle: 'Receitas recomendadas automaticamente pelo assistente.'
+  'tuas-receitas': {
+    title: 'Tuas Receitas',
+    subtitle: 'Favoritos e histórico de receitas numa única página.'
   },
   perfil: {
     title: 'Perfil',
@@ -585,7 +591,7 @@ onUnmounted(() => {
     <div class="water-actions">
       <button @click="removeWaterGlobal" class="btn-snooze" style="border-color: #0891b2; color: #0891b2;">Remover (-250ml)</button>
       <button @click="addWaterGlobal" class="btn-drink">Beber (+250ml)</button>
-      <button @click="showWaterReminder = false" class="btn-snooze">Agora não</button>
+      <button @click="snoozeWaterReminder" class="btn-snooze">Agora não</button>
     </div>
   </div>
 
@@ -631,12 +637,8 @@ onUnmounted(() => {
         <DiaryTracking :key="diaryKey" />
       </div>
       
-      <div v-else-if="activeSection === 'favoritos'">
-        <FavoritesPage @navigate="selectSection" />
-      </div>
-
-      <div v-else-if="activeSection === 'historico'">
-        <HistoryPage @navigate="selectSection" />
+      <div v-else-if="activeSection === 'tuas-receitas'">
+        <YourRecipesPage @navigate="selectSection" />
       </div>
 
       <div v-else-if="activeSection === 'definicoes'">
