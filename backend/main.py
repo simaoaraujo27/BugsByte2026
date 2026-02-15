@@ -285,7 +285,7 @@ def help_assistant_chat(request: schemas.ChatRequest, current_user: models.User 
         "- Quiz Nutritivo: {'type': 'OPEN_QUIZ'} (Abre um jogo de perguntas e respostas sobre nutrição.) "
         "- Conversor de Medidas: {'type': 'OPEN_CONVERTER'} (Abre uma ferramenta para converter colheres em gramas e calorias.) "
         "- Cronómetro de Jejum: {'type': 'OPEN_FASTING_TIMER'} (Abre um temporizador de jejum intermitente.) "
-        "- Negociação: {'type': 'START_NEGOTIATION', 'value': 'prato'} "
+        "- Negociação/Receitas: {'type': 'START_NEGOTIATION', 'value': 'prato'} (Usa isto sempre que o utilizador pedir uma receita ou disser que quer comer algo específico) "
         "- Tema: {'type': 'SET_THEME', 'value': 'light'|'dark'} "
         "- Água: {'type': 'ADD_WATER'} | {'type': 'REMOVE_WATER'} "
         "- Peso: {'type': 'LOG_WEIGHT', 'value': número} "

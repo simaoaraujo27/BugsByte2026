@@ -48,34 +48,41 @@ const toggleChat = () => {
 // Voice Synthesis (TTS)
 const speak = (text) => {
   if (!isVoiceEnabled.value) return
-  
-  // Basic check for browser support
   if (!window.speechSynthesis) return
 
-  window.speechSynthesis.cancel() // Stop any current speech
+  // Cancel any ongoing speech
+  window.speechSynthesis.cancel()
   
-  const utterance = new SpeechSynthesisUtterance(text)
-  utterance.lang = 'pt-PT'
-  utterance.rate = 1.0
-  utterance.pitch = 1.0
-  
-  // Try to find a female voice
-  const voices = window.speechSynthesis.getVoices()
-  // Prioritize common female names in Portuguese/European voices
-  const femaleVoice = voices.find(v => 
-    (v.name.includes('Female') || v.name.includes('Maria') || v.name.includes('Helena') || v.name.includes('Joana') || v.name.includes('Raquel')) 
-    && (v.lang.startsWith('pt'))
-  )
-  
-  if (femaleVoice) {
-    utterance.voice = femaleVoice
-  } else {
-    // Fallback to any Portuguese voice
-    const anyPt = voices.find(v => v.lang.startsWith('pt'))
-    if (anyPt) utterance.voice = anyPt
+  // Wait a tiny bit for the cancel to take effect in some browsers
+  setTimeout(() => {
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.lang = 'pt-PT'
+    utterance.rate = 1.0
+    utterance.pitch = 1.0
+    
+    const voices = window.speechSynthesis.getVoices()
+    // Detailed search for a female Portuguese voice
+    const femaleVoice = voices.find(v => 
+      (v.lang.includes('pt-PT') || v.lang.includes('pt-BR')) && 
+      (v.name.includes('Maria') || v.name.includes('Helena') || v.name.includes('Joana') || v.name.includes('Raquel') || v.name.includes('Google português'))
+    )
+    
+    if (femaleVoice) {
+      utterance.voice = femaleVoice
+    } else {
+      const anyPt = voices.find(v => v.lang.startsWith('pt'))
+      if (anyPt) utterance.voice = anyPt
+    }
+    
+    window.speechSynthesis.speak(utterance)
+  }, 50)
+}
+
+// Ensure voices are loaded (for Chrome/Edge)
+if (typeof window !== 'undefined' && window.speechSynthesis) {
+  window.speechSynthesis.onvoiceschanged = () => {
+    window.speechSynthesis.getVoices()
   }
-  
-  window.speechSynthesis.speak(utterance)
 }
 
 // Function to "unlock" audio (browsers require user gesture)
