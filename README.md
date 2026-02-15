@@ -44,7 +44,6 @@ Utilizando modelos 3D (`Three.js`), o utilizador pode visualizar a evolução do
 
 ### 🎮 Gamificação e Ferramentas
 *   **Nutrition Quiz:** Aprende enquanto jogas.
-*   **Casino Game:** Uma forma divertida de ganhar badges e motivação.
 *   **Unit Converter:** Converte medidas de culinária num clique.
 
 ---
@@ -87,15 +86,6 @@ cd frontend
 npm install
 ./start.sh
 ```
-
----
-
-## 🎯 Slides & Pitch Support (Cheat Sheet)
-
-Se estiveres a usar este README para gerar a tua apresentação, foca nestes 3 pontos:
-1.  **Tecnologia:** Uso de Computer Vision para eliminar a barreira da introdução manual de dados.
-2.  **Retenção:** A visualização 3D do corpo cria um laço emocional e motivacional único.
-3.  **Utilidade:** O AI Negotiator resolve o dilema diário do "O que vou jantar?".
 
 ---
 
