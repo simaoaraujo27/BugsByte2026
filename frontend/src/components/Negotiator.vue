@@ -434,7 +434,10 @@ watch(
           🎤
         </button>
         <button @click="generateTextRecipe" :disabled="loading" class="btn-primary-action">
-          {{ loading ? '...' : 'Cozinhar' }}
+          <span v-if="loading" class="loading-dots" aria-label="A carregar" role="status">
+            <span></span><span></span><span></span>
+          </span>
+          <span v-else>Cozinhar</span>
         </button>
       </div>
 
@@ -464,7 +467,11 @@ watch(
         </button>
       </div>
       
-      <div v-if="loading" class="spinner-wrap"><div class="spinner-dot"></div></div>
+      <div v-if="loading" class="spinner-wrap">
+        <div class="loading-dots loading-dots-lg" aria-label="A carregar" role="status">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
       <button @click="reset" class="btn-formatted-back">← Voltar</button>
     </div>
 
@@ -490,7 +497,10 @@ watch(
         </div>
         <footer class="an-footer">
           <button @click="generateMoodRecipe" :disabled="loading" class="btn-reveal-recipe">
-            {{ loading ? '...' : 'Revelar Receita Ideal 🥂' }}
+            <span v-if="loading" class="loading-dots" aria-label="A carregar" role="status">
+              <span></span><span></span><span></span>
+            </span>
+            <span v-else>Revelar Receita Ideal 🥂</span>
           </button>
           <div class="an-footer-actions">
             <button @click="reset" class="btn-formatted-back">← Voltar</button>
@@ -919,16 +929,51 @@ watch(
 }
 
 /* Utils */
-.spinner-dot { 
-  width: 50px; 
-  height: 50px; 
-  border: 5px solid rgba(0,0,0,0.05); 
-  border-top-color: #e74c3c; 
-  border-radius: 50%; 
-  animation: spin 0.8s linear infinite; 
-  margin: 40px auto 20px; 
+.spinner-wrap {
+  margin: 32px auto 8px;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
+
+.loading-dots {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 36px;
+  min-height: 14px;
+}
+
+.loading-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.35;
+  animation: dotPulse 1s infinite ease-in-out;
+}
+
+.loading-dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.loading-dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.loading-dots-lg span {
+  width: 10px;
+  height: 10px;
+}
+
+@keyframes dotPulse {
+  0%, 80%, 100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
 
 @media (max-width: 900px) {
   .rec-content-grid-premium, .an-details-grid { grid-template-columns: 1fr; }

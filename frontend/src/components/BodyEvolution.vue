@@ -12,6 +12,7 @@ const { user } = useUser()
 const canvasContainer = ref(null)
 const isLoading = ref(true)
 const loadError = ref(null)
+const isDarkMode = ref(document.documentElement.classList.contains('dark'))
 
 // Simulation State
 const simState = ref({
@@ -27,6 +28,64 @@ let characterModel
 let bones = {}
 let hologramMesh
 let animationId
+let gridHelper
+
+const handleThemeChange = (event) => {
+  const theme = event?.detail?.theme
+  if (theme === 'dark' || theme === 'light') {
+    isDarkMode.value = theme === 'dark'
+  } else {
+    isDarkMode.value = document.documentElement.classList.contains('dark')
+  }
+}
+
+const handleStorageChange = (event) => {
+  if (event.key !== 'theme') return
+  if (event.newValue === 'dark' || event.newValue === 'light') {
+    isDarkMode.value = event.newValue === 'dark'
+  } else {
+    isDarkMode.value = document.documentElement.classList.contains('dark')
+  }
+}
+
+const applySceneTheme = () => {
+  if (!scene) return
+  const dark = isDarkMode.value
+  const bgColor = dark ? 0x111827 : 0xeaf2ff
+  const fogColor = dark ? 0x111827 : 0xdde8fb
+  scene.background = new THREE.Color(bgColor)
+  scene.fog = new THREE.Fog(fogColor, 5, 30)
+
+  if (gridHelper) {
+    const materials = Array.isArray(gridHelper.material) ? gridHelper.material : [gridHelper.material]
+    if (materials[0]) {
+      materials[0].color.setHex(dark ? 0x0ea5e9 : 0x4f86cf)
+      materials[0].opacity = dark ? 0.35 : 0.55
+      materials[0].transparent = true
+    }
+    if (materials[1]) {
+      materials[1].color.setHex(dark ? 0x1e293b : 0xbfd3f2)
+      materials[1].opacity = dark ? 0.45 : 0.65
+      materials[1].transparent = true
+    }
+  }
+}
+
+const getCaloriesBadgeClass = () => {
+  if (simState.value.calories > 0) {
+    return isDarkMode.value
+      ? 'text-orange-300 bg-orange-500/10 border-orange-500/20'
+      : 'text-orange-700 bg-orange-100 border-orange-200'
+  }
+  if (simState.value.calories < 0) {
+    return isDarkMode.value
+      ? 'text-green-300 bg-green-500/10 border-green-500/20'
+      : 'text-emerald-700 bg-emerald-100 border-emerald-200'
+  }
+  return isDarkMode.value
+    ? 'text-slate-400 bg-slate-700/50 border-slate-600'
+    : 'text-slate-600 bg-slate-100 border-slate-200'
+}
 
 const findBoneFlexible = (object, hints) => {
   let found = null
@@ -91,8 +150,9 @@ const initScene = () => {
   sun.castShadow = true
   scene.add(sun)
   
-  const gridHelper = new THREE.GridHelper(20, 20, 0x0ea5e9, 0x1e293b)
+  gridHelper = new THREE.GridHelper(20, 20, 0x0ea5e9, 0x1e293b)
   scene.add(gridHelper)
+  applySceneTheme()
 
   loadCharacter()
 
@@ -362,6 +422,8 @@ onMounted(() => {
   initScene()
   animate()
   window.addEventListener('resize', onResize)
+  window.addEventListener('theme-change', handleThemeChange)
+  window.addEventListener('storage', handleStorageChange)
 })
 
 const onResize = () => {
@@ -375,15 +437,21 @@ const onResize = () => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', onResize)
+  window.removeEventListener('theme-change', handleThemeChange)
+  window.removeEventListener('storage', handleStorageChange)
   cancelAnimationFrame(animationId)
   if (renderer) renderer.dispose()
+})
+
+watch(isDarkMode, () => {
+  applySceneTheme()
 })
 </script>
 
 <template>
-  <div class="body-evolution-container flex flex-col bg-slate-900 text-white rounded-3xl overflow-hidden shadow-2xl border border-slate-700 h-full min-h-[600px]">
+  <div class="body-evolution-container flex flex-col bg-slate-900 text-white rounded-3xl overflow-hidden shadow-2xl border border-slate-700 h-full min-h-[600px]" :class="isDarkMode ? 'be-dark' : 'be-light'">
     <!-- Header -->
-    <div class="p-4 bg-slate-800/50 backdrop-blur-md border-b border-slate-700 flex justify-between items-center z-10 relative">
+    <div class="be-header p-4 bg-slate-800/50 backdrop-blur-md border-b border-slate-700 flex justify-between items-center z-10 relative">
       <div class="flex items-center gap-3">
         <div>
           <h2 class="text-lg font-black tracking-tight bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
@@ -391,7 +459,7 @@ onBeforeUnmount(() => {
           </h2>
         </div>
       </div>
-      <div class="bg-blue-600/20 border border-blue-500/30 px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider text-blue-300 uppercase animate-pulse">
+      <div class="be-sim-badge bg-blue-600/20 border border-blue-500/30 px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider text-blue-300 uppercase animate-pulse">
         Simulação
       </div>
     </div>
@@ -399,9 +467,9 @@ onBeforeUnmount(() => {
     <div class="flex flex-col md:flex-row flex-1 min-h-0 relative">
       
       <!-- 3D Viewport -->
-      <div class="relative flex-1 bg-gradient-to-b from-slate-900 to-black" ref="canvasContainer">
+      <div class="be-viewport relative flex-1 bg-gradient-to-b from-slate-900 to-black" ref="canvasContainer">
         <!-- Loading State -->
-        <div v-if="isLoading" class="absolute inset-0 flex items-center justify-center bg-slate-900/80 z-20">
+        <div v-if="isLoading" class="be-loading absolute inset-0 flex items-center justify-center bg-slate-900/80 z-20">
           <div class="text-center">
             <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
             <p class="text-blue-400 text-sm font-bold animate-pulse">A carregar Modelo Biométrico...</p>
@@ -410,16 +478,16 @@ onBeforeUnmount(() => {
         </div>
 
         <!-- Time Label Overlay -->
-        <div v-if="simState" class="absolute top-4 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur px-4 py-2 rounded-xl border border-white/10 text-center pointer-events-none select-none">
-          <div class="text-[10px] uppercase text-slate-400 font-bold tracking-widest mb-1">Previsão Temporal</div>
-          <div class="text-2xl font-black text-white">+{{ simState.timeframe }} Meses</div>
+        <div v-if="simState" class="be-time-label absolute top-4 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur px-4 py-2 rounded-xl border border-white/10 text-center pointer-events-none select-none">
+          <div class="be-time-caption text-[10px] uppercase text-slate-400 font-bold tracking-widest mb-1">Previsão Temporal</div>
+          <div class="be-time-value text-2xl font-black text-white">+{{ simState.timeframe }} Meses</div>
         </div>
       </div>
 
       <!-- Controls Panel -->
-      <div v-if="simState" class="w-full md:w-80 bg-slate-900/95 backdrop-blur-xl border-l border-slate-700 flex flex-col z-10 shadow-2xl">
+      <div v-if="simState" class="be-controls w-full md:w-80 bg-slate-900/95 backdrop-blur-xl border-l border-slate-700 flex flex-col z-10 shadow-2xl">
         
-        <div class="p-5 flex-1 overflow-y-auto custom-scrollbar">
+        <div class="be-controls-scroll p-5 flex-1 overflow-y-auto custom-scrollbar">
             
             <!-- Header & Reset -->
             <div class="flex items-end justify-between mb-6 pb-4 border-b border-slate-700/50">
@@ -468,8 +536,7 @@ onBeforeUnmount(() => {
                         </div>
                         Calorias
                     </label>
-                    <span class="font-mono text-xs font-bold px-2 py-1 rounded border"
-                          :class="simState.calories > 0 ? 'text-orange-300 bg-orange-500/10 border-orange-500/20' : (simState.calories < 0 ? 'text-green-300 bg-green-500/10 border-green-500/20' : 'text-slate-400 bg-slate-700/50 border-slate-600')">
+                    <span class="font-mono text-xs font-bold px-2 py-1 rounded border" :class="getCaloriesBadgeClass()">
                       {{ simState.calories > 0 ? '+' : '' }}{{ simState.calories }}%
                     </span>
                   </div>
@@ -772,5 +839,107 @@ onBeforeUnmount(() => {
   background: rgba(15, 23, 42, 0.5);
   border-color: rgba(255, 255, 255, 0.08);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Light Theme */
+.be-light.body-evolution-container {
+  background: linear-gradient(180deg, #f7fbff 0%, #eef5ff 100%);
+  color: #0f172a;
+  border-color: #d8e6fb;
+  box-shadow: 0 18px 40px rgba(51, 85, 129, 0.18);
+}
+
+.be-light .be-header {
+  background: linear-gradient(90deg, rgba(234, 243, 255, 0.92), rgba(225, 238, 255, 0.92));
+  border-bottom-color: #d4e3fa;
+}
+
+.be-light .be-sim-badge {
+  background: rgba(52, 120, 214, 0.12);
+  border-color: rgba(52, 120, 214, 0.22);
+  color: #2f6ec7 !important;
+}
+
+.be-light .be-viewport {
+  background: linear-gradient(to bottom, #edf4ff, #e4edfb);
+}
+
+.be-light .be-loading {
+  background: rgba(237, 244, 255, 0.88);
+}
+
+.be-light .be-time-label {
+  background: rgba(255, 255, 255, 0.84);
+  border-color: rgba(150, 172, 207, 0.45);
+}
+
+.be-light .be-time-caption {
+  color: #5c6f92 !important;
+}
+
+.be-light .be-time-value {
+  color: #10203f !important;
+}
+
+.be-light .be-controls {
+  background: rgba(242, 248, 255, 0.96);
+  border-left-color: #d4e3fa;
+}
+
+.be-light .control-group {
+  background: rgba(208, 225, 248, 0.28);
+  border-color: rgba(150, 172, 207, 0.35);
+}
+
+.be-light .control-group:hover {
+  background: rgba(208, 225, 248, 0.42);
+  border-color: rgba(128, 154, 197, 0.48);
+  box-shadow: 0 6px 16px rgba(76, 108, 156, 0.16);
+}
+
+.be-light .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #9fb6dc;
+}
+
+.be-light .styled-slider {
+  background: linear-gradient(to right, rgba(181, 199, 227, 0.65), rgba(191, 207, 230, 0.45));
+  box-shadow: inset 0 1px 2px rgba(122, 144, 181, 0.35), 0 1px 2px rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(146, 169, 208, 0.45);
+}
+
+.be-light .styled-slider:hover {
+  box-shadow: inset 0 1px 2px rgba(122, 144, 181, 0.45), 0 2px 10px rgba(91, 134, 201, 0.25);
+}
+
+.be-light .styled-slider::-webkit-slider-thumb {
+  box-shadow:
+    0 0 0 3px rgba(229, 238, 252, 0.95),
+    0 0 0 5px rgba(70, 106, 158, 0.18),
+    0 3px 8px rgba(63, 92, 132, 0.3),
+    0 0 12px rgba(73, 126, 210, 0.25);
+  border: 2px solid rgba(255, 255, 255, 0.95);
+}
+
+.be-light .styled-slider::-moz-range-thumb {
+  box-shadow:
+    0 0 0 3px rgba(229, 238, 252, 0.95),
+    0 0 0 5px rgba(70, 106, 158, 0.18),
+    0 3px 8px rgba(63, 92, 132, 0.3),
+    0 0 12px rgba(73, 126, 210, 0.25);
+  border: 2px solid rgba(255, 255, 255, 0.95);
+}
+
+.be-light :deep(.text-slate-100),
+.be-light :deep(.text-slate-300) {
+  color: #16233f !important;
+}
+
+.be-light :deep(.text-slate-400) {
+  color: #51658a !important;
+}
+
+.be-light :deep(.text-slate-500),
+.be-light :deep(.text-slate-600) {
+  color: #6a7f9f !important;
 }
 </style>
