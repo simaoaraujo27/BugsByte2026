@@ -1,7 +1,7 @@
 <template>
   <div class="history-page" :class="{ embedded }">
-    <div v-if="!embedded" class="header-row">
-      <div>
+    <div v-if="!embedded || history.length" class="header-row" :class="{ embedded }">
+      <div v-if="!embedded">
         <h1>Histórico de Receitas</h1>
         <p>Receitas recomendadas automaticamente no "Tenho Fome".</p>
       </div>
@@ -37,9 +37,10 @@
       <div v-if="showHistoryScrollRight" class="carousel-fade carousel-fade-right"></div>
 
       <button
-        v-if="showHistoryScrollLeft"
+        v-if="hasHorizontalOverflow"
         class="scroll-arrow scroll-arrow-left"
         @click="scrollHistoryLeft"
+        :disabled="!showHistoryScrollLeft"
         aria-label="Ver receitas anteriores"
         title="Ver receitas anteriores"
       >
@@ -47,9 +48,10 @@
       </button>
 
       <button
-        v-if="showHistoryScrollRight"
+        v-if="hasHorizontalOverflow"
         class="scroll-arrow scroll-arrow-right"
         @click="scrollHistoryRight"
+        :disabled="!showHistoryScrollRight"
         aria-label="Ver mais receitas"
         title="Ver mais receitas"
       >
@@ -109,7 +111,8 @@ export default {
       selected: null,
       pendingRemoval: null,
       showHistoryScrollLeft: false,
-      showHistoryScrollRight: false
+      showHistoryScrollRight: false,
+      hasHorizontalOverflow: false
     };
   },
   mounted() {
@@ -176,9 +179,11 @@ export default {
       if (!scroller) {
         this.showHistoryScrollLeft = false;
         this.showHistoryScrollRight = false;
+        this.hasHorizontalOverflow = false;
         return;
       }
 
+      this.hasHorizontalOverflow = scroller.scrollWidth > scroller.clientWidth + 6;
       this.showHistoryScrollLeft = scroller.scrollLeft > 6;
       const remaining = scroller.scrollWidth - (scroller.scrollLeft + scroller.clientWidth);
       this.showHistoryScrollRight = remaining > 6;
@@ -221,6 +226,12 @@ export default {
   align-items: flex-start;
   gap: 16px;
   margin-bottom: 26px;
+}
+
+.header-row.embedded {
+  justify-content: flex-end;
+  align-items: center;
+  margin-bottom: 12px;
 }
 
 .header-row p {
@@ -433,6 +444,12 @@ export default {
 .scroll-arrow:hover {
   background: rgba(20, 37, 75, 0.96);
   transform: translateY(-50%) scale(1.04);
+}
+
+.scroll-arrow:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: translateY(-50%);
 }
 
 .scroll-arrow-left {

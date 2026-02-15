@@ -464,6 +464,20 @@ const saveFoodHistory = async (food) => {
   }
 }
 
+const removeFoodHistory = async (food) => {
+  if (!food?.id) return
+  try {
+    const res = await fetch(`${API_URL}/users/me/food-history/${food.id}`, {
+      method: 'DELETE',
+      headers: auth.getAuthHeaders()
+    })
+    if (!res.ok) throw new Error('Falha ao remover histórico')
+    foodHistory.value = foodHistory.value.filter(item => item.id !== food.id)
+  } catch (err) {
+    console.error(err)
+  }
+}
+
 const mergedHistory = computed(() => {
   const uniqueMap = new Map()
 
@@ -1115,13 +1129,22 @@ watch(
           <p v-if="!foodSearch.query.trim()" class="search-empty">Sugestões do seu histórico:</p>
           
           <ul v-if="displayedFoodResults.length > 0" class="food-suggestions">
-            <li v-for="food in displayedFoodResults" :key="`${food.source}-${food.name}`">
+            <li v-for="food in displayedFoodResults" :key="food.id ? `history-${food.id}` : `${food.source}-${food.name}`">
               <button type="button" @click="chooseFoodSuggestion(food)">
                 <div class="food-info">
                   <strong>{{ food.name }}</strong>
                   <span class="food-source-badge">{{ food.source === 'manual' ? 'recente' : food.source }}</span>
                 </div>
                 <small>{{ food.calories_per_100g }} kcal · P {{ food.protein_per_100g }}g · H {{ food.carbs_per_100g }}g · G {{ food.fat_per_100g }}g (100g)</small>
+              </button>
+              <button
+                v-if="food.id"
+                type="button"
+                class="food-remove-btn"
+                @click.stop="removeFoodHistory(food)"
+                title="Remover do histórico"
+              >
+                remover
               </button>
             </li>
           </ul>
@@ -1415,11 +1438,17 @@ watch(
   padding: 0;
   display: grid;
   gap: 6px;
-  max-height: 190px;
+  max-height: 340px;
   overflow: auto;
 }
 
-.food-suggestions li button {
+.food-suggestions li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.food-suggestions li > button:first-child {
   width: 100%;
   text-align: left;
   border: 1px solid var(--line);
@@ -1430,8 +1459,25 @@ watch(
   cursor: pointer;
 }
 
-.food-suggestions li button:hover {
+.food-suggestions li > button:first-child:hover {
   border-color: #14b8a6;
+}
+
+.food-remove-btn {
+  border: 1px solid color-mix(in srgb, #ef4444, var(--line) 40%);
+  background: color-mix(in srgb, #ef4444, transparent 92%);
+  color: #ef5b74;
+  border-radius: 8px;
+  padding: 0 10px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 100%;
+  text-transform: lowercase;
+}
+
+.food-remove-btn:hover {
+  background: color-mix(in srgb, #ef4444, transparent 84%);
 }
 
 .food-suggestions strong {
@@ -1468,15 +1514,15 @@ watch(
 }
 
 .food-modal {
-  width: min(880px, 100%);
-  max-height: 82vh;
+  width: min(1100px, 96vw);
+  max-height: 90vh;
   overflow: auto;
   border: 1px solid var(--line);
   background: var(--bg-elevated);
   border-radius: 14px;
-  padding: 14px;
+  padding: 18px;
   display: grid;
-  gap: 10px;
+  gap: 14px;
 }
 
 .food-modal-head {
