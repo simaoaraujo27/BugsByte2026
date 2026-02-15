@@ -18,7 +18,6 @@ import UnitConverter from './UnitConverter.vue'
 import FastingTimer from './FastingTimer.vue'
 import { auth, API_URL } from '@/auth'
 import chatbotImg from '@/assets/chatbot.png'
-import EasySpeech from 'easy-speech'
 
 const { fetchUser } = useUser()
 
@@ -46,73 +45,54 @@ const toggleChat = () => {
   isChatOpen.value = !isChatOpen.value
 }
 
-// Voice Synthesis (TTS) using EasySpeech
-const speak = async (text) => {
-  console.log('[Nutra Voice] Speaking:', text.substring(0, 30))
-  if (!isVoiceEnabled.value) return
-
+// Voice Synthesis (TTS) - Native Implementation
+const speak = (text) => {
+  if (!isVoiceEnabled.value || !window.speechSynthesis) return
+  
+  console.log('[Nutra Voice] Attempting to speak:', text.substring(0, 30))
+  
   try {
-    const voices = EasySpeech.voices()
-    // Find best PT-PT voice
-    const ptPtVoice = voices.find(v => v.lang.includes('pt-PT')) || 
-                      voices.find(v => v.lang.startsWith('pt'))
+    // Cancel any previous speech to avoid overlap or blocking
+    window.speechSynthesis.cancel()
     
-    if (ptPtVoice) {
-      await EasySpeech.speak({
-        text: text,
-        voice: ptPtVoice,
-        pitch: 1,
-        rate: 1,
-        volume: 1
-      })
-    } else if (window.speechSynthesis) {
-      // Native fallback if EasySpeech didn't find voices
-      console.log('[Nutra Voice] EasySpeech found no voices, using native fallback')
-      window.speechSynthesis.cancel()
-      const ut = new SpeechSynthesisUtterance(text)
-      ut.lang = 'pt-PT'
-      window.speechSynthesis.speak(ut)
-    }
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.lang = 'pt-PT'
+    utterance.rate = 1.0
+    utterance.pitch = 1.0
+    
+    // Attempt to pick a PT-PT voice
+    const voices = window.speechSynthesis.getVoices()
+    const ptVoice = voices.find(v => v.lang.includes('pt-PT')) || voices.find(v => v.lang.startsWith('pt'))
+    if (ptVoice) utterance.voice = ptVoice
+    
+    window.speechSynthesis.speak(utterance)
   } catch (e) {
-    console.error('[Nutra Voice] Error:', e)
-    // Final native attempt
-    if (window.speechSynthesis) {
-      const ut = new SpeechSynthesisUtterance(text)
-      ut.lang = 'pt-PT'
-      window.speechSynthesis.speak(ut)
-    }
+    console.warn('[Nutra Voice] Native TTS failed:', e)
   }
 }
 
 // Function to "unlock" audio (browsers require user gesture)
-const toggleVoiceAndUnlock = async () => {
+const toggleVoiceAndUnlock = () => {
   isVoiceEnabled.value = !isVoiceEnabled.value
-  console.log('[Nutra Voice] Enabled:', isVoiceEnabled.value)
+  console.log('[Nutra Voice] Voice enabled:', isVoiceEnabled.value)
 
   if (isVoiceEnabled.value) {
-    try {
-      const status = EasySpeech.status()
-      if (!status.initialized) {
-        console.log('[Nutra Voice] Initializing EasySpeech...')
-        // Use a more patient init but don't crash if it fails
-        await EasySpeech.init({ maxTimeout: 10000, interval: 250 }).catch(err => {
-          console.warn('[Nutra Voice] EasySpeech init timeout - proceeding with fallback mode', err)
-        })
-      }
-      
-      // Feedback to user that voice is now active
-      speak('Voz ativada')
-      
-      if (chatMessages.value.length > 0) {
-        speak(chatMessages.value[chatMessages.value.length - 1].content)
-      }
-    } catch (e) {
-      console.error('[Nutra Voice] Toggle Error:', e)
+    // Speak a tiny message to unlock the context
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel()
+      const unlock = new SpeechSynthesisUtterance('Voz ligada')
+      unlock.lang = 'pt-PT'
+      unlock.volume = 0.5
+      window.speechSynthesis.speak(unlock)
+    }
+    
+    // Speak last message if available
+    if (chatMessages.value.length > 0) {
+      const lastMsg = chatMessages.value[chatMessages.value.length - 1]
+      if (lastMsg.role === 'assistant') speak(lastMsg.content)
     }
   }
 }
-
-// Pre-load voices logic removed in favor of EasySpeech init in onMounted and toggle
 
 // Voice Recognition (STT)
 const startListening = () => {
@@ -151,20 +131,29 @@ const sendChatMessage = async () => {
     
     if (res.ok) {
       const data = await res.json()
+      // PUSH TEXT FIRST
       chatMessages.value.push({ role: 'assistant', content: data.content })
-      speak(data.content) // Speak the response
+      
+      // TRIGGER VOICE SECOND (Safely)
+      try {
+        speak(data.content)
+      } catch (voiceErr) {
+        console.warn('Voice output failed, but message was shown:', voiceErr)
+      }
+
       if (data.action) {
         executeNutraAction(data.action)
       }
     } else {
       const errText = 'Desculpa, tive um problema ao processar a tua mensagem.'
       chatMessages.value.push({ role: 'assistant', content: errText })
-      speak(errText)
+      try { speak(errText) } catch (e) {}
     }
   } catch (e) {
+    console.error('Chat processing error:', e)
     const errText = 'Erro de ligação com o servidor.'
     chatMessages.value.push({ role: 'assistant', content: errText })
-    speak(errText)
+    try { speak(errText) } catch (e) {}
   } finally {
     isChatLoading.value = false
     // Scroll to bottom
@@ -540,17 +529,18 @@ const containerStyle = computed(() => {
   return { filter: `url(#${colorBlindnessMode.value})` }
 })
 
-onMounted(async () => {
+onMounted(() => {
   console.log('SiteHomePage onMounted')
   fetchUser().catch(err => console.error('fetchUser failed in SiteHomePage:', err))
   fetchWaterIntake()
   startWaterTimer()
 
-  // Silent init attempt on mount
-  try {
-    await EasySpeech.init({ maxTimeout: 5000, interval: 250 })
-  } catch (e) {
-    console.warn('[Nutra Voice] Auto-init failed, will retry on click.')
+  // Pre-load voices for TTS
+  if (window.speechSynthesis) {
+    window.speechSynthesis.getVoices()
+    if (window.speechSynthesis.onvoiceschanged !== undefined) {
+      window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices()
+    }
   }
   
   const initialSection = resolveSectionFromRoute(route.params.section)
