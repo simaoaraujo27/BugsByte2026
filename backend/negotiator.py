@@ -179,13 +179,9 @@ def _build_negotiator_recipe_from_meal(meal: dict, target_calories: int) -> Opti
     if not steps:
         steps = ["Segue o modo de preparação tradicional do prato."]
 
-    calories = food_data.calculate_recipe_calories(ingredients)
-    if calories <= 0:
-        calories = max(250, target_calories)
-
     return {
         "title": str(meal.get("strMeal", "Receita sugerida")).strip(),
-        "calories": calories,
+        "calories": max(250, target_calories),
         "time_minutes": 35,
         "ingredients": ingredients,
         "steps": steps,
@@ -219,6 +215,45 @@ def _translate_recipe_to_pt(recipe: dict) -> dict:
         title = str(translated.get("title") or payload["title"]).strip()
         ingredients = translated.get("ingredients") if isinstance(translated.get("ingredients"), list) else payload["ingredients"]
         steps = translated.get("steps") if isinstance(translated.get("steps"), list) else payload["steps"]
+
+        return {
+            **recipe,
+            "title": title or recipe.get("title", ""),
+            "ingredients": [str(item) for item in ingredients if str(item).strip()],
+            "steps": [str(item) for item in steps if str(item).strip()],
+        }
+    except Exception:
+        return recipe
+
+
+def _normalize_recipe_portion_one_person(recipe: dict) -> dict:
+    try:
+        payload = {
+            "title": recipe.get("title", ""),
+            "ingredients": recipe.get("ingredients", []),
+            "steps": recipe.get("steps", []),
+        }
+        prompt = (
+            "Ajusta esta receita para 1 pessoa (uma refeição individual). "
+            "Mantém o mesmo prato e técnica, apenas ajusta quantidades dos ingredientes para 1 porção realista. "
+            "Responde APENAS com JSON válido no mesmo formato, sem texto extra: "
+            "{ 'title': '...', 'ingredients': ['...'], 'steps': ['...'] }.\n\n"
+            f"DADOS:\n{json.dumps(payload, ensure_ascii=False)}"
+        )
+        response = get_chat_completion(
+            messages=[
+                {"role": "system", "content": "És um chef PT-PT. Ajusta quantidades para 1 pessoa e retorna apenas JSON."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.2,
+            response_format={"type": "json_object"},
+            max_tokens=900
+        )
+        normalized = json.loads(response.choices[0].message.content)
+
+        title = str(normalized.get("title") or payload["title"]).strip()
+        ingredients = normalized.get("ingredients") if isinstance(normalized.get("ingredients"), list) else payload["ingredients"]
+        steps = normalized.get("steps") if isinstance(normalized.get("steps"), list) else payload["steps"]
 
         return {
             **recipe,
@@ -295,6 +330,10 @@ def _try_recipe_api_first(craving: str, target_calories: int, allergens: List[st
         return None
 
     best_raw_recipe = _translate_recipe_to_pt(best_raw_recipe)
+    best_raw_recipe = _normalize_recipe_portion_one_person(best_raw_recipe)
+    real_calories = food_data.calculate_recipe_calories(best_raw_recipe.get("ingredients", []))
+    if real_calories > 0:
+        best_raw_recipe["calories"] = real_calories
 
     return schemas.NegotiatorResponse(
         original_craving=craving,
@@ -380,6 +419,7 @@ def negotiate_craving(
         "4. Responde sempre em PORTUGUÊS DE PORTUGAL (PT-PT).\n"
         "5. PROIBIDO usar quinoa/qinoa.\n"
         "6. A receita final deve ficar o mais perto possível da meta calórica indicada.\n"
+        "7. Quantidades de ingredientes devem ser para 1 pessoa (1 porção individual).\n"
         f"\nNOTAS ADICIONAIS (Secundárias):\n"
         f"- Estilo: {cuisine_focus}, técnica {technique_focus}, formato {format_focus}.\n"
         f"- {style_inspiration}\n"
@@ -441,6 +481,7 @@ def negotiate_craving(
                         sanitized_steps.append(str(step))
                 raw_recipe['steps'] = sanitized_steps
 
+            raw_recipe = _normalize_recipe_portion_one_person(raw_recipe)
             real_calories = food_data.calculate_recipe_calories(raw_recipe.get('ingredients', []))
             if real_calories > 0:
                 raw_recipe['calories'] = real_calories

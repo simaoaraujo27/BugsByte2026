@@ -804,14 +804,15 @@ watch(
 }
 
 .rec-final-action .btn-formatted-back {
-  border: 1px solid rgba(120, 168, 255, 0.3);
-  background: rgba(16, 33, 68, 0.75);
-  box-shadow: 0 12px 24px rgba(5, 12, 28, 0.32);
+  border: 1px solid rgba(124, 174, 255, 0.55);
+  background: linear-gradient(135deg, rgba(28, 66, 130, 0.95), rgba(18, 46, 98, 0.95));
+  color: #eaf3ff;
+  box-shadow: 0 14px 26px rgba(8, 22, 48, 0.42);
 }
 
 .rec-final-action .btn-formatted-back:hover {
-  border-color: rgba(120, 168, 255, 0.55);
-  background: rgba(24, 47, 96, 0.82);
+  border-color: rgba(161, 200, 255, 0.8);
+  background: linear-gradient(135deg, rgba(39, 84, 160, 0.98), rgba(24, 58, 120, 0.98));
   transform: translateY(-2px);
 }
 
