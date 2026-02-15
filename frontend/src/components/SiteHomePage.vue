@@ -156,6 +156,14 @@ const executeNutraAction = async (action) => {
         selectSection(sectionId)
       }
       break
+    case 'FIND_SHOPS':
+      shopParams.value = {
+        ingredients: value,
+        mode: action.mode || 'shop',
+        term: value
+      }
+      selectSection('supermercados')
+      break
     case 'SET_THEME':
       if (value === 'dark' && !isDarkMode.value) toggleTheme()
       if (value === 'light' && isDarkMode.value) toggleTheme()

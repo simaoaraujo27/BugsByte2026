@@ -279,6 +279,7 @@ def help_assistant_chat(request: schemas.ChatRequest, current_user: models.User 
         "2. NUNCA digas que fizeste algo se não incluíres a respetiva 'action' no JSON. "
         "AÇÕES DISPONÍVEIS: "
         "- Navegação: {'type': 'NAVIGATE', 'value': 'ID'} (inicio, tenhofome, gerarreceita, supermercados, diario, favoritos, historico, perfil, definicoes) "
+        "- Pesquisa Lojas/Produtos: {'type': 'FIND_SHOPS', 'value': 'produtos', 'mode': 'shop'|'restaurant'} (Usa isto se o user quiser saber onde comprar algo ou encontrar um restaurante) "
         "- Registo Refeição: {'type': 'ADD_MEAL', 'value': 'texto', 'section': 'breakfast'|'lunch'|'snack'|'dinner'|'extras'} "
         "- Limpar Diário: {'type': 'CLEAR_MEALS'} (Usa isto se o user pedir para apagar tudo o que comeu hoje) "
         "- Casino (EASTER EGG): {'type': 'OPEN_CASINO'} (Abre um simulador de casino real para o user jogar.) "

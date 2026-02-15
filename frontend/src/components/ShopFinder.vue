@@ -179,6 +179,17 @@ const askForLocation = () => {
     },
     (err) => {
       console.warn("Location error:", err);
+      let msg = "Não foi possível obter a sua localização.";
+      
+      if (err.code === 1) {
+        msg = "Permissão de localização negada. Ative-a nas definições do seu navegador.";
+      } else if (err.code === 2) {
+        msg = "Localização indisponível. Verifique a sua ligação à internet ou GPS.";
+      } else if (err.code === 3) {
+        msg = "Tempo esgotado ao tentar obter a localização.";
+      }
+      
+      error.value = msg;
       locationConsent.value = 'denied'; 
       localStorage.setItem('locationConsent', 'denied');
     }
