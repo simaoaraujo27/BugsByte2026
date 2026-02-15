@@ -32,41 +32,35 @@ def negotiate_craving(craving: str, target_calories: int = 600, mood: Optional[s
     technique_focus = random.choice(["forno", "grelhar", "saltear rápido", "estufar leve", "air fryer"])
     format_focus = random.choice(["bowl", "wrap", "prato no prato", "salada morna", "tosta aberta"])
     
-    # FAVORITES: use a small random sample so favorites influence less
-    fav_header = ""
+    # FAVORITES: used only as subtle inspiration
+    style_inspiration = ""
     if favorite_recipes:
         sampled = random.sample(favorite_recipes, k=min(2, len(favorite_recipes)))
-        fav_list = "\n".join([f"- {r.name}" for r in sampled])
-        fav_header = (
-            "REFERÊNCIA DE ESTILO (influência leve):\n"
-            "Usa APENAS para um toque subtil de perfil de sabor. "
-            "NÃO copies pratos favoritos nem reutilizes títulos iguais.\n"
-            f"{fav_list}\n\n"
-        )
+        fav_list = ", ".join([r.name for r in sampled])
+        style_inspiration = f"Se possível, podes inspirar-te levemente no perfil de sabor destes pratos: {fav_list}. MAS PRIORIZA TOTALMENTE O PEDIDO DO USER."
 
     allergen_context = ""
     if allergens:
         allergen_list = ", ".join(allergens)
-        allergen_context = f"AVISO DE ALERGIA: O utilizador é alérgico a: {allergen_list}. NÃO uses estes ingredientes na receita.\n\n"
+        allergen_context = f"AVISO DE ALERGIA: O utilizador é alérgico a: {allergen_list}. PROIBIDO usar estes ingredientes.\n"
 
     prompt = (
-        f"{fav_header}"
+        "OBJETIVO: Criar uma receita saudável baseada EXACTAMENTE no pedido do utilizador.\n"
+        f"PEDIDO DO UTILIZADOR: '{craving}'\n"
+        f"ESTADO EMOCIONAL: {mood or 'Normal'}\n"
         f"{allergen_context}"
-        f"BRIEF CRIATIVO DESTA GERAÇÃO: cozinha {cuisine_focus}, técnica {technique_focus}, formato {format_focus}. "
-        f"O utilizador enviou o seguinte: '{craving}'. Estado emocional: {mood}. "
-        "\nINSTRUÇÕES: "
-        "1. Se o utilizador descreveu um desejo específico, cria uma versão saudável. "
-        "2. Se forneceu ingredientes, cria uma receita criativa com eles. "
-        "3. Usa a lista de 'estilo' com peso BAIXO e gera propostas novas; evita repetições de títulos, combinações e passos. "
-        "3.1. Se houver ALERGÉNIOS listados acima, ignora-os TOTALMENTE e não os uses. "
-        "4. Se o pedido for inválido, define 'recipe' como null. "
-        "5. IMPORTANTE: Responde sempre em PORTUGUÊS DE PORTUGAL (PT-PT). "
-        "6. Em 'ingredients', usa SEMPRE quantidades realistas por ingrediente (g, ml, colheres, unidades parciais). "
-        "7. Evita unidade inteira quando não fizer sentido para uma porção (ex: '1/4 abacate' em vez de '1 abacate'). "
-        "8. Prefere porções equilibradas e proporcionais ao prato e ao objetivo calórico. "
-        "9. PROIBIDO usar quinoa/qinoa em qualquer parte da receita (título, ingredientes ou passos). "
-        "\nRetorna JSON (define 'calories' como 0): "
-        "{ 'message': '...', 'recipe': { 'title': '...', 'calories': 0, 'time_minutes': 30, 'ingredients': ['200g arroz', '100g frango'], 'steps': [] }, 'restaurant_search_term': '...' }"
+        "\nINSTRUÇÕES OBRIGATÓRIAS:\n"
+        "1. PRIORIDADE MÁXIMA: Deves gerar uma receita que corresponda ao que o utilizador pediu. Se o utilizador pediu um bolo, gera um bolo. Se pediu uma sopa, gera uma sopa.\n"
+        "2. NUNCA ignores o pedido principal em favor de referências de estilo ou sugestões criativas.\n"
+        "3. Se o pedido for algo impossível de tornar saudável ou não comestível, define 'recipe' como null.\n"
+        "4. Responde sempre em PORTUGUÊS DE PORTUGAL (PT-PT).\n"
+        "5. Quantidades realistas por ingrediente (g, ml, colheres, unidades).\n"
+        "6. PROIBIDO usar quinoa/qinoa.\n"
+        f"\nREFERÊNCIAS OPCIONAIS (Usa APENAS se combinarem com o pedido):\n"
+        f"- Estilo Criativo Sugerido: cozinha {cuisine_focus}, técnica {technique_focus}, formato {format_focus}.\n"
+        f"- {style_inspiration}\n"
+        "\nRetorna JSON:\n"
+        "{ 'message': '...', 'recipe': { 'title': '...', 'calories': 0, 'time_minutes': 30, 'ingredients': ['...'], 'steps': [] }, 'restaurant_search_term': '...' }"
     )
 
     strict_json_rules = (
