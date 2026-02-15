@@ -48,16 +48,50 @@ const toggleChat = () => {
 // Voice Synthesis (TTS)
 const speak = (text) => {
   if (!isVoiceEnabled.value) return
+  
+  // Basic check for browser support
+  if (!window.speechSynthesis) return
+
   window.speechSynthesis.cancel() // Stop any current speech
+  
   const utterance = new SpeechSynthesisUtterance(text)
   utterance.lang = 'pt-PT'
+  utterance.rate = 1.0
+  utterance.pitch = 1.0
   
   // Try to find a female voice
   const voices = window.speechSynthesis.getVoices()
-  const femaleVoice = voices.find(v => (v.name.includes('Female') || v.name.includes('Maria') || v.name.includes('Joana')) && v.lang.startsWith('pt'))
-  if (femaleVoice) utterance.voice = femaleVoice
+  // Prioritize common female names in Portuguese/European voices
+  const femaleVoice = voices.find(v => 
+    (v.name.includes('Female') || v.name.includes('Maria') || v.name.includes('Helena') || v.name.includes('Joana') || v.name.includes('Raquel')) 
+    && (v.lang.startsWith('pt'))
+  )
+  
+  if (femaleVoice) {
+    utterance.voice = femaleVoice
+  } else {
+    // Fallback to any Portuguese voice
+    const anyPt = voices.find(v => v.lang.startsWith('pt'))
+    if (anyPt) utterance.voice = anyPt
+  }
   
   window.speechSynthesis.speak(utterance)
+}
+
+// Function to "unlock" audio (browsers require user gesture)
+const toggleVoiceAndUnlock = () => {
+  isVoiceEnabled.value = !isVoiceEnabled.value
+  if (isVoiceEnabled.value) {
+    // Speak a tiny silent or very short greeting to unlock the context
+    const unlockUtterance = new SpeechSynthesisUtterance('')
+    unlockUtterance.volume = 0
+    window.speechSynthesis.speak(unlockUtterance)
+    
+    // Also trigger the welcome message if it's the start
+    if (chatMessages.value.length === 1) {
+      speak(chatMessages.value[0].content)
+    }
+  }
 }
 
 // Voice Recognition (STT)
@@ -681,7 +715,7 @@ onUnmounted(() => {
         </div>
         <button 
           class="voice-toggle-btn" 
-          @click="isVoiceEnabled = !isVoiceEnabled"
+          @click="toggleVoiceAndUnlock"
           :class="{ 'voice-active': isVoiceEnabled }"
           title="Ativar/Desativar Voz"
         >
