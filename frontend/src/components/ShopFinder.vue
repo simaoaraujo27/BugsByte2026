@@ -177,22 +177,42 @@ const askForLocation = () => {
       
       if (ingredients.value) findShops();
     },
-    (err) => {
+    async (err) => {
       console.warn("Location error:", err);
-      let msg = "Não foi possível obter a sua localização.";
       
+      // Fallback to IP Geolocation if native GPS fails (common on Linux/Chromium)
+      if (err.code === 2 || err.code === 3 || err.message.includes('429')) {
+        console.log("Attempting IP-based geolocation fallback...");
+        try {
+          const res = await fetch('https://ipapi.co/json/');
+          const data = await res.json();
+          if (data.latitude && data.longitude) {
+            userLocation.value = { lat: data.latitude, lon: data.longitude };
+            manualQuery.value = `${data.city}, ${data.country_name} (Aprox.)`;
+            locationConsent.value = 'granted';
+            await nextTick();
+            initMap(userLocation.value.lat, userLocation.value.lon);
+            error.value = "GPS indisponível. A usar localização aproximada por IP.";
+            if (ingredients.value) findShops();
+            return;
+          }
+        } catch (ipErr) {
+          console.error("IP Fallback failed:", ipErr);
+        }
+      }
+
+      let msg = "Não foi possível obter a sua localização.";
       if (err.code === 1) {
         msg = "Permissão de localização negada. Ative-a nas definições do seu navegador.";
-      } else if (err.code === 2) {
-        msg = "Localização indisponível. Verifique a sua ligação à internet ou GPS.";
-      } else if (err.code === 3) {
-        msg = "Tempo esgotado ao tentar obter a localização.";
+      } else {
+        msg = "Localização indisponível. Por favor, use a pesquisa manual abaixo.";
       }
       
       error.value = msg;
       locationConsent.value = 'denied'; 
       localStorage.setItem('locationConsent', 'denied');
-    }
+    },
+    { timeout: 10000 }
   );
 };
 
