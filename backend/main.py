@@ -18,7 +18,7 @@ from typing import List
 load_dotenv()
 
 # Use absolute imports
-import models, schemas, shops, negotiator, food_data, auth, vision
+import models, schemas, shops, negotiator, food_data, auth, vision, llm_client
 from database import SessionLocal, engine, get_db
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -266,8 +266,6 @@ def login(request: schemas.LoginRequest, db: Session = Depends(get_db)):
 
 @app.post("/assistant/chat", response_model=schemas.ChatResponse)
 def help_assistant_chat(request: schemas.ChatRequest, current_user: models.User = Depends(auth.get_current_user)):
-    client, model = negotiator.get_client_config()
-    
     system_prompt = (
         "O teu nome é Nutra, a Assistente Inteligente Suprema da NutriVentures (PT-PT). "
         "Quando o utilizador te perguntar o que sabes fazer, deves mencionar que podes: "
@@ -297,8 +295,7 @@ def help_assistant_chat(request: schemas.ChatRequest, current_user: models.User 
         messages.append({"role": msg.role, "content": msg.content})
 
     try:
-        response = client.chat.completions.create(
-            model=model,
+        response = llm_client.get_chat_completion(
             messages=messages,
             temperature=0.3,
             response_format={"type": "json_object"},
