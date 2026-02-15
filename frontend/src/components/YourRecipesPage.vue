@@ -63,8 +63,14 @@ defineEmits(['navigate'])
   background: linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated), transparent 3%) 0%, color-mix(in srgb, var(--bg-elevated), transparent 10%) 100%);
   border-radius: 18px;
   padding: 20px;
-  box-shadow: 0 12px 30px rgba(4, 10, 24, 0.22);
+  box-shadow:
+    0 6px 16px rgba(38, 64, 104, 0.10),
+    0 1px 2px rgba(38, 64, 104, 0.08);
   overflow: hidden;
+}
+
+:global(.theme-dark) .recipes-block {
+  box-shadow: 0 12px 30px rgba(4, 10, 24, 0.22);
 }
 
 .block-head {

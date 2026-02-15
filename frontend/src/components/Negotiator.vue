@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from 'vue';
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue';
 import { auth, API_URL } from '@/auth';
 import { addRecipeToHistory } from '@/utils/recipeHistory';
 
@@ -11,8 +11,17 @@ const props = defineProps({
   initialCraving: {
     type: String,
     default: ''
+  },
+  isDarkMode: {
+    type: Boolean,
+    default: null
   }
 });
+
+const resolvedDarkMode = computed(() => {
+  if (typeof props.isDarkMode === 'boolean') return props.isDarkMode
+  return document.documentElement.classList.contains('dark')
+})
 
 const emit = defineEmits(['choice', 'route-mode-change', 'navigate', 'negotiated']);
 
@@ -381,7 +390,7 @@ watch(
 </script>
 
 <template>
-  <div class="negotiator-container">
+  <div class="negotiator-container" :class="resolvedDarkMode ? 'neg-dark' : 'neg-light'">
     
     <!-- MAIN LANDING -->
     <div v-if="activeView === 'landing'" class="view-wrapper fade-in">
@@ -786,9 +795,9 @@ watch(
 
 .rec-final-action {
   padding: 34px 40px;
-  background: linear-gradient(180deg, rgba(4, 9, 26, 0.95), rgba(2, 6, 18, 0.98));
+  background: linear-gradient(180deg, #f5f9ff 0%, #eaf2ff 100%);
   text-align: center;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid #d5e3f7;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -804,15 +813,29 @@ watch(
 }
 
 .rec-final-action .btn-formatted-back {
-  border: 1px solid rgba(120, 168, 255, 0.3);
-  background: rgba(16, 33, 68, 0.75);
-  box-shadow: 0 12px 24px rgba(5, 12, 28, 0.32);
+  border: 1px solid rgba(124, 174, 255, 0.55);
+  background: linear-gradient(135deg, rgba(28, 66, 130, 0.95), rgba(18, 46, 98, 0.95));
+  color: #eaf3ff;
+  box-shadow: 0 14px 26px rgba(8, 22, 48, 0.42);
 }
 
 .rec-final-action .btn-formatted-back:hover {
-  border-color: rgba(120, 168, 255, 0.55);
-  background: rgba(24, 47, 96, 0.82);
+  border-color: rgba(161, 200, 255, 0.8);
+  background: linear-gradient(135deg, rgba(39, 84, 160, 0.98), rgba(24, 58, 120, 0.98));
   transform: translateY(-2px);
+}
+
+:global(.site-layout.theme-dark) .rec-final-action,
+:global(html.dark) .rec-final-action,
+:global(.theme-dark) .rec-final-action,
+:global(.dark) .rec-final-action {
+  background: linear-gradient(180deg, rgba(4, 9, 26, 0.95), rgba(2, 6, 18, 0.98)) !important;
+  border-top: 1px solid var(--line) !important;
+}
+
+.negotiator-container.neg-dark .rec-final-action {
+  background: linear-gradient(180deg, rgba(4, 9, 26, 0.95), rgba(2, 6, 18, 0.98)) !important;
+  border-top: 1px solid var(--line) !important;
 }
 
 .btn-save {
@@ -886,17 +909,17 @@ watch(
   width: min(430px, 100%);
   border-radius: 18px;
   padding: 22px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: linear-gradient(165deg, rgba(18, 31, 62, 0.97), rgba(10, 19, 40, 0.97));
-  box-shadow: 0 24px 46px rgba(0, 0, 0, 0.35);
+  border: 1px solid #d7e4f5;
+  background: linear-gradient(165deg, #ffffff, #edf5ff);
+  box-shadow: 0 20px 40px rgba(28, 57, 98, 0.18);
 }
 
 .ui-feedback-modal.success {
-  border-color: rgba(52, 211, 153, 0.42);
+  border-color: rgba(16, 185, 129, 0.38);
 }
 
 .ui-feedback-modal.error {
-  border-color: rgba(255, 127, 127, 0.36);
+  border-color: rgba(244, 63, 94, 0.35);
 }
 
 .ui-feedback-icon {
@@ -906,13 +929,13 @@ watch(
 
 .ui-feedback-modal h3 {
   margin: 0 0 6px 0;
-  color: var(--text-main);
+  color: #10203f;
   font-weight: 900;
 }
 
 .ui-feedback-modal p {
   margin: 0;
-  color: var(--text-muted);
+  color: #4b6287;
   line-height: 1.5;
 }
 
@@ -926,6 +949,55 @@ watch(
   color: #fff;
   font-weight: 700;
   cursor: pointer;
+}
+
+:global(.theme-dark) .ui-feedback-modal,
+:global(.dark) .ui-feedback-modal {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(165deg, rgba(18, 31, 62, 0.97), rgba(10, 19, 40, 0.97));
+  box-shadow: 0 24px 46px rgba(0, 0, 0, 0.35);
+}
+
+.negotiator-container.neg-dark .ui-feedback-modal {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(165deg, rgba(18, 31, 62, 0.97), rgba(10, 19, 40, 0.97));
+  box-shadow: 0 24px 46px rgba(0, 0, 0, 0.35);
+}
+
+:global(.theme-dark) .ui-feedback-modal.success,
+:global(.dark) .ui-feedback-modal.success {
+  border-color: rgba(52, 211, 153, 0.42);
+}
+
+.negotiator-container.neg-dark .ui-feedback-modal.success {
+  border-color: rgba(52, 211, 153, 0.42);
+}
+
+:global(.theme-dark) .ui-feedback-modal.error,
+:global(.dark) .ui-feedback-modal.error {
+  border-color: rgba(255, 127, 127, 0.36);
+}
+
+.negotiator-container.neg-dark .ui-feedback-modal.error {
+  border-color: rgba(255, 127, 127, 0.36);
+}
+
+:global(.theme-dark) .ui-feedback-modal h3,
+:global(.dark) .ui-feedback-modal h3 {
+  color: var(--text-main);
+}
+
+.negotiator-container.neg-dark .ui-feedback-modal h3 {
+  color: var(--text-main);
+}
+
+:global(.theme-dark) .ui-feedback-modal p,
+:global(.dark) .ui-feedback-modal p {
+  color: var(--text-muted);
+}
+
+.negotiator-container.neg-dark .ui-feedback-modal p {
+  color: var(--text-muted);
 }
 
 /* Utils */

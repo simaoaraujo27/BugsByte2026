@@ -611,6 +611,7 @@ onUnmounted(() => {
         <Negotiator
           :route-mode="negotiatorRouteMode"
           :initial-craving="globalCraving"
+          :is-dark-mode="isDarkMode"
           @choice="handleNegotiationChoice"
           @route-mode-change="handleNegotiatorModeChange"
           @navigate="selectSection"
