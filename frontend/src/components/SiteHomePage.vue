@@ -681,6 +681,14 @@ onUnmounted(() => {
             <p>Assistente Inteligente</p>
           </div>
         </div>
+        <button
+          type="button"
+          class="chat-close-mobile"
+          @click="toggleChat"
+          aria-label="Fechar chat"
+        >
+          ✕
+        </button>
       </header>
       
       <div class="chat-messages-box">
@@ -995,6 +1003,9 @@ onUnmounted(() => {
   background: var(--menu-active-text);
   color: white;
   padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .chat-header-info {
@@ -1030,6 +1041,32 @@ onUnmounted(() => {
 
 .chat-header-info h4 { margin: 0; font-size: 1.15rem; font-weight: 800; }
 .chat-header-info p { margin: 0; font-size: 0.85rem; opacity: 0.9; }
+
+.chat-close-mobile {
+  display: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.12);
+  color: #ffffff;
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.chat-close-mobile:hover {
+  background: rgba(0, 0, 0, 0.22);
+}
+
+@media (max-width: 860px) {
+  .chat-close-mobile {
+    display: inline-flex;
+  }
+}
 
 .chat-messages-box {
   flex: 1;
