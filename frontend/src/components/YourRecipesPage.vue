@@ -31,7 +31,7 @@ defineEmits(['navigate'])
 <style scoped>
 .your-recipes-page {
   max-width: 1040px;
-  margin: 0 auto;
+  margin: 0;
   display: grid;
   gap: 28px;
 }

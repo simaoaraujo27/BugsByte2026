@@ -1030,7 +1030,7 @@ onUnmounted(() => {
 .chat-fab {
   position: fixed;
   bottom: 24px;
-  right: 24px;
+  right: max(16px, env(safe-area-inset-right));
   width: 60px;
   height: 60px;
   border-radius: 50%;
@@ -1068,8 +1068,8 @@ onUnmounted(() => {
 .chat-assistant-window {
   position: fixed;
   bottom: 100px;
-  right: 24px;
-  width: 380px;
+  right: max(16px, env(safe-area-inset-right));
+  width: min(380px, calc(100vw - 32px));
   height: 550px;
   background: var(--bg-elevated);
   border: 1px solid var(--line);
@@ -1193,6 +1193,7 @@ onUnmounted(() => {
   display: flex;
   gap: 10px;
   background: var(--bg-elevated);
+  box-sizing: border-box;
 }
 
 .mic-btn {
@@ -1224,6 +1225,7 @@ onUnmounted(() => {
 
 .chat-input-area input {
   flex: 1;
+  min-width: 0;
   border: 1.5px solid var(--line);
   background: var(--bg-main);
   color: var(--text-main);

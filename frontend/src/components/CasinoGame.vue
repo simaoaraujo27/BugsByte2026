@@ -197,6 +197,7 @@ const playRoulette = () => {
               {{ n }}
             </span>
           </div>
+          <div class="roulette-hub"></div>
         </div>
       </div>
       
@@ -222,6 +223,38 @@ const playRoulette = () => {
 .game-view { min-height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
 .credits-badge { background: #0d9488; color: white; padding: 4px 12px; border-radius: 20px; font-weight: 800; font-size: 0.85rem; margin-bottom: 10px; }
 
+/* SLOTS */
+.reels-container {
+  width: 100%;
+  max-width: 280px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.reel {
+  height: 72px;
+  border-radius: 12px;
+  border: 2px solid #0d9488;
+  background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  box-shadow: inset 0 2px 8px rgba(15, 23, 42, 0.1), 0 2px 4px rgba(2, 6, 23, 0.15);
+}
+
+.reel.spinning {
+  animation: slotPulse 0.18s linear infinite;
+}
+
+@keyframes slotPulse {
+  0% { transform: translateY(0); filter: saturate(100%); }
+  50% { transform: translateY(-2px); filter: saturate(130%); }
+  100% { transform: translateY(0); filter: saturate(100%); }
+}
+
 /* BLACKJACK */
 .blackjack-table { width: 100%; }
 .hand-label { font-size: 0.7rem; color: #64748b; font-weight: 800; text-transform: uppercase; }
@@ -232,30 +265,97 @@ const playRoulette = () => {
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 .card.player { border-color: #0d9488; background: #f0fdfa; }
+.bj-controls {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+.btn-bj {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 0;
+  font-weight: 900;
+  font-size: 0.95rem;
+  cursor: pointer;
+  color: #ffffff;
+  background: linear-gradient(180deg, #0ea5a4 0%, #0d9488 100%);
+  box-shadow: 0 4px 0 #0f766e;
+}
+.btn-bj.stand {
+  background: linear-gradient(180deg, #475569 0%, #334155 100%);
+  box-shadow: 0 4px 0 #1e293b;
+}
+.btn-bj:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 #0f766e;
+}
+.btn-bj.stand:active {
+  box-shadow: 0 2px 0 #1e293b;
+}
 
 /* ROULETTE 2D */
-.roulette-wrapper { position: relative; width: 160px; height: 160px; margin-bottom: 15px; }
+.roulette-wrapper { position: relative; width: 172px; height: 172px; margin-bottom: 15px; }
 .roulette-pointer { 
-  position: absolute; top: -10px; left: 50%; transform: translateX(-50%); 
-  z-index: 10; color: #f59e0b; font-size: 1.2rem; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));
+  position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+  z-index: 12; color: #f59e0b; font-size: 1.35rem; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.35));
 }
 .roulette-wheel-2d {
-  width: 100%; height: 100%; border-radius: 50%; border: 6px solid #1e293b;
-  position: relative; overflow: hidden; transition: transform 2s cubic-bezier(0.1, 0, 0.2, 1);
-  background: #1e293b;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 5px solid #94a3b8;
+  position: relative;
+  overflow: hidden;
+  transition: transform 2s cubic-bezier(0.1, 0, 0.2, 1);
+  background:
+    radial-gradient(circle at center, #0b1324 0 31%, transparent 31%),
+    radial-gradient(circle at center, transparent 0 66%, #0b1324 66% 100%),
+    linear-gradient(180deg, #111827 0%, #0f172a 100%);
+  box-shadow: inset 0 0 0 3px #1e293b, 0 8px 22px rgba(2, 6, 23, 0.45);
 }
 .segment {
-  position: absolute; width: 2px; height: 80px; left: 50%; top: 0;
-  margin-left: -1px; transform-origin: bottom center;
+  position: absolute;
+  width: 18px;
+  height: 82px;
+  left: 50%;
+  top: 50%;
+  margin-left: -9px;
+  margin-top: -82px;
+  transform-origin: 9px 82px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
 }
 .segment span {
-  display: block; width: 14px; height: 18px; margin-left: -6px;
-  font-size: 0.55rem; font-weight: 900; color: white; 
-  display: flex; align-items: center; justify-content: center; border-radius: 2px;
+  width: 16px;
+  height: 16px;
+  font-size: 0.5rem;
+  font-weight: 900;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 .segment span.red { background: #ef4444; }
 .segment span.black { background: #000; }
 .segment span.green { background: #22c55e; }
+.roulette-hub {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 30px;
+  height: 30px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #f8fafc 0%, #cbd5e1 55%, #64748b 100%);
+  box-shadow: 0 0 0 3px #1e293b, 0 3px 10px rgba(2, 6, 23, 0.45);
+  z-index: 8;
+}
 
 /* BUTTONS */
 .color-picker { display: flex; gap: 8px; margin-bottom: 10px; width: 100%; }
@@ -272,8 +372,14 @@ const playRoulette = () => {
 
 /* DARK MODE FIXES */
 :global(.theme-dark) .casino-container { background: rgba(255, 255, 255, 0.05); }
+:global(.theme-dark) .reel {
+  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+  border-color: #22d3ee;
+}
 :global(.theme-dark) .card { background: #f8fafc; border-color: #cbd5e1; color: #0f172a; }
 :global(.theme-dark) .card.player { background: #ccfbf1; border-color: #0d9488; }
+:global(.theme-dark) .btn-bj { background: linear-gradient(180deg, #14b8a6 0%, #0d9488 100%); }
+:global(.theme-dark) .btn-bj.stand { background: linear-gradient(180deg, #64748b 0%, #475569 100%); }
 :global(.theme-dark) .result-text { color: #f8fafc; }
 :global(.theme-dark) .casino-nav button { background: #334155; color: #cbd5e1; }
 :global(.theme-dark) .hand-label { color: #94a3b8; }
