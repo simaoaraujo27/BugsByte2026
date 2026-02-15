@@ -1,5 +1,6 @@
 import os
 import sys
+import random
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 
@@ -10,16 +11,21 @@ from database import SessionLocal, engine
 import models, auth
 
 def seed_db():
+    print("Starting massive database seeding...")
     # Create tables if they don't exist
     models.Base.metadata.create_all(bind=engine)
     
     db = SessionLocal()
     
     try:
-        # 1. Seed Allergens
-        allergens = ["Glúten", "Laticínios", "Ovos", "Frutos de Casca Rija", "Peixe", "Marisco", "Soja", "Amendoim"]
+        # 1. Seed Allergens (~15)
+        allergen_names = [
+            "Glúten", "Laticínios", "Ovos", "Frutos de Casca Rija", "Peixe", 
+            "Marisco", "Soja", "Amendoim", "Sésamo", "Mostarda", 
+            "Aipo", "Dióxido de Enxofre", "Tremoço", "Moluscos", "Milho"
+        ]
         db_allergens = []
-        for name in allergens:
+        for name in allergen_names:
             existing = db.query(models.Allergen).filter(models.Allergen.name == name).first()
             if not existing:
                 a = models.Allergen(name=name)
@@ -28,109 +34,163 @@ def seed_db():
             else:
                 db_allergens.append(existing)
         db.commit()
-        print(f"Seeded {len(db_allergens)} allergens.")
+        print(f"Total Allergens: {len(db_allergens)}")
 
-        # 2. Seed a Demo User
-        test_user = db.query(models.User).filter(models.User.username == "demo").first()
-        if not test_user:
-            hashed_pw = auth.get_password_hash("demo1234")
-            test_user = models.User(
-                username="demo",
-                full_name="Utilizador Demo",
-                hashed_password=hashed_pw,
-                peso=75.5,
-                altura=1.75,
-                sexo="M",
-                idade=25,
-                goal="Manter Peso",
-                activity_level="Moderado",
-                target_calories=2200
-            )
-            # Add some allergens to demo user
-            test_user.allergens.append(db_allergens[0]) # Glúten
-            test_user.allergens.append(db_allergens[1]) # Laticínios
-            db.add(test_user)
-            db.commit()
-            db.refresh(test_user)
-            print("Created demo user 'demo' with password 'demo1234'")
+        # 2. Seed Users (10 users)
+        users = []
+        hashed_pw = auth.get_password_hash("password123")
+        goals = ["Perder Peso", "Ganhar Massa", "Manter Peso", "Melhorar Performance"]
+        activity_levels = ["Sedentário", "Ligeiro", "Moderado", "Ativo", "Muito Ativo"]
         
-        # 3. Seed some Recipes
-        recipes = [
-            {
-                "name": "Salada de Frango com Abacate",
-                "ingredients": "Peito de frango, abacate, alface, tomate, azeite",
-                "instructions": "Grelha o frango. Corta o abacate e o tomate. Mistura tudo com alface e tempera com azeite."
-            },
-            {
-                "name": "Omelete de Espinafres",
-                "ingredients": "2 ovos, espinafres frescos, sal, pimenta",
-                "instructions": "Bate os ovos. Salteia os espinafres numa frigideira. Adiciona os ovos e cozinha até estar pronto."
-            },
-            {
-                "name": "Arroz de Atum Saudável",
-                "ingredients": "Arroz integral, atum ao natural, cebola, cenoura",
-                "instructions": "Cozinha o arroz. Refoga a cebola e a cenoura picada. Adiciona o atum e mistura com o arroz."
-            }
-        ]
-        
-        for r_data in recipes:
-            existing = db.query(models.Recipe).filter(models.Recipe.name == r_data["name"]).first()
+        for i in range(1, 11):
+            username = f"user{i}"
+            existing = db.query(models.User).filter(models.User.username == username).first()
             if not existing:
-                r = models.Recipe(**r_data)
+                u = models.User(
+                    username=username,
+                    full_name=f"Utilizador Teste {i}",
+                    hashed_password=hashed_pw,
+                    peso=random.uniform(60.0, 95.0),
+                    altura=random.uniform(1.55, 1.95),
+                    sexo=random.choice(["M", "F"]),
+                    idade=random.randint(18, 60),
+                    goal=random.choice(goals),
+                    activity_level=random.choice(activity_levels),
+                    target_calories=random.randint(1800, 3000)
+                )
+                # Assign 0-2 random allergens
+                assigned_allergens = random.sample(db_allergens, k=random.randint(0, 2))
+                for alg in assigned_allergens:
+                    u.allergens.append(alg)
+                db.add(u)
+                users.append(u)
+            else:
+                users.append(existing)
+        db.commit()
+        print(f"Total Users: {len(users)}")
+
+        # 3. Seed Recipes (50 recipes)
+        recipe_bases = ["Frango", "Salmão", "Atum", "Tofu", "Ovos", "Peru", "Grão", "Feijão", "Massa", "Arroz"]
+        recipe_styles = ["Grelhado", "ao Forno", "Salteado", "Cozido", "em Salada", "Estufado"]
+        
+        for i in range(50):
+            base = random.choice(recipe_bases)
+            style = random.choice(recipe_styles)
+            name = f"{base} {style} Saudável {i+1}"
+            existing = db.query(models.Recipe).filter(models.Recipe.name == name).first()
+            if not existing:
+                r = models.Recipe(
+                    name=name,
+                    ingredients=f"Base de {base}, legumes variados, temperos naturais, azeite.",
+                    instructions=f"1. Preparar a base de {base}. 2. {style} os ingredientes. 3. Servir com acompanhamento saudável."
+                )
                 db.add(r)
         db.commit()
-        print("Seeded basic recipes.")
+        print("Seeded 50 Recipes.")
 
-        # 4. Seed Weight History for demo user
-        if test_user:
-            today = datetime.now()
-            for i in range(5):
-                date_str = (today - timedelta(days=i*7)).strftime("%Y-%m-%d")
-                existing = db.query(models.WeightEntry).filter(
-                    models.WeightEntry.user_id == test_user.id, 
-                    models.WeightEntry.date == date_str
-                ).first()
-                if not existing:
-                    w = models.WeightEntry(
-                        user_id=test_user.id,
-                        weight=75.5 + (i * 0.5),
-                        date=date_str
-                    )
-                    db.add(w)
-            db.commit()
-            print("Seeded weight history for demo user.")
-
-        # 5. Seed Diary for today
-        today_key = datetime.now().strftime("%Y-%m-%d")
-        existing_day = db.query(models.DiaryDay).filter(
-            models.DiaryDay.user_id == test_user.id,
-            models.DiaryDay.date_key == today_key
-        ).first()
-        
-        if not existing_day:
-            day = models.DiaryDay(user_id=test_user.id, date_key=today_key, goal=2200, water_liters=1.5)
-            db.add(day)
-            db.flush()
-            
-            breakfast = models.DiaryMeal(
-                day_id=day.id,
-                section="breakfast",
-                name="Pão Integral com Queijo",
-                grams=100,
-                calories=250,
-                protein=12,
-                carbs=35,
-                fat=8
+        # 4. Seed Restaurants (20 entries)
+        restaurant_names = ["Bio Sabor", "Horta no Prato", "Puro Verde", "Saúde na Mesa", "Fit Food", "Natural Gourmet", "The Green Leaf"]
+        for i in range(20):
+            name = f"{random.choice(restaurant_names)} {i+1}"
+            r = models.Restaurant(
+                name=name,
+                address=f"Rua das Flores, {random.randint(1, 200)}, Cidade",
+                phone=f"912345{i:03d}"
             )
-            db.add(breakfast)
-            db.commit()
-            print("Seeded today's diary for demo user.")
+            db.add(r)
+        db.commit()
+        print("Seeded 20 Restaurants.")
 
-        print("\nDatabase seeding completed successfully!")
+        # 5. Seed Weight History (200 entries: 20 per user)
+        for u in users:
+            start_weight = u.peso
+            today = datetime.now()
+            for i in range(20):
+                date_str = (today - timedelta(days=i*7)).strftime("%Y-%m-%d")
+                # Simulate slight weight fluctuation
+                w = models.WeightEntry(
+                    user_id=u.id,
+                    weight=start_weight + random.uniform(-2.0, 2.0),
+                    date=date_str
+                )
+                db.add(w)
+        db.commit()
+        print("Seeded 200 Weight Entries.")
+
+        # 6. Seed Diary Days and Meals (~600 entries)
+        # 15 days per user, 4 meals per day
+        meal_names = {
+            "breakfast": ["Pão Integral", "Iogurte com Aveia", "Omelete de Claras", "Batido de Fruta"],
+            "lunch": ["Frango com Arroz", "Salada de Atum", "Peixe Grelhado", "Massa Integral com Tofu"],
+            "snack": ["Fruta", "Frutos Secos", "Gelatina", "Queijo Fresco"],
+            "dinner": ["Sopa de Legumes", "Omelete de Espinafres", "Peru com Brócolos", "Salmão ao Forno"],
+            "extras": ["Chocolate Negro", "Biscoito de Arroz", "Infusão"]
+        }
+
+        for u in users:
+            for d in range(15):
+                date_key = (datetime.now() - timedelta(days=d)).strftime("%Y-%m-%d")
+                # Create or get day
+                day = db.query(models.DiaryDay).filter(
+                    models.DiaryDay.user_id == u.id, 
+                    models.DiaryDay.date_key == date_key
+                ).first()
+                if not day:
+                    day = models.DiaryDay(
+                        user_id=u.id,
+                        date_key=date_key,
+                        goal=u.target_calories or 2000,
+                        water_liters=random.uniform(1.0, 3.0)
+                    )
+                    db.add(day)
+                    db.flush()
+                
+                # Add 3-5 meals per day
+                sections = ["breakfast", "lunch", "snack", "dinner"]
+                if random.random() > 0.5: sections.append("extras")
+                
+                for section in sections:
+                    m = models.DiaryMeal(
+                        day_id=day.id,
+                        section=section,
+                        name=random.choice(meal_names[section]),
+                        grams=random.uniform(50, 400),
+                        calories=random.randint(100, 700),
+                        protein=random.uniform(5, 40),
+                        carbs=random.uniform(10, 60),
+                        fat=random.uniform(2, 25)
+                    )
+                    db.add(m)
+        db.commit()
+        print("Seeded ~600 Diary Meals across 150 Diary Days.")
+
+        # 7. Seed Food History (100 entries: 10 per user)
+        common_foods = [
+            ("Ovo", 155, 13, 1, 11), ("Banana", 89, 1, 23, 0), ("Frango", 165, 31, 0, 3),
+            ("Arroz", 130, 2, 28, 0), ("Abacate", 160, 2, 9, 15), ("Maçã", 52, 0, 14, 0),
+            ("Nozes", 654, 15, 14, 65), ("Iogurte", 59, 10, 4, 0)
+        ]
+        for u in users:
+            for i in range(10):
+                food = random.choice(common_foods)
+                fh = models.FoodHistory(
+                    user_id=u.id,
+                    name=f"{food[0]} {i+1}",
+                    calories_per_100g=food[1],
+                    protein_per_100g=food[2],
+                    carbs_per_100g=food[3],
+                    fat_per_100g=food[4],
+                    source="search"
+                )
+                db.add(fh)
+        db.commit()
+        print("Seeded 100 Food History entries.")
+
+        print("\nSUCCESS: Seeding completed with over 1000 entries total!")
 
     except Exception as e:
         db.rollback()
-        print(f"Error seeding database: {e}")
+        print(f"FATAL ERROR during seeding: {e}")
     finally:
         db.close()
 
