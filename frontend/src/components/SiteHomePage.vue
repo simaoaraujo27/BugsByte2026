@@ -57,15 +57,30 @@ const speak = async (text) => {
     const ptPtVoice = voices.find(v => v.lang.includes('pt-PT')) || 
                       voices.find(v => v.lang.startsWith('pt'))
     
-    await EasySpeech.speak({
-      text: text,
-      voice: ptPtVoice,
-      pitch: 1,
-      rate: 1,
-      volume: 1
-    })
+    if (ptPtVoice) {
+      await EasySpeech.speak({
+        text: text,
+        voice: ptPtVoice,
+        pitch: 1,
+        rate: 1,
+        volume: 1
+      })
+    } else if (window.speechSynthesis) {
+      // Native fallback if EasySpeech didn't find voices
+      console.log('[Nutra Voice] EasySpeech found no voices, using native fallback')
+      window.speechSynthesis.cancel()
+      const ut = new SpeechSynthesisUtterance(text)
+      ut.lang = 'pt-PT'
+      window.speechSynthesis.speak(ut)
+    }
   } catch (e) {
     console.error('[Nutra Voice] Error:', e)
+    // Final native attempt
+    if (window.speechSynthesis) {
+      const ut = new SpeechSynthesisUtterance(text)
+      ut.lang = 'pt-PT'
+      window.speechSynthesis.speak(ut)
+    }
   }
 }
 
@@ -79,19 +94,20 @@ const toggleVoiceAndUnlock = async () => {
       const status = EasySpeech.status()
       if (!status.initialized) {
         console.log('[Nutra Voice] Initializing EasySpeech...')
-        await EasySpeech.init({ maxTimeout: 5000, interval: 250 })
+        // Use a more patient init but don't crash if it fails
+        await EasySpeech.init({ maxTimeout: 10000, interval: 250 }).catch(err => {
+          console.warn('[Nutra Voice] EasySpeech init timeout - proceeding with fallback mode', err)
+        })
       }
       
       // Feedback to user that voice is now active
-      await EasySpeech.speak({ text: 'Voz ativada', volume: 0.5 })
+      speak('Voz ativada')
       
       if (chatMessages.value.length > 0) {
         speak(chatMessages.value[chatMessages.value.length - 1].content)
       }
     } catch (e) {
-      console.error('[Nutra Voice] Init Error:', e)
-      isVoiceEnabled.value = false
-      alert('Não foi possível ativar a voz. Verifique as permissões do navegador.')
+      console.error('[Nutra Voice] Toggle Error:', e)
     }
   }
 }
