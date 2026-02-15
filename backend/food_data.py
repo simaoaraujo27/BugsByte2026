@@ -9,6 +9,7 @@ from llm_client import get_client_config, get_chat_completion
 OPEN_FOOD_FACTS_URL = "https://world.openfoodfacts.org/cgi/search.pl"
 OFF_TIMEOUT_SECONDS = float(os.getenv("OFF_TIMEOUT_SECONDS", "1.5"))
 OFF_DEFAULT_PAGE_SIZE = int(os.getenv("OFF_DEFAULT_PAGE_SIZE", "3"))
+OFF_LOG_ERRORS = os.getenv("OFF_LOG_ERRORS", "0").strip() == "1"
 
 # Fallback values for common staples if API fails (kcal/100g)
 COMMON_STAPLES = {
@@ -93,7 +94,8 @@ def _search_foods_cached(query: str, page_size: int) -> tuple[dict, ...]:
         print(f"OFF Search Timeout for: {query}")
         raise requests.exceptions.Timeout(f"Timeout searching OFF for {query}")
     except Exception as e:
-        print(f"OFF Search Error: {e}")
+        if OFF_LOG_ERRORS:
+            print(f"OFF Search Error: {e}")
         return tuple()
 
 def search_foods(query: str, page_size: int = 10) -> List[Dict]:
@@ -126,7 +128,8 @@ def estimate_recipe_calories_with_ai(ingredients: List[str]) -> int:
         calories = int(float(data.get("estimated_total_calories", 0)))
         return max(0, calories)
     except Exception as e:
-        print(f"AI Calories Fallback Error: {e}")
+        if OFF_LOG_ERRORS:
+            print(f"AI Calories Fallback Error: {e}")
         return 0
 
 def calculate_recipe_calories(ingredients: List[str]) -> int:

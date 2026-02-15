@@ -211,6 +211,41 @@ def validate_date_key(date_key: str) -> str:
     return date_key
 
 
+def compute_daily_calorie_target(user: models.User) -> int:
+    if user.target_calories:
+        return max(1000, int(user.target_calories))
+
+    default_goal = 1800
+    if user.peso and user.altura and user.idade:
+        bmr = 10 * user.peso + 6.25 * user.altura - 5 * user.idade + (5 if user.sexo == 'male' else -161)
+        factors = {'sedentary': 1.2, 'light': 1.375, 'moderate': 1.55, 'high': 1.725}
+        tdee = bmr * factors.get(user.activity_level, 1.2)
+        if user.goal == 'lose':
+            default_goal = int(tdee - 500)
+        elif user.goal == 'gain':
+            default_goal = int(tdee + 300)
+        else:
+            default_goal = int(tdee)
+
+    return max(1000, default_goal)
+
+
+def compute_recipe_target_calories(user: models.User, requested_target: int | None) -> int:
+    # Keep explicit custom target from client unless it's the legacy default 600.
+    if requested_target and requested_target > 0 and requested_target != 600:
+        return max(250, min(int(requested_target), 1400))
+
+    daily_target = compute_daily_calorie_target(user)
+    goal = (user.goal or "maintain").lower()
+    meal_share = {
+        "lose": 0.22,
+        "maintain": 0.27,
+        "gain": 0.32,
+    }.get(goal, 0.27)
+    meal_target = int(round(daily_target * meal_share))
+    return max(280, min(meal_target, 1200))
+
+
 def get_or_create_diary_day(db: Session, user_id: int, date_key: str) -> models.DiaryDay:
     day = (
         db.query(models.DiaryDay)
@@ -224,17 +259,7 @@ def get_or_create_diary_day(db: Session, user_id: int, date_key: str) -> models.
     user = db.query(models.User).filter(models.User.id == user_id).first()
     default_goal = 1800
     if user:
-        # Calculate auto goal if target_calories not set
-        if user.target_calories:
-            default_goal = user.target_calories
-        elif user.peso and user.altura and user.idade:
-            # Simple BMR + Activity logic similar to frontend for fallback
-            bmr = 10 * user.peso + 6.25 * user.altura - 5 * user.idade + (5 if user.sexo == 'male' else -161)
-            factors = {'sedentary': 1.2, 'light': 1.375, 'moderate': 1.55, 'high': 1.725}
-            tdee = bmr * factors.get(user.activity_level, 1.2)
-            if user.goal == 'lose': default_goal = int(tdee - 500)
-            elif user.goal == 'gain': default_goal = int(tdee + 300)
-            else: default_goal = int(tdee)
+        default_goal = compute_daily_calorie_target(user)
 
     day = models.DiaryDay(user_id=user_id, date_key=date_key, goal=max(1000, default_goal))
     db.add(day)
@@ -581,7 +606,17 @@ def analyze_mood(request: schemas.NegotiatorRequest, current_user: models.User =
 @app.post("/negotiator/negotiate", response_model=schemas.NegotiatorResponse)
 def negotiate_craving(request: schemas.NegotiatorRequest, current_user: models.User = Depends(auth.get_current_user)):
     allergens = [a.name for a in current_user.allergens]
-    return negotiator.negotiate_craving(request.craving, request.target_calories, request.mood, favorite_recipes=current_user.favorite_recipes, allergens=allergens)
+    meal_target = compute_recipe_target_calories(current_user, request.target_calories)
+    daily_target = compute_daily_calorie_target(current_user)
+    return negotiator.negotiate_craving(
+        request.craving,
+        meal_target,
+        request.mood,
+        favorite_recipes=current_user.favorite_recipes,
+        allergens=allergens,
+        plan_goal=current_user.goal,
+        daily_target_calories=daily_target
+    )
 
 @app.post("/negotiator/nutrition", response_model=schemas.NutritionAnalysisResponse)
 def analyze_nutrition_endpoint(request: schemas.NutritionAnalysisRequest, current_user: models.User = Depends(auth.get_current_user)):
