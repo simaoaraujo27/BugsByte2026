@@ -1906,20 +1906,162 @@ watch(
 }
 
 @media (max-width: 740px) {
+  .diary-page {
+    width: 100%;
+    min-width: 0;
+  }
+
   .diary-header {
     flex-direction: column;
+    align-items: stretch;
+  }
+
+  .date-nav {
+    width: 100%;
+    justify-content: space-between;
+    padding: 8px 10px;
+  }
+
+  .date-nav strong {
+    font-size: 0.95rem;
+    text-align: center;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .weekly-nav {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .week-nav-btn {
+    display: none;
   }
 
   .weekly-strip {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
   }
 
-  .macro-inputs {
+  .week-day {
+    padding: 7px 4px;
+  }
+
+  .week-day span {
+    font-size: 0.72rem;
+  }
+
+  .week-day strong {
+    font-size: 0.9rem;
+  }
+
+  .meal-head {
+    align-items: flex-start;
+  }
+
+  .meal-head h3 {
+    font-size: 0.98rem;
+    line-height: 1.25;
+  }
+
+  .add-btn {
+    padding: 6px 9px;
+    font-size: 0.84rem;
+    white-space: nowrap;
+  }
+
+  .composer-tabs {
+    display: grid;
     grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .composer-tabs button {
+    width: 100%;
+  }
+
+  .manual-grid-diary {
+    grid-template-columns: 1fr;
+  }
+
+  .macro-inputs-diary {
+    grid-template-columns: 1fr;
+  }
+
+  .voice-input-wrapper {
+    flex-direction: column;
+  }
+
+  .mic-btn {
+    width: 100%;
+    height: 42px;
+  }
+
+  .composer-actions {
+    flex-direction: column;
+  }
+
+  .save-btn,
+  .cancel-btn {
+    width: 100%;
+    min-height: 40px;
+  }
+
+  .meal-list li {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .right {
+    width: 100%;
+    min-width: 0;
+    text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
   }
 
   .filter-row {
     grid-template-columns: 1fr;
+  }
+
+  .food-modal {
+    width: min(96vw, 560px);
+    max-height: 88vh;
+    padding: 14px;
+  }
+
+  .food-suggestions li {
+    grid-template-columns: 1fr;
+  }
+
+  .food-remove-btn {
+    min-height: 36px;
+  }
+
+  .macro-edit-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 420px) {
+  .summary-card,
+  .meal-card,
+  .side-card {
+    padding: 12px;
+  }
+
+  .weekly-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .week-day span {
+    font-size: 0.7rem;
+  }
+
+  .week-day strong {
+    font-size: 0.86rem;
   }
 }
 </style>

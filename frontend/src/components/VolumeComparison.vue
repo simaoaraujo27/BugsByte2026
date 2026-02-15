@@ -455,7 +455,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="flex flex-col h-full max-h-[calc(100vh-80px)] md:max-h-[calc(100vh-120px)] overflow-hidden">
+  <div class="volume-comparison flex flex-col h-full max-h-[calc(100vh-80px)] md:max-h-[calc(100vh-120px)] overflow-hidden">
     <!-- Header: Minimal & Clean -->
     <header class="mb-4 text-center md:mb-6">
       <span class="px-3 py-1 md:px-4 text-[9px] md:text-[10px] font-extrabold tracking-[0.2em] text-white uppercase bg-blue-600 rounded-full shadow-lg shadow-blue-500/20">
@@ -470,14 +470,14 @@ onBeforeUnmount(() => {
     </header>
 
     <!-- Main Stage -->
-    <div class="relative flex-1 min-h-0 rounded-[2rem] md:rounded-[2.5rem] border flex flex-col overflow-hidden" :class="uiTheme.stage">
+    <div class="volume-stage relative flex-1 min-h-0 rounded-[2rem] md:rounded-[2.5rem] border flex flex-col overflow-hidden" :class="uiTheme.stage">
       
       <!-- 3D Viewport -->
-      <div class="relative flex-1 w-full min-h-0 cursor-grab active:cursor-grabbing bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))]" :class="uiTheme.viewport" ref="canvasContainer">
+      <div class="volume-viewport relative flex-1 w-full min-h-0 cursor-grab active:cursor-grabbing bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))]" :class="uiTheme.viewport" ref="canvasContainer">
         
         <!-- Overlays: Junk Food Info -->
-        <div class="absolute z-20 flex flex-col items-center p-4 md:p-5 transition-all transform rounded-[1.2rem] md:rounded-[1.5rem] backdrop-blur-sm shadow-lg border min-w-[170px] md:min-w-[220px]" 
-             :class="[uiTheme.card, isVertical ? 'top-4 left-4' : 'top-6 left-6']">
+        <div class="food-card absolute z-20 flex flex-col items-center p-4 md:p-5 transition-all transform rounded-[1.2rem] md:rounded-[1.5rem] backdrop-blur-sm shadow-lg border min-w-[170px] md:min-w-[220px]" 
+             :class="[uiTheme.card, isVertical ? 'top-3 left-1/2 -translate-x-1/2 w-[calc(100%-24px)] max-w-[340px]' : 'top-6 left-6']">
           <span class="text-[10px] md:text-[11px] font-black text-rose-500 uppercase tracking-[0.18em] mb-1.5">Ultra-Processado</span>
           <div class="text-lg md:text-2xl font-extrabold leading-tight text-center" :class="uiTheme.cardTitle">{{ currentJunkConfig.name }}</div>
           <div class="mt-1 text-sm md:text-base font-semibold" :class="uiTheme.cardMeta">
@@ -499,8 +499,8 @@ onBeforeUnmount(() => {
         <div v-else class="absolute inset-x-0 z-10 border-t border-dashed top-1/2" :class="uiTheme.divider"></div>
 
         <!-- Overlays: Healthy Food Info -->
-        <div class="absolute z-20 flex flex-col items-center p-4 md:p-5 transition-all transform rounded-[1.2rem] md:rounded-[1.5rem] backdrop-blur-sm shadow-lg border min-w-[170px] md:min-w-[220px]" 
-             :class="[uiTheme.card, isVertical ? 'bottom-4 right-4' : 'top-6 right-6']">
+        <div class="food-card absolute z-20 flex flex-col items-center p-4 md:p-5 transition-all transform rounded-[1.2rem] md:rounded-[1.5rem] backdrop-blur-sm shadow-lg border min-w-[170px] md:min-w-[220px]" 
+             :class="[uiTheme.card, isVertical ? 'bottom-3 left-1/2 -translate-x-1/2 w-[calc(100%-24px)] max-w-[340px]' : 'top-6 right-6']">
           <span class="text-[10px] md:text-[11px] font-black text-emerald-500 uppercase tracking-[0.18em] mb-1.5">Densidade Baixa</span>
           <div class="text-lg md:text-2xl font-extrabold leading-tight text-center" :class="uiTheme.cardTitle">{{ currentHealthyConfig.name }}</div>
           <div class="mt-1 text-sm md:text-base font-semibold" :class="uiTheme.cardMeta">
@@ -585,5 +585,30 @@ input[type=range]::-moz-range-thumb {
   border: 5px solid white;
   box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3);
   transition: all 0.2s ease;
+}
+
+@media (max-width: 768px) {
+  .volume-comparison {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .volume-stage {
+    min-height: 760px;
+  }
+
+  .volume-viewport {
+    min-height: 520px;
+  }
+
+  .food-card {
+    min-width: 0 !important;
+    padding: 12px !important;
+  }
+
+  .food-card button {
+    width: 100%;
+    justify-content: center;
+  }
 }
 </style>

@@ -825,5 +825,33 @@ onUnmounted(() => {
   .content-grid { grid-template-columns: 1fr; height: auto; }
   #map { height: 300px; }
   .control-panel { flex-direction: column; align-items: stretch; }
+
+  .search-input-group {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .search-input-group input {
+    flex: 1 0 100%;
+    width: 100%;
+    padding: 12px 14px;
+  }
+
+  .mic-btn-shop,
+  .btn-search {
+    flex: 1 1 calc(50% - 4px);
+    width: calc(50% - 4px);
+    height: 44px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--bg-elevated);
+  }
+
+  .btn-search {
+    color: #fff;
+    background: var(--primary);
+    border-color: transparent;
+  }
 }
 </style>
