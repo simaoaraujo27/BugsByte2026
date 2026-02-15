@@ -126,7 +126,7 @@ def negotiate_craving(craving: str, target_calories: int = 600, mood: Optional[s
             original_craving=craving,
             message=data.get('message', ''),
             recipe=schemas.NegotiatorRecipe(**raw_recipe) if raw_recipe else None,
-            restaurant_search_term=data.get('restaurant_search_term', craving)
+            restaurant_search_term=data.get('restaurant_search_term') or craving
         )
     except Exception as e:
         print(f"Erro Negotiator: {e}")

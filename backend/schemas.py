@@ -162,7 +162,7 @@ class NegotiatorResponse(BaseModel):
     original_craving: str
     message: str
     recipe: NegotiatorRecipe | None = None
-    restaurant_search_term: str
+    restaurant_search_term: Optional[str] = None
 
 class NutritionAnalysisRequest(BaseModel):
     food_text: str
