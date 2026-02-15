@@ -1,9 +1,7 @@
 <script setup>
 import { ref, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-// import logo from '@/assets/logo.png' // Temporarily commented out to debug
-
-const logo = '/src/assets/logo.png' // Direct path fallback
+import logo from '@/assets/logo.png'
 
 const router = useRouter()
 
