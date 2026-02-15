@@ -627,7 +627,7 @@ onUnmounted(() => {
       </div>
 
       <div v-else-if="activeSection === 'evolucao-corporal'" class="full-height-section">
-        <BodyEvolution />
+        <BodyEvolution :is-dark-mode="isDarkMode" />
       </div>
 
       <div v-else-if="activeSection === 'supermercados'">
