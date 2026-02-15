@@ -746,10 +746,10 @@ onUnmounted(() => {
   --menu-highlight-active-text: #7c2d12;
 
   min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   grid-template-columns: 240px 1fr;
   width: 100%;
-  overflow-x: clip;
   background: linear-gradient(160deg, #f8fbff 0%, var(--bg-main) 100%);
   color: var(--text-main);
   font-family: Sora, 'Segoe UI', Tahoma, sans-serif;
@@ -782,7 +782,7 @@ onUnmounted(() => {
   padding: 44px;
   min-width: 0;
   width: 100%;
-  overflow-x: hidden;
+  min-height: 100dvh;
 }
 
 .content h1 {
@@ -845,6 +845,7 @@ onUnmounted(() => {
 
   .content {
     padding: 22px 16px 104px;
+    min-height: auto;
   }
 }
 

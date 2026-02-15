@@ -459,8 +459,19 @@ onUnmounted(() => {
 
 <style scoped>
 .dashboard-home {
+  --bg-main: var(--bg-main, #f2f6f9);
+  --bg-elevated: var(--bg-elevated, #ffffff);
+  --text-main: var(--text-main, #11263f);
+  --text-muted: var(--text-muted, #54667e);
+  --line: var(--line, #dbe3eb);
+  --menu-active-text: var(--menu-active-text, #0a705d);
+  --menu-active-bg: var(--menu-active-bg, #e3f7f2);
+  --menu-hover-bg: var(--menu-hover-bg, #f3f7fb);
+
   max-width: 1180px;
   margin: 0 auto;
+  width: 100%;
+  min-width: 0;
   color: var(--text-main);
 }
 
