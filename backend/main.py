@@ -322,7 +322,7 @@ def help_assistant_chat(request: schemas.ChatRequest, current_user: models.User 
         "- Negociação/Receitas: {'type': 'START_NEGOTIATION', 'value': 'prato'} (Usa isto sempre que o utilizador pedir uma receita ou disser que quer comer algo específico) "
         "- Tema: {'type': 'SET_THEME', 'value': 'light'|'dark'} "
         "- Modo Daltonismo: {'type': 'SET_COLOR_MODE', 'value': 'none'|'protanopia'|'deuteranopia'|'tritanopia'|'achromatopsia'} "
-        "- Água: {'type': 'ADD_WATER'} | {'type': 'REMOVE_WATER'} "
+        "- Água: {'type': 'ADD_WATER', 'value': número_litros} | {'type': 'REMOVE_WATER', 'value': número_litros} (Se o user não disser a quantidade, não envies 'value') "
         "- Peso: {'type': 'LOG_WEIGHT', 'value': número} "
         "- Sessão: {'type': 'LOGOUT'} "
         "\nRetorna SEMPRE JSON: { \"content\": \"...\", \"action\": { \"type\": \"...\", \"value\": \"...\" } ou null }"

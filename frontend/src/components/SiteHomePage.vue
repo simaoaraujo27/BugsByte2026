@@ -169,10 +169,10 @@ const executeNutraAction = async (action) => {
       if (value === 'light' && isDarkMode.value) toggleTheme()
       break
     case 'ADD_WATER':
-      addWaterGlobal()
+      addWaterGlobal(value)
       break
     case 'REMOVE_WATER':
-      removeWaterGlobal()
+      removeWaterGlobal(value)
       break
     case 'SET_COLOR_MODE':
       updateColorBlindness(value)
@@ -263,8 +263,9 @@ const fetchWaterIntake = async () => {
   }
 }
 
-const addWaterGlobal = async () => {
-  const newAmount = Number((waterLiters.value + 0.25).toFixed(2))
+const addWaterGlobal = async (amount = 0.25) => {
+  const inc = typeof amount === 'number' ? amount : 0.25
+  const newAmount = Number((waterLiters.value + inc).toFixed(2))
   waterLiters.value = newAmount
   try {
     const today = new Date().toISOString().split('T')[0]
@@ -283,9 +284,10 @@ const addWaterGlobal = async () => {
   }
 }
 
-const removeWaterGlobal = async () => {
+const removeWaterGlobal = async (amount = 0.25) => {
   if (waterLiters.value <= 0) return
-  const newAmount = Number((waterLiters.value - 0.25).toFixed(2))
+  const dec = typeof amount === 'number' ? amount : 0.25
+  const newAmount = Math.max(0, Number((waterLiters.value - dec).toFixed(2)))
   waterLiters.value = newAmount
   try {
     const today = new Date().toISOString().split('T')[0]
