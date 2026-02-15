@@ -11,6 +11,7 @@ import DiaryTracking from './DiaryTracking.vue'
 import VisionRecipe from './VisionRecipe.vue'
 import VolumeComparison from './VolumeComparison.vue'
 import YourRecipesPage from './YourRecipesPage.vue'
+import BodyEvolution from './BodyEvolution.vue'
 import SettingsPage from './SettingsPage.vue'
 import CasinoGame from './CasinoGame.vue'
 import NutritionQuiz from './NutritionQuiz.vue'
@@ -382,6 +383,7 @@ const sections = [
   { id: 'supermercados', label: 'Supermercados & Compras', icon: '🛒' },
   { id: 'diario', label: 'Diário / Tracking', icon: '📊' },
   { id: 'tuas-receitas', label: 'Tuas Receitas', icon: '📚' },
+  { id: 'evolucao-corporal', label: 'Evolução Corporal', icon: '🧍' },
   { id: 'perfil', label: 'Perfil', icon: '👤' },
   { id: 'definicoes', label: 'Definições', icon: '⚙️' }
 ]
@@ -409,6 +411,7 @@ const sectionIdToSlug = {
   supermercados: 'supermercados',
   diario: 'diario',
   'tuas-receitas': 'tuasreceitas',
+  'evolucao-corporal': 'evolucaocorporal',
   perfil: 'perfil',
   definicoes: 'definicoes',
   'gerar-receita': 'gerarreceita'
@@ -513,6 +516,10 @@ const sectionContent = {
   'tuas-receitas': {
     title: 'Tuas Receitas',
     subtitle: 'Favoritos e histórico de receitas numa única página.'
+  },
+  'evolucao-corporal': {
+    title: 'Evolução Corporal',
+    subtitle: 'Simula como o teu corpo vai mudar com base nas tuas escolhas.'
   },
   perfil: {
     title: 'Perfil',
@@ -675,6 +682,10 @@ onUnmounted(() => {
 
       <div v-else-if="activeSection === 'visualizador'" class="full-height-section">
         <VolumeComparison :is-dark-mode="isDarkMode" />
+      </div>
+
+      <div v-else-if="activeSection === 'evolucao-corporal'" class="full-height-section">
+        <BodyEvolution />
       </div>
 
       <div v-else-if="activeSection === 'supermercados'">

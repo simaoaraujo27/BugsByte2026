@@ -362,48 +362,57 @@ def update_user_me(update_data: schemas.UserUpdate, db: Session = Depends(get_db
 
 @app.get("/users/me/dashboard", response_model=schemas.DashboardResponse)
 def get_dashboard_summary(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    date_key = datetime.now().strftime("%Y-%m-%d")
-    day = get_or_create_diary_day(db, current_user.id, date_key)
-    
-    consumed_calories = sum(m.calories for m in day.meals)
-    protein = sum(m.protein for m in day.meals)
-    carbs = sum(m.carbs for m in day.meals)
-    fat = sum(m.fat for m in day.meals)
-    
-    streak = 0
-    curr = datetime.now()
-    for i in range(365):
-        dk = (curr - timedelta(days=i)).strftime("%Y-%m-%d")
-        d = db.query(models.DiaryDay).filter(models.DiaryDay.user_id == current_user.id, models.DiaryDay.date_key == dk).first()
-        if d and sum(m.calories for m in d.meals) > 0:
-            streak += 1
+    try:
+        date_key = datetime.now().strftime("%Y-%m-%d")
+        day = get_or_create_diary_day(db, current_user.id, date_key)
+        
+        consumed_calories = sum(m.calories for m in day.meals)
+        protein = sum(m.protein for m in day.meals)
+        carbs = sum(m.carbs for m in day.meals)
+        fat = sum(m.fat for m in day.meals)
+        
+        streak = 0
+        curr = datetime.now()
+        for i in range(365):
+            dk = (curr - timedelta(days=i)).strftime("%Y-%m-%d")
+            d = db.query(models.DiaryDay).filter(models.DiaryDay.user_id == current_user.id, models.DiaryDay.date_key == dk).first()
+            if d and sum(m.calories for m in d.meals) > 0:
+                streak += 1
+            else:
+                if i == 0: continue
+                break
+        
+        # Safely try to get weights, return empty if table missing or error
+        try:
+            weights = db.query(models.WeightEntry).filter(models.WeightEntry.user_id == current_user.id).order_by(models.WeightEntry.date.asc()).all()
+        except Exception as e:
+            print(f"Error fetching weights: {e}")
+            weights = []
+        
+        if not weights:
+            weight_history = {
+                "labels": ["Sem 1", "Sem 2", "Sem 3", "Sem 4"],
+                "values": [current_user.peso] * 4 if current_user.peso else [70.0] * 4
+            }
         else:
-            if i == 0: continue
-            break
-    
-    weights = db.query(models.WeightEntry).filter(models.WeightEntry.user_id == current_user.id).order_by(models.WeightEntry.date.asc()).all()
-    
-    if not weights:
-        weight_history = {
-            "labels": ["Sem 1", "Sem 2", "Sem 3", "Sem 4"],
-            "values": [current_user.peso] * 4 if current_user.peso else [70.0] * 4
+            weight_history = {
+                "labels": [w.date for w in weights[-7:]],
+                "values": [w.weight for w in weights[-7:]]
+            }
+                
+        return {
+            "consumed_calories": consumed_calories,
+            "calorie_goal": current_user.target_calories if current_user.target_calories else day.goal,
+            "protein": protein,
+            "carbs": carbs,
+            "fat": fat,
+            "streak_days": streak,
+            "water_liters": day.water_liters,
+            "weight_history": weight_history
         }
-    else:
-        weight_history = {
-            "labels": [w.date for w in weights[-7:]],
-            "values": [w.weight for w in weights[-7:]]
-        }
-            
-    return {
-        "consumed_calories": consumed_calories,
-        "calorie_goal": current_user.target_calories if current_user.target_calories else day.goal,
-        "protein": protein,
-        "carbs": carbs,
-        "fat": fat,
-        "streak_days": streak,
-        "water_liters": day.water_liters,
-        "weight_history": weight_history
-    }
+    except Exception as e:
+        print(f"DASHBOARD ERROR: {e}")
+        raise HTTPException(status_code=500, detail=f"Dashboard Error: {str(e)}")
 
 @app.post("/forgot-password/")
 def forgot_password(request: schemas.ForgotPasswordRequest, db: Session = Depends(get_db)):

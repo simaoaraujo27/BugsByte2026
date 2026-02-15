@@ -9,6 +9,7 @@ import AboutPage from '../components/AboutPage.vue'
 import ForgotPassword from '../components/ForgotPassword.vue'
 import ResetPassword from '../components/ResetPassword.vue'
 import FavoritesPage from '../components/FavoritesPage.vue'
+import BodyEvolution from '../components/BodyEvolution.vue'
 
 const routes = [
   { path: '/', name: 'Landing', component: LandingPage },
@@ -21,6 +22,12 @@ const routes = [
     path: '/dashboard', 
     name: 'Dashboard', 
     component: SiteHomePage, 
+    meta: { requiresAuth: true } 
+  },
+  { 
+    path: '/dashboard/body-evolution', 
+    name: 'BodyEvolution', 
+    component: BodyEvolution, 
     meta: { requiresAuth: true } 
   },
   { 
@@ -53,8 +60,13 @@ router.beforeEach(async (to, from, next) => {
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
   const isAuthPage = to.path === '/login' || to.path === '/signup'
   
-  // Use the new async verification
-  const loggedIn = await auth.checkAuth()
+  // Optimisation: Only verify with backend if strictly necessary
+  // (i.e. accessing a protected route or an auth page where we might redirect)
+  let loggedIn = auth.isLoggedIn()
+  
+  if (loggedIn && (requiresAuth || isAuthPage)) {
+    loggedIn = await auth.checkAuth()
+  }
 
   if (requiresAuth && !loggedIn) {
     next('/login')

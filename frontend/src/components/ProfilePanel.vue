@@ -1,8 +1,11 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { auth, API_URL } from '@/auth'
 import { useUser } from '@/store/userStore'
+import BodyEvolution from './BodyEvolution.vue'
 
+const router = useRouter()
 const { 
   user: userProfile, 
   fetchUser, 
@@ -375,147 +378,159 @@ onMounted(fetchProfileData)
         </div>
       </article>
 
-      <div class="grid">
-        <article class="card details-card">
-          <div class="card-header">
-            <h3><span class="badge green">●</span> Dados Pessoais</h3>
-          </div>
-          
-          <div v-if="isEditing" class="edit-grid">
-            <div class="form-group">
-              <label>Nome Completo</label>
-              <input v-model="editForm.full_name" type="text" placeholder="O seu nome" />
+      <div class="main-profile-layout">
+        <!-- Left Column: Details & Metrics -->
+        <div class="left-column">
+          <article class="card details-card">
+            <div class="card-header">
+              <h3><span class="badge green">●</span> Dados Pessoais</h3>
             </div>
-            <div class="form-group">
-              <label>Utilizador (Email)</label>
-              <input v-model="editForm.username" type="text" />
-            </div>
-            <div class="form-row">
+            
+            <div v-if="isEditing" class="edit-grid">
               <div class="form-group">
-                <label>Idade</label>
-                <input v-model.number="editForm.idade" type="number" />
+                <label>Nome Completo</label>
+                <input v-model="editForm.full_name" type="text" placeholder="O seu nome" />
               </div>
               <div class="form-group">
-                <label>Género</label>
-                <select v-model="editForm.sexo">
-                  <option value="male">Masculino</option>
-                  <option value="female">Feminino</option>
-                  <option value="other">Outro</option>
+                <label>Utilizador (Email)</label>
+                <input v-model="editForm.username" type="text" />
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Idade</label>
+                  <input v-model.number="editForm.idade" type="number" />
+                </div>
+                <div class="form-group">
+                  <label>Género</label>
+                  <select v-model="editForm.sexo">
+                    <option value="male">Masculino</option>
+                    <option value="female">Feminino</option>
+                    <option value="other">Outro</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Altura (cm)</label>
+                  <input v-model.number="editForm.altura" type="number" />
+                </div>
+                <div class="form-group">
+                  <label>Peso (kg)</label>
+                  <input v-model.number="editForm.peso" type="number" step="0.1" />
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Objetivo</label>
+                <select v-model="editForm.goal">
+                  <option value="lose">Perder Peso</option>
+                  <option value="maintain">Manter Peso</option>
+                  <option value="gain">Ganhar Massa Muscular</option>
                 </select>
               </div>
-            </div>
-            <div class="form-row">
               <div class="form-group">
-                <label>Altura (cm)</label>
-                <input v-model.number="editForm.altura" type="number" />
+                <label>Nível de Atividade</label>
+                <select v-model="editForm.activity_level">
+                  <option value="sedentary">Sedentário</option>
+                  <option value="light">Ligeiro</option>
+                  <option value="moderate">Moderado</option>
+                  <option value="high">Elevado</option>
+                </select>
               </div>
+              <!-- Added from HEAD: Target Calories Manual Input -->
               <div class="form-group">
-                <label>Peso (kg)</label>
-                <input v-model.number="editForm.peso" type="number" step="0.1" />
+                <label>Calorias Alvo (Manual)</label>
+                <div class="input-with-action">
+                  <input v-model.number="editForm.target_calories" type="number" placeholder="Ex: 2000" />
+                  <button 
+                    v-if="editForm.target_calories" 
+                    type="button" 
+                    class="reset-btn" 
+                    @click="editForm.target_calories = null"
+                    title="Voltar ao cálculo automático"
+                  >
+                    🔄
+                  </button>
+                </div>
+                <small class="muted" style="font-size: 0.75rem; margin-top: 2px;">Deixe vazio ou clique no ícone para usar o cálculo automático.</small>
+              </div>
+              
+              <button class="save-btn" @click="saveProfile" :disabled="isSaving">
+                {{ isSaving ? 'A guardar...' : 'Guardar Alterações' }}
+              </button>
+            </div>
+
+            <ul v-else class="detail-list">
+              <li>
+                <span>Género</span>
+                <strong>{{ formatGender(userProfile.sexo) }}</strong>
+              </li>
+              <li>
+                <span>Idade</span>
+                <strong>{{ userProfile.idade }} anos</strong>
+              </li>
+              <li>
+                <span>Altura</span>
+                <strong>{{ userProfile.altura }} cm</strong>
+              </li>
+              <li>
+                <span>Peso</span>
+                <strong>{{ userProfile.peso }} kg</strong>
+              </li>
+              <li>
+                <span>Objetivo</span>
+                <strong>{{ formatGoal(userProfile.goal) }}</strong>
+              </li>
+              <li>
+                <span>Nível de Atividade</span>
+                <strong>{{ formatActivityLevel(userProfile.activity_level) }}</strong>
+              </li>
+              <li>
+                <span>Alergénios</span>
+                <strong>{{ allergiesText }}</strong>
+              </li>
+            </ul>
+          </article>
+
+          <article class="card metrics-card">
+            <h3><span class="badge rose">●</span> Métricas de Saúde</h3>
+            <div class="metrics-grid">
+              <div class="metric-box">
+                <p>IMC</p>
+                <strong>{{ bmi ? bmi.toFixed(1) : '-' }}</strong>
+                <small>{{ bmiCategory }}</small>
+              </div>
+              <div class="metric-box">
+                <p>TMB (Basal)</p>
+                <strong>{{ bmr ? Math.round(bmr) : '-' }}</strong>
+                <small>kcal/dia</small>
+              </div>
+              <div class="metric-box full-width">
+                <p>TDEE (Manutenção)</p>
+                <strong>{{ tdee ? Math.round(tdee) : '-' }} kcal</strong>
+                <small>Necessidades diárias</small>
+              </div>
+              <div class="metric-box full-width" v-if="userProfile.target_calories">
+                 <p>Calorias Alvo</p>
+                 <strong>{{ userProfile.target_calories }} kcal</strong>
+                 <small>Definido manualmente</small>
               </div>
             </div>
-            <div class="form-group">
-              <label>Objetivo</label>
-              <select v-model="editForm.goal">
-                <option value="lose">Perder Peso</option>
-                <option value="maintain">Manter Peso</option>
-                <option value="gain">Ganhar Massa Muscular</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Nível de Atividade</label>
-              <select v-model="editForm.activity_level">
-                <option value="sedentary">Sedentário</option>
-                <option value="light">Ligeiro</option>
-                <option value="moderate">Moderado</option>
-                <option value="high">Elevado</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Calorias Alvo (Manual)</label>
-              <div class="input-with-action">
-                <input v-model.number="editForm.target_calories" type="number" placeholder="Ex: 2000" />
-                <button 
-                  v-if="editForm.target_calories" 
-                  type="button" 
-                  class="reset-btn" 
-                  @click="editForm.target_calories = null"
-                  title="Voltar ao cálculo automático"
-                >
-                  🔄
-                </button>
-              </div>
-              <small class="muted" style="font-size: 0.75rem; margin-top: 2px;">Deixe vazio ou clique no ícone para usar o cálculo automático.</small>
-            </div>
-            <button class="save-btn" @click="saveProfile" :disabled="isSaving">
-              {{ isSaving ? 'A guardar...' : 'Guardar Alterações' }}
+          </article>
+
+          <article class="card security-card">
+            <h3>Segurança</h3>
+            <p class="muted">Gerir acesso à conta.</p>
+            <button type="button" class="btn-small" :disabled="passwordLoading" @click="requestPasswordChange">
+              {{ passwordLoading ? '...' : '🔑 Mudar Password' }}
             </button>
-          </div>
+            <p v-if="passwordMessage" class="password-message">{{ passwordMessage }}</p>
+          </article>
+        </div>
 
-          <ul v-else class="detail-list">
-            <li>
-              <span>Género</span>
-              <strong>{{ formatGender(userProfile.sexo) }}</strong>
-            </li>
-            <li>
-              <span>Idade</span>
-              <strong>{{ userProfile.idade }} anos</strong>
-            </li>
-            <li>
-              <span>Altura</span>
-              <strong>{{ userProfile.altura }} cm</strong>
-            </li>
-            <li>
-              <span>Peso</span>
-              <strong>{{ userProfile.peso }} kg</strong>
-            </li>
-            <li>
-              <span>Objetivo</span>
-              <strong>{{ formatGoal(userProfile.goal) }}</strong>
-            </li>
-            <li>
-              <span>Nível de Atividade</span>
-              <strong>{{ formatActivityLevel(userProfile.activity_level) }}</strong>
-            </li>
-            <li>
-              <span>Alergénios</span>
-              <strong>{{ allergiesText }}</strong>
-            </li>
-          </ul>
-        </article>
-
-        <article class="card metrics-card">
-          <h3><span class="badge rose">●</span> Métricas de Saúde</h3>
-          <div class="metric-box">
-            <p>Índice de Massa Corporal</p>
-            <strong>{{ bmi ? bmi.toFixed(1) : '-' }} kg/m²</strong>
-            <small>{{ bmiCategory }}</small>
-          </div>
-          <div class="metric-box">
-            <p>Taxa Metabólica Basal</p>
-            <strong>{{ bmr ? Math.round(bmr) : '-' }} kcal/dia</strong>
-          </div>
-          <div class="metric-box">
-            <p>Kcal normais (TDEE)</p>
-            <strong>{{ tdee ? Math.round(tdee) : '-' }} kcal/dia</strong>
-            <small>Manutenção diária com base no nível de atividade.</small>
-          </div>
-          <div class="metric-box">
-            <p>Calorias alvo</p>
-            <strong>{{ targetCalories ? targetCalories : '-' }} kcal/dia</strong>
-            <small v-if="userProfile.target_calories">Definido manualmente pelo utilizador.</small>
-            <small v-else>Ajustadas para o seu objetivo de {{ formatGoal(userProfile.goal).toLowerCase() }}.</small>
-          </div>
-        </article>
-
-        <article class="card full">
-          <h3>Segurança</h3>
-          <p class="muted">Altere a sua palavra-passe enviando um link de recuperação para o seu email.</p>
-          <button type="button" class="btn" :disabled="passwordLoading" @click="requestPasswordChange">
-            {{ passwordLoading ? 'A enviar...' : '📧 Enviar link de alteração' }}
-          </button>
-          <p v-if="passwordMessage" class="password-message">{{ passwordMessage }}</p>
-        </article>
+        <!-- Right Column: 3D Body Evolution -->
+        <div class="right-column">
+          <BodyEvolution />
+        </div>
       </div>
     </template>
   </section>
@@ -523,7 +538,60 @@ onMounted(fetchProfileData)
 
 <style scoped>
 .profile-panel {
-  max-width: 980px;
+  max-width: 1400px; /* Increased for side-by-side layout */
+  margin: 0 auto;
+}
+
+.main-profile-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* Two equal columns or adjusted below */
+  gap: 24px;
+  margin-top: 24px;
+}
+
+.left-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.right-column {
+  /* Ensure the 3D container fills height */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Adjust card layout for left column compact view */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.metric-box.full-width {
+  grid-column: span 2;
+}
+
+.btn-small {
+  margin-top: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-main);
+  color: var(--text-main);
+  font-weight: 600;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 1024px) {
+  .main-profile-layout {
+    grid-template-columns: 1fr; /* Stack on smaller screens */
+  }
+  
+  .right-column {
+    height: 600px; /* Fixed height when stacked */
+  }
 }
 
 .panel-header {
