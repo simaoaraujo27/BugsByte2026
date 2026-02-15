@@ -943,4 +943,33 @@ watch(
     max-width: 320px;
   }
 }
+
+@media (max-width: 760px) {
+  .search-box-premium {
+    flex-wrap: wrap;
+    align-items: stretch;
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .search-box-premium textarea {
+    flex: 1 0 100%;
+    width: 100%;
+    min-height: 52px;
+    padding: 14px 16px;
+    font-size: 1.05rem;
+  }
+
+  .mic-btn-negotiator,
+  .btn-primary-action {
+    flex: 1 1 calc(50% - 5px);
+    width: calc(50% - 5px);
+    min-width: 0;
+  }
+
+  .btn-primary-action {
+    min-width: 0;
+    padding: 0 14px;
+  }
+}
 </style>
