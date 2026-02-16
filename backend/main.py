@@ -6,6 +6,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 import hashlib
 import smtplib
 import uuid
+import time
 from datetime import datetime, timedelta, timezone
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Request
 from email.message import EmailMessage
@@ -21,9 +22,6 @@ load_dotenv()
 import models, schemas, shops, negotiator, food_data, auth, vision, llm_client
 from database import SessionLocal, engine, get_db
 from fastapi.middleware.cors import CORSMiddleware
-
-models.Base.metadata.create_all(bind=engine)
-
 
 def sync_database_schema() -> None:
     # Supported columns to auto-migrate
@@ -96,12 +94,36 @@ def sync_database_schema() -> None:
                 except Exception as e:
                     print(f"DB MIGRATION ERROR on {table_name}.{column_name}: {e}")
 
-
-sync_database_schema()
-
 app = FastAPI(redirect_slashes=False)
 
 VALID_MEAL_SECTIONS = {"breakfast", "lunch", "snack", "dinner", "extras"}
+
+
+def initialize_database(max_retries: int = 6, base_delay: float = 1.5) -> None:
+    """
+    Inicializa schema/tabelas com retry para evitar crash de arranque
+    em ambientes cloud com ligação DB intermitente.
+    """
+    last_exc = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            models.Base.metadata.create_all(bind=engine)
+            sync_database_schema()
+            print("DB INIT: schema sincronizado com sucesso.")
+            return
+        except Exception as exc:
+            last_exc = exc
+            wait_s = base_delay * attempt
+            print(f"DB INIT ERROR (tentativa {attempt}/{max_retries}): {exc}")
+            if attempt < max_retries:
+                time.sleep(wait_s)
+
+    print(f"DB INIT FAILED: {last_exc}")
+
+
+@app.on_event("startup")
+def on_startup() -> None:
+    initialize_database()
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
