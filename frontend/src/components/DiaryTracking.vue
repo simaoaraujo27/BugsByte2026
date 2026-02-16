@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { auth, API_URL } from '@/auth'
 import { useUser } from '@/store/userStore'
 import { optimizeImageForVision } from '@/utils/imageUpload'
@@ -36,6 +36,11 @@ const composerMode = ref('manual') // 'manual' or 'auto'
 const autoLoading = ref(false)
 const photoModalOpen = ref(false)
 const photoTargetSectionId = ref('')
+const photoCameraActive = ref(false)
+const photoCameraStream = ref(null)
+const photoVideoRef = ref(null)
+const photoCanvasRef = ref(null)
+const photoCameraStageRef = ref(null)
 
 const foodSearch = ref({
   query: '',
@@ -615,6 +620,7 @@ const openPhotoModal = (sectionId) => {
 }
 
 const closePhotoModal = () => {
+  stopPhotoCamera()
   photoModalOpen.value = false
 }
 
@@ -624,8 +630,90 @@ const pickPhotoFromFiles = () => {
 }
 
 const pickPhotoFromCamera = () => {
-  const inputEl = document.getElementById('diary-photo-camera-input')
-  inputEl?.click()
+  startPhotoCamera()
+}
+
+const startPhotoCamera = async () => {
+  if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+    const inputEl = document.getElementById('diary-photo-camera-input')
+    inputEl?.click()
+    return
+  }
+
+  try {
+    photoCameraActive.value = true
+    await nextTick()
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' }
+    })
+    photoCameraStream.value = stream
+
+    if (photoVideoRef.value) {
+      photoVideoRef.value.srcObject = stream
+      await photoVideoRef.value.play()
+    }
+  } catch (err) {
+    console.error('Erro ao abrir câmara no Diário:', err)
+    stopPhotoCamera()
+    alert('Não foi possível aceder à câmara. Verifique as permissões do browser.')
+  }
+}
+
+const stopPhotoCamera = () => {
+  if (photoCameraStream.value) {
+    photoCameraStream.value.getTracks().forEach((track) => track.stop())
+    photoCameraStream.value = null
+  }
+  photoCameraActive.value = false
+}
+
+const capturePhotoFromCamera = () => {
+  const video = photoVideoRef.value
+  const canvas = photoCanvasRef.value
+  if (!video || !canvas) return
+
+  try {
+    canvas.width = video.videoWidth || 1280
+    canvas.height = video.videoHeight || 720
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    canvas.toBlob(
+      async (blob) => {
+        if (!blob) {
+          alert('Erro ao capturar imagem da câmara.')
+          return
+        }
+        const file = new File([blob], 'captured_meal.jpg', { type: 'image/jpeg' })
+        stopPhotoCamera()
+        await calculateNutritionFromPhoto(file)
+      },
+      'image/jpeg',
+      0.85
+    )
+  } catch (err) {
+    console.error('Erro ao capturar foto no Diário:', err)
+    alert('Erro ao capturar imagem da câmara.')
+  }
+}
+
+const togglePhotoCameraFullscreen = async () => {
+  const el = photoCameraStageRef.value
+  if (!el) return
+
+  try {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen()
+      return
+    }
+    if (el.requestFullscreen) {
+      await el.requestFullscreen()
+    }
+  } catch (err) {
+    console.error('Erro ao alternar fullscreen da câmara:', err)
+  }
 }
 
 const handleAutoPhotoChange = async (event) => {
@@ -1189,10 +1277,12 @@ watch(
     </div>
 
     <div v-if="photoModalOpen" class="photo-modal-overlay" @click.self="closePhotoModal">
-      <div class="photo-modal-card">
-        <div class="photo-modal-icon">📸</div>
-        <h3>Digitalize a sua refeição</h3>
-        <p>Escolha uma foto da galeria ou abra a câmara para estimar os macros automaticamente.</p>
+      <div class="photo-modal-card" :class="{ 'camera-active': photoCameraActive }">
+        <template v-if="!photoCameraActive">
+          <div class="photo-modal-icon">📸</div>
+          <h3>Digitalize a sua refeição</h3>
+          <p>Escolha uma foto da galeria ou abra a câmara para estimar os macros automaticamente.</p>
+        </template>
 
         <input
           id="diary-photo-file-input"
@@ -1209,16 +1299,42 @@ watch(
           capture="environment"
           @change="handleAutoPhotoChange"
         />
+        <canvas ref="photoCanvasRef" class="hidden-file-input"></canvas>
 
-        <div class="photo-modal-actions">
-          <button type="button" class="photo-modal-btn primary" :disabled="autoLoading" @click="pickPhotoFromFiles">
-            📁 Escolher Ficheiro
-          </button>
-          <button type="button" class="photo-modal-btn ghost" :disabled="autoLoading" @click="pickPhotoFromCamera">
-            📷 Abrir Câmara
-          </button>
+        <div v-if="photoCameraActive" class="photo-camera-wrap">
+          <div ref="photoCameraStageRef" class="photo-camera-stage">
+            <video ref="photoVideoRef" class="photo-camera-video" autoplay playsinline muted></video>
+            <button
+              type="button"
+              class="photo-camera-fullscreen-btn"
+              :disabled="autoLoading"
+              @click="togglePhotoCameraFullscreen"
+              title="Ecrã inteiro"
+            >
+              ⛶
+            </button>
+          </div>
+          <div class="photo-camera-actions">
+            <button type="button" class="photo-modal-btn ghost camera-secondary" :disabled="autoLoading" @click="stopPhotoCamera">
+              Cancelar Câmara
+            </button>
+            <button type="button" class="photo-modal-btn primary camera-primary" :disabled="autoLoading" @click="capturePhotoFromCamera">
+              <span class="capture-dot"></span>
+              Capturar
+            </button>
+          </div>
         </div>
-        <button type="button" class="photo-modal-close" @click="closePhotoModal">Cancelar</button>
+        <template v-else>
+          <div class="photo-modal-actions">
+            <button type="button" class="photo-modal-btn primary" :disabled="autoLoading" @click="pickPhotoFromFiles">
+              📁 Escolher Ficheiro
+            </button>
+            <button type="button" class="photo-modal-btn ghost" :disabled="autoLoading" @click="pickPhotoFromCamera">
+              📷 Abrir Câmara
+            </button>
+          </div>
+          <button type="button" class="photo-modal-close" @click="closePhotoModal">Cancelar</button>
+        </template>
       </div>
     </div>
 
@@ -1867,6 +1983,11 @@ watch(
   text-align: center;
 }
 
+.photo-modal-card.camera-active {
+  width: min(92vw, 720px);
+  padding: 18px;
+}
+
 .photo-modal-icon {
   font-size: 3rem;
   margin-bottom: 8px;
@@ -1929,6 +2050,68 @@ watch(
   font-weight: 700;
   text-decoration: underline;
   cursor: pointer;
+}
+
+.photo-camera-wrap {
+  margin-top: 4px;
+}
+
+.photo-camera-stage {
+  position: relative;
+  width: 100%;
+  background: #020617;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.photo-camera-video {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  max-height: 540px;
+  background: #020617;
+  object-fit: cover;
+}
+
+.photo-camera-fullscreen-btn {
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  border-radius: 10px;
+  background: rgba(2, 6, 23, 0.7);
+  color: #e2e8f0;
+  cursor: pointer;
+  font-size: 1.1rem;
+}
+
+.photo-camera-actions {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.photo-modal-btn.camera-secondary {
+  background: #f1f5f9;
+  color: #111827;
+}
+
+.photo-modal-btn.camera-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.capture-dot {
+  width: 13px;
+  height: 13px;
+  border-radius: 999px;
+  background: #ecfeff;
+  border: 2px solid rgba(15, 23, 42, 0.16);
 }
 
 .cancel-btn {
@@ -2243,7 +2426,16 @@ watch(
     font-size: 1.55rem;
   }
 
+  .photo-modal-card.camera-active {
+    width: min(96vw, 620px);
+    padding: 12px;
+  }
+
   .photo-modal-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .photo-camera-actions {
     grid-template-columns: 1fr;
   }
 
