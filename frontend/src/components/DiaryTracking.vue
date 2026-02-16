@@ -41,6 +41,7 @@ const photoCameraStream = ref(null)
 const photoVideoRef = ref(null)
 const photoCanvasRef = ref(null)
 const photoCameraStageRef = ref(null)
+const photoErrorMessage = ref('')
 
 const foodSearch = ref({
   query: '',
@@ -621,7 +622,16 @@ const openPhotoModal = (sectionId) => {
 
 const closePhotoModal = () => {
   stopPhotoCamera()
+  photoErrorMessage.value = ''
   photoModalOpen.value = false
+}
+
+const showPhotoError = (message) => {
+  photoErrorMessage.value = message || 'Ocorreu um erro inesperado.'
+}
+
+const closePhotoError = () => {
+  photoErrorMessage.value = ''
 }
 
 const pickPhotoFromFiles = () => {
@@ -656,7 +666,7 @@ const startPhotoCamera = async () => {
   } catch (err) {
     console.error('Erro ao abrir câmara no Diário:', err)
     stopPhotoCamera()
-    alert('Não foi possível aceder à câmara. Verifique as permissões do browser.')
+    showPhotoError('Não foi possível aceder à câmara. Verifique as permissões do browser.')
   }
 }
 
@@ -683,7 +693,7 @@ const capturePhotoFromCamera = () => {
     canvas.toBlob(
       async (blob) => {
         if (!blob) {
-          alert('Erro ao capturar imagem da câmara.')
+          showPhotoError('Erro ao capturar imagem da câmara.')
           return
         }
         const file = new File([blob], 'captured_meal.jpg', { type: 'image/jpeg' })
@@ -695,7 +705,7 @@ const capturePhotoFromCamera = () => {
     )
   } catch (err) {
     console.error('Erro ao capturar foto no Diário:', err)
-    alert('Erro ao capturar imagem da câmara.')
+    showPhotoError('Erro ao capturar imagem da câmara.')
   }
 }
 
@@ -725,6 +735,7 @@ const handleAutoPhotoChange = async (event) => {
 
 const calculateNutritionFromPhoto = async (file) => {
   autoLoading.value = true
+  closePhotoError()
 
   try {
     let uploadFile = file
@@ -758,7 +769,7 @@ const calculateNutritionFromPhoto = async (file) => {
     closePhotoModal()
   } catch (err) {
     console.error(err)
-    alert(err.message || 'Erro ao analisar a foto.')
+    showPhotoError(err.message || 'Erro ao analisar a foto.')
   } finally {
     autoLoading.value = false
   }
@@ -1335,6 +1346,14 @@ watch(
           </div>
           <button type="button" class="photo-modal-close" @click="closePhotoModal">Cancelar</button>
         </template>
+      </div>
+
+      <div v-if="photoErrorMessage" class="photo-error-overlay" @click.self="closePhotoError">
+        <div class="photo-error-dialog">
+          <div class="photo-error-title">Não foi possível analisar</div>
+          <p class="photo-error-message">{{ photoErrorMessage }}</p>
+          <button type="button" class="photo-error-ok" @click="closePhotoError">OK</button>
+        </div>
       </div>
     </div>
 
@@ -2092,6 +2111,50 @@ watch(
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
+}
+
+.photo-error-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1700;
+  display: grid;
+  place-items: center;
+  background: rgba(2, 6, 23, 0.3);
+  padding: 14px;
+}
+
+.photo-error-dialog {
+  width: min(92vw, 420px);
+  border-radius: 14px;
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  background: linear-gradient(180deg, rgba(31, 41, 55, 0.98), rgba(23, 31, 47, 0.98));
+  box-shadow: 0 18px 35px rgba(2, 6, 23, 0.45);
+  padding: 16px;
+}
+
+.photo-error-title {
+  color: #fecaca;
+  font-weight: 800;
+  font-size: 1rem;
+}
+
+.photo-error-message {
+  margin: 10px 0 14px;
+  color: #f8fafc;
+  line-height: 1.45;
+}
+
+.photo-error-ok {
+  margin-left: auto;
+  display: inline-block;
+  min-width: 68px;
+  border: 0;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #22d3ee, #06b6d4);
+  color: #06202a;
+  cursor: pointer;
 }
 
 .photo-modal-btn.camera-secondary {
