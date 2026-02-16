@@ -622,6 +622,11 @@ def negotiate_craving(request: schemas.NegotiatorRequest, current_user: models.U
 def analyze_nutrition_endpoint(request: schemas.NutritionAnalysisRequest, current_user: models.User = Depends(auth.get_current_user)):
     return negotiator.analyze_nutrition(request.food_text)
 
+@app.post("/negotiator/nutrition-image", response_model=schemas.NutritionAnalysisResponse)
+async def analyze_nutrition_image_endpoint(file: UploadFile = File(...), current_user: models.User = Depends(auth.get_current_user)):
+    contents = await file.read()
+    return vision.analyze_image_nutrition(contents)
+
 @app.post("/vision/analyze", response_model=schemas.VisionResponse)
 async def analyze_ingredients_photo(mode: str = "ingredients", file: UploadFile = File(...), current_user: models.User = Depends(auth.get_current_user)):
     contents = await file.read()

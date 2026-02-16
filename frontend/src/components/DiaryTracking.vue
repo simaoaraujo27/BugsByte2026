@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { auth, API_URL } from '@/auth'
 import { useUser } from '@/store/userStore'
+import { optimizeImageForVision } from '@/utils/imageUpload'
 
 const { 
   targetCalories, 
@@ -33,6 +34,8 @@ const isLoading = ref(false)
 const composerFor = ref('')
 const composerMode = ref('manual') // 'manual' or 'auto'
 const autoLoading = ref(false)
+const photoModalOpen = ref(false)
+const photoTargetSectionId = ref('')
 
 const foodSearch = ref({
   query: '',
@@ -605,6 +608,74 @@ const calculateNutrition = async () => {
   }
 }
 
+const openPhotoModal = (sectionId) => {
+  if (autoLoading.value) return
+  photoTargetSectionId.value = sectionId
+  photoModalOpen.value = true
+}
+
+const closePhotoModal = () => {
+  photoModalOpen.value = false
+}
+
+const pickPhotoFromFiles = () => {
+  const inputEl = document.getElementById('diary-photo-file-input')
+  inputEl?.click()
+}
+
+const pickPhotoFromCamera = () => {
+  const inputEl = document.getElementById('diary-photo-camera-input')
+  inputEl?.click()
+}
+
+const handleAutoPhotoChange = async (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+  await calculateNutritionFromPhoto(file)
+  event.target.value = ''
+}
+
+const calculateNutritionFromPhoto = async (file) => {
+  autoLoading.value = true
+
+  try {
+    let uploadFile = file
+    try {
+      uploadFile = await optimizeImageForVision(file)
+    } catch (optErr) {
+      console.warn('Falha na otimização da imagem, a usar original.', optErr)
+    }
+
+    const formData = new FormData()
+    formData.append('file', uploadFile)
+
+    const res = await fetch(`${API_URL}/negotiator/nutrition-image`, {
+      method: 'POST',
+      headers: auth.getAuthHeaders(false),
+      body: formData
+    })
+
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.detail || 'Falha ao analisar foto da refeição.')
+
+    mealDraft.value.name = data.name
+    mealDraft.value.grams = data.estimated_grams
+    mealDraft.value.calories = data.calories
+    mealDraft.value.protein = data.protein
+    mealDraft.value.carbs = data.carbs
+    mealDraft.value.fat = data.fat
+    mealDraft.value.source = 'IA (Foto)'
+
+    await addMeal(photoTargetSectionId.value || composerFor.value, false)
+    closePhotoModal()
+  } catch (err) {
+    console.error(err)
+    alert(err.message || 'Erro ao analisar a foto.')
+  } finally {
+    autoLoading.value = false
+  }
+}
+
 const addMeal = async (sectionId, closeAfter = true) => {
   const name = mealDraft.value.name.trim()
   const grams = toNumber(mealDraft.value.grams)
@@ -828,6 +899,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   stopListening()
+  closePhotoModal()
 })
 
 watch(dateKey, (key) => {
@@ -1010,6 +1082,14 @@ watch(
                 </button>
               </div>
               <div class="composer-actions">
+                <button
+                  type="button"
+                  class="photo-btn"
+                  :disabled="autoLoading"
+                  @click="openPhotoModal(section.id)"
+                >
+                  {{ autoLoading ? 'A analisar foto...' : '📷 Foto' }}
+                </button>
                 <button type="button" class="save-btn" :disabled="autoLoading" @click="calculateNutrition">
                   {{ autoLoading ? 'A calcular...' : '✨ Calcular Macros' }}
                 </button>
@@ -1106,6 +1186,40 @@ watch(
           </ul>
         </article>
       </aside>
+    </div>
+
+    <div v-if="photoModalOpen" class="photo-modal-overlay" @click.self="closePhotoModal">
+      <div class="photo-modal-card">
+        <div class="photo-modal-icon">📸</div>
+        <h3>Digitalize a sua refeição</h3>
+        <p>Escolha uma foto da galeria ou abra a câmara para estimar os macros automaticamente.</p>
+
+        <input
+          id="diary-photo-file-input"
+          class="hidden-file-input"
+          type="file"
+          accept="image/*"
+          @change="handleAutoPhotoChange"
+        />
+        <input
+          id="diary-photo-camera-input"
+          class="hidden-file-input"
+          type="file"
+          accept="image/*"
+          capture="environment"
+          @change="handleAutoPhotoChange"
+        />
+
+        <div class="photo-modal-actions">
+          <button type="button" class="photo-modal-btn primary" :disabled="autoLoading" @click="pickPhotoFromFiles">
+            📁 Escolher Ficheiro
+          </button>
+          <button type="button" class="photo-modal-btn ghost" :disabled="autoLoading" @click="pickPhotoFromCamera">
+            📷 Abrir Câmara
+          </button>
+        </div>
+        <button type="button" class="photo-modal-close" @click="closePhotoModal">Cancelar</button>
+      </div>
     </div>
 
     <div v-if="foodSearchModalOpen" class="food-modal-overlay" @click.self="closeFoodSearchModal">
@@ -1681,11 +1795,25 @@ watch(
   color: var(--text-muted);
 }
 
+.hidden-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .composer-actions {
   display: flex;
   gap: 8px;
 }
 
+.photo-btn,
 .save-btn,
 .cancel-btn {
   border: 0;
@@ -1698,6 +1826,109 @@ watch(
 .save-btn {
   background: #14b8a6;
   color: #f8fffe;
+}
+
+.photo-btn {
+  background: linear-gradient(135deg, #0ea5e9 0%, #14b8a6 100%);
+  color: #f8fffe;
+  border: 1px solid rgba(20, 184, 166, 0.45);
+  box-shadow: 0 8px 16px rgba(14, 165, 233, 0.22);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+}
+
+.photo-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(14, 165, 233, 0.28);
+  filter: brightness(1.03);
+}
+
+.photo-btn:disabled {
+  opacity: 0.7;
+  box-shadow: none;
+}
+
+.photo-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1600;
+  background: rgba(2, 6, 23, 0.72);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.photo-modal-card {
+  width: min(92vw, 560px);
+  border-radius: 22px;
+  border: 1px solid rgba(56, 189, 248, 0.24);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(12, 20, 38, 0.98));
+  box-shadow: 0 24px 50px rgba(2, 6, 23, 0.5);
+  padding: 26px 22px;
+  text-align: center;
+}
+
+.photo-modal-icon {
+  font-size: 3rem;
+  margin-bottom: 8px;
+}
+
+.photo-modal-card h3 {
+  margin: 0;
+  color: #f8fafc;
+  font-size: 2rem;
+}
+
+.photo-modal-card p {
+  margin: 10px 0 0;
+  color: #9fb2cc;
+  line-height: 1.5;
+}
+
+.photo-modal-actions {
+  margin-top: 24px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.photo-modal-btn {
+  min-height: 48px;
+  border-radius: 12px;
+  font-weight: 800;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform 0.16s ease, filter 0.16s ease, box-shadow 0.16s ease;
+}
+
+.photo-modal-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+}
+
+.photo-modal-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.photo-modal-btn.primary {
+  color: #eafffa;
+  background: linear-gradient(135deg, #10b981, #14b8a6);
+  box-shadow: 0 12px 26px rgba(16, 185, 129, 0.28);
+}
+
+.photo-modal-btn.ghost {
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.photo-modal-close {
+  margin-top: 14px;
+  background: transparent;
+  border: 0;
+  color: #9fb2cc;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .cancel-btn {
@@ -2001,10 +2232,19 @@ watch(
     flex-direction: column;
   }
 
+  .photo-btn,
   .save-btn,
   .cancel-btn {
     width: 100%;
     min-height: 40px;
+  }
+
+  .photo-modal-card h3 {
+    font-size: 1.55rem;
+  }
+
+  .photo-modal-actions {
+    grid-template-columns: 1fr;
   }
 
   .meal-list li {
