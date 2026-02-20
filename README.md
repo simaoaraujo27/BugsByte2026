@@ -92,5 +92,6 @@ npm install
 ## 👥 Equipa - BugsByte 2026
 Desenvolvido com ❤️ por uma equipa focada em inovação e saúde.
 
+Projeto vencedor de um prémio de 250€ (Melhor projeto do tema proposto pela empresa Nutrium)
 ---
 *Este projeto foi desenvolvido durante a Hackathon Bugsbyte 2026.*
