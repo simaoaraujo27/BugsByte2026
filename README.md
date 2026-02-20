@@ -52,6 +52,7 @@ Utilizando modelos 3D (`Three.js`), o utilizador pode visualizar a evolução do
 
 ### Frontend
 - **Framework:** Vue.js 3 (Composition API)
+Projeto vencedor de um prémio de 250€ (Melhor projeto do tema proposto pela empresa Nutrium)
 - **Estilização:** Tailwind CSS (Moderno & Responsivo)
 - **Gráficos:** Chart.js (Visualização de Macros/Peso)
 - **3D:** Three.js (Evolução de corpo)
@@ -92,6 +93,8 @@ npm install
 ## 👥 Equipa - BugsByte 2026
 Desenvolvido com ❤️ por uma equipa focada em inovação e saúde.
 
-Projeto vencedor de um prémio de 250€ (Melhor projeto do tema proposto pela empresa Nutrium)
 ---
+
+Projeto vencedor de um prémio de 250€ (Melhor projeto do tema proposto pela empresa Nutrium)
+
 *Este projeto foi desenvolvido durante a Hackathon Bugsbyte 2026.*
