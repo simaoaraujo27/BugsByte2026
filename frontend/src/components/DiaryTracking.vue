@@ -1,7 +1,8 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { auth, API_URL } from '@/auth'
 import { useUser } from '@/store/userStore'
+import { optimizeImageForVision } from '@/utils/imageUpload'
 
 const { 
   targetCalories, 
@@ -33,6 +34,14 @@ const isLoading = ref(false)
 const composerFor = ref('')
 const composerMode = ref('manual') // 'manual' or 'auto'
 const autoLoading = ref(false)
+const photoModalOpen = ref(false)
+const photoTargetSectionId = ref('')
+const photoCameraActive = ref(false)
+const photoCameraStream = ref(null)
+const photoVideoRef = ref(null)
+const photoCanvasRef = ref(null)
+const photoCameraStageRef = ref(null)
+const photoErrorMessage = ref('')
 
 const foodSearch = ref({
   query: '',
@@ -605,6 +614,167 @@ const calculateNutrition = async () => {
   }
 }
 
+const openPhotoModal = (sectionId) => {
+  if (autoLoading.value) return
+  photoTargetSectionId.value = sectionId
+  photoModalOpen.value = true
+}
+
+const closePhotoModal = () => {
+  stopPhotoCamera()
+  photoErrorMessage.value = ''
+  photoModalOpen.value = false
+}
+
+const showPhotoError = (message) => {
+  photoErrorMessage.value = message || 'Ocorreu um erro inesperado.'
+}
+
+const closePhotoError = () => {
+  photoErrorMessage.value = ''
+}
+
+const pickPhotoFromFiles = () => {
+  const inputEl = document.getElementById('diary-photo-file-input')
+  inputEl?.click()
+}
+
+const pickPhotoFromCamera = () => {
+  startPhotoCamera()
+}
+
+const startPhotoCamera = async () => {
+  if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+    const inputEl = document.getElementById('diary-photo-camera-input')
+    inputEl?.click()
+    return
+  }
+
+  try {
+    photoCameraActive.value = true
+    await nextTick()
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' }
+    })
+    photoCameraStream.value = stream
+
+    if (photoVideoRef.value) {
+      photoVideoRef.value.srcObject = stream
+      await photoVideoRef.value.play()
+    }
+  } catch (err) {
+    console.error('Erro ao abrir câmara no Diário:', err)
+    stopPhotoCamera()
+    showPhotoError('Não foi possível aceder à câmara. Verifique as permissões do browser.')
+  }
+}
+
+const stopPhotoCamera = () => {
+  if (photoCameraStream.value) {
+    photoCameraStream.value.getTracks().forEach((track) => track.stop())
+    photoCameraStream.value = null
+  }
+  photoCameraActive.value = false
+}
+
+const capturePhotoFromCamera = () => {
+  const video = photoVideoRef.value
+  const canvas = photoCanvasRef.value
+  if (!video || !canvas) return
+
+  try {
+    canvas.width = video.videoWidth || 1280
+    canvas.height = video.videoHeight || 720
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    canvas.toBlob(
+      async (blob) => {
+        if (!blob) {
+          showPhotoError('Erro ao capturar imagem da câmara.')
+          return
+        }
+        const file = new File([blob], 'captured_meal.jpg', { type: 'image/jpeg' })
+        stopPhotoCamera()
+        await calculateNutritionFromPhoto(file)
+      },
+      'image/jpeg',
+      0.85
+    )
+  } catch (err) {
+    console.error('Erro ao capturar foto no Diário:', err)
+    showPhotoError('Erro ao capturar imagem da câmara.')
+  }
+}
+
+const togglePhotoCameraFullscreen = async () => {
+  const el = photoCameraStageRef.value
+  if (!el) return
+
+  try {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen()
+      return
+    }
+    if (el.requestFullscreen) {
+      await el.requestFullscreen()
+    }
+  } catch (err) {
+    console.error('Erro ao alternar fullscreen da câmara:', err)
+  }
+}
+
+const handleAutoPhotoChange = async (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+  await calculateNutritionFromPhoto(file)
+  event.target.value = ''
+}
+
+const calculateNutritionFromPhoto = async (file) => {
+  autoLoading.value = true
+  closePhotoError()
+
+  try {
+    let uploadFile = file
+    try {
+      uploadFile = await optimizeImageForVision(file)
+    } catch (optErr) {
+      console.warn('Falha na otimização da imagem, a usar original.', optErr)
+    }
+
+    const formData = new FormData()
+    formData.append('file', uploadFile)
+
+    const res = await fetch(`${API_URL}/negotiator/nutrition-image`, {
+      method: 'POST',
+      headers: auth.getAuthHeaders(false),
+      body: formData
+    })
+
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.detail || 'Falha ao analisar foto da refeição.')
+
+    mealDraft.value.name = data.name
+    mealDraft.value.grams = data.estimated_grams
+    mealDraft.value.calories = data.calories
+    mealDraft.value.protein = data.protein
+    mealDraft.value.carbs = data.carbs
+    mealDraft.value.fat = data.fat
+    mealDraft.value.source = 'IA (Foto)'
+
+    await addMeal(photoTargetSectionId.value || composerFor.value, false)
+    closePhotoModal()
+  } catch (err) {
+    console.error(err)
+    showPhotoError(err.message || 'Erro ao analisar a foto.')
+  } finally {
+    autoLoading.value = false
+  }
+}
+
 const addMeal = async (sectionId, closeAfter = true) => {
   const name = mealDraft.value.name.trim()
   const grams = toNumber(mealDraft.value.grams)
@@ -828,6 +998,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   stopListening()
+  closePhotoModal()
 })
 
 watch(dateKey, (key) => {
@@ -1010,6 +1181,14 @@ watch(
                 </button>
               </div>
               <div class="composer-actions">
+                <button
+                  type="button"
+                  class="photo-btn"
+                  :disabled="autoLoading"
+                  @click="openPhotoModal(section.id)"
+                >
+                  {{ autoLoading ? 'A analisar foto...' : '📷 Foto' }}
+                </button>
                 <button type="button" class="save-btn" :disabled="autoLoading" @click="calculateNutrition">
                   {{ autoLoading ? 'A calcular...' : '✨ Calcular Macros' }}
                 </button>
@@ -1106,6 +1285,76 @@ watch(
           </ul>
         </article>
       </aside>
+    </div>
+
+    <div v-if="photoModalOpen" class="photo-modal-overlay" @click.self="closePhotoModal">
+      <div class="photo-modal-card" :class="{ 'camera-active': photoCameraActive }">
+        <template v-if="!photoCameraActive">
+          <div class="photo-modal-icon">📸</div>
+          <h3>Digitalize a sua refeição</h3>
+          <p>Escolha uma foto da galeria ou abra a câmara para estimar os macros automaticamente.</p>
+        </template>
+
+        <input
+          id="diary-photo-file-input"
+          class="hidden-file-input"
+          type="file"
+          accept="image/*"
+          @change="handleAutoPhotoChange"
+        />
+        <input
+          id="diary-photo-camera-input"
+          class="hidden-file-input"
+          type="file"
+          accept="image/*"
+          capture="environment"
+          @change="handleAutoPhotoChange"
+        />
+        <canvas ref="photoCanvasRef" class="hidden-file-input"></canvas>
+
+        <div v-if="photoCameraActive" class="photo-camera-wrap">
+          <div ref="photoCameraStageRef" class="photo-camera-stage">
+            <video ref="photoVideoRef" class="photo-camera-video" autoplay playsinline muted></video>
+            <button
+              type="button"
+              class="photo-camera-fullscreen-btn"
+              :disabled="autoLoading"
+              @click="togglePhotoCameraFullscreen"
+              title="Ecrã inteiro"
+            >
+              ⛶
+            </button>
+          </div>
+          <div class="photo-camera-actions">
+            <button type="button" class="photo-modal-btn ghost camera-secondary" :disabled="autoLoading" @click="stopPhotoCamera">
+              Cancelar Câmara
+            </button>
+            <button type="button" class="photo-modal-btn primary camera-primary" :disabled="autoLoading" @click="capturePhotoFromCamera">
+              <span class="capture-dot"></span>
+              Capturar
+            </button>
+          </div>
+        </div>
+        <template v-else>
+          <div class="photo-modal-actions">
+            <button type="button" class="photo-modal-btn primary" :disabled="autoLoading" @click="pickPhotoFromFiles">
+              📁 Escolher Ficheiro
+            </button>
+            <button type="button" class="photo-modal-btn ghost" :disabled="autoLoading" @click="pickPhotoFromCamera">
+              📷 Abrir Câmara
+            </button>
+          </div>
+          <button type="button" class="photo-modal-close" @click="closePhotoModal">Cancelar</button>
+        </template>
+      </div>
+
+      <div v-if="photoErrorMessage" class="photo-error-overlay" @click.self="closePhotoError">
+        <div class="photo-error-dialog">
+          <div class="photo-error-title">Não foi possível analisar</div>
+          <p class="photo-error-message">{{ photoErrorMessage }}</p>
+          <button type="button" class="photo-error-ok" @click="closePhotoError">OK</button>
+        </div>
+      </div>
     </div>
 
     <div v-if="foodSearchModalOpen" class="food-modal-overlay" @click.self="closeFoodSearchModal">
@@ -1681,11 +1930,25 @@ watch(
   color: var(--text-muted);
 }
 
+.hidden-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .composer-actions {
   display: flex;
   gap: 8px;
 }
 
+.photo-btn,
 .save-btn,
 .cancel-btn {
   border: 0;
@@ -1698,6 +1961,220 @@ watch(
 .save-btn {
   background: #14b8a6;
   color: #f8fffe;
+}
+
+.photo-btn {
+  background: linear-gradient(135deg, #0ea5e9 0%, #14b8a6 100%);
+  color: #f8fffe;
+  border: 1px solid rgba(20, 184, 166, 0.45);
+  box-shadow: 0 8px 16px rgba(14, 165, 233, 0.22);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+}
+
+.photo-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(14, 165, 233, 0.28);
+  filter: brightness(1.03);
+}
+
+.photo-btn:disabled {
+  opacity: 0.7;
+  box-shadow: none;
+}
+
+.photo-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1600;
+  background: rgba(2, 6, 23, 0.72);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.photo-modal-card {
+  width: min(92vw, 560px);
+  border-radius: 22px;
+  border: 1px solid rgba(56, 189, 248, 0.24);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(12, 20, 38, 0.98));
+  box-shadow: 0 24px 50px rgba(2, 6, 23, 0.5);
+  padding: 26px 22px;
+  text-align: center;
+}
+
+.photo-modal-card.camera-active {
+  width: min(92vw, 720px);
+  padding: 18px;
+}
+
+.photo-modal-icon {
+  font-size: 3rem;
+  margin-bottom: 8px;
+}
+
+.photo-modal-card h3 {
+  margin: 0;
+  color: #f8fafc;
+  font-size: 2rem;
+}
+
+.photo-modal-card p {
+  margin: 10px 0 0;
+  color: #9fb2cc;
+  line-height: 1.5;
+}
+
+.photo-modal-actions {
+  margin-top: 24px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.photo-modal-btn {
+  min-height: 48px;
+  border-radius: 12px;
+  font-weight: 800;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform 0.16s ease, filter 0.16s ease, box-shadow 0.16s ease;
+}
+
+.photo-modal-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+}
+
+.photo-modal-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.photo-modal-btn.primary {
+  color: #eafffa;
+  background: linear-gradient(135deg, #10b981, #14b8a6);
+  box-shadow: 0 12px 26px rgba(16, 185, 129, 0.28);
+}
+
+.photo-modal-btn.ghost {
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.photo-modal-close {
+  margin-top: 14px;
+  background: transparent;
+  border: 0;
+  color: #9fb2cc;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.photo-camera-wrap {
+  margin-top: 4px;
+}
+
+.photo-camera-stage {
+  position: relative;
+  width: 100%;
+  background: #020617;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.photo-camera-video {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  max-height: 540px;
+  background: #020617;
+  object-fit: cover;
+}
+
+.photo-camera-fullscreen-btn {
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  border-radius: 10px;
+  background: rgba(2, 6, 23, 0.7);
+  color: #e2e8f0;
+  cursor: pointer;
+  font-size: 1.1rem;
+}
+
+.photo-camera-actions {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.photo-error-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1700;
+  display: grid;
+  place-items: center;
+  background: rgba(2, 6, 23, 0.3);
+  padding: 14px;
+}
+
+.photo-error-dialog {
+  width: min(92vw, 420px);
+  border-radius: 14px;
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  background: linear-gradient(180deg, rgba(31, 41, 55, 0.98), rgba(23, 31, 47, 0.98));
+  box-shadow: 0 18px 35px rgba(2, 6, 23, 0.45);
+  padding: 16px;
+}
+
+.photo-error-title {
+  color: #fecaca;
+  font-weight: 800;
+  font-size: 1rem;
+}
+
+.photo-error-message {
+  margin: 10px 0 14px;
+  color: #f8fafc;
+  line-height: 1.45;
+}
+
+.photo-error-ok {
+  margin-left: auto;
+  display: inline-block;
+  min-width: 68px;
+  border: 0;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #22d3ee, #06b6d4);
+  color: #06202a;
+  cursor: pointer;
+}
+
+.photo-modal-btn.camera-secondary {
+  background: #f1f5f9;
+  color: #111827;
+}
+
+.photo-modal-btn.camera-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.capture-dot {
+  width: 13px;
+  height: 13px;
+  border-radius: 999px;
+  background: #ecfeff;
+  border: 2px solid rgba(15, 23, 42, 0.16);
 }
 
 .cancel-btn {
@@ -2001,10 +2478,28 @@ watch(
     flex-direction: column;
   }
 
+  .photo-btn,
   .save-btn,
   .cancel-btn {
     width: 100%;
     min-height: 40px;
+  }
+
+  .photo-modal-card h3 {
+    font-size: 1.55rem;
+  }
+
+  .photo-modal-card.camera-active {
+    width: min(96vw, 620px);
+    padding: 12px;
+  }
+
+  .photo-modal-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .photo-camera-actions {
+    grid-template-columns: 1fr;
   }
 
   .meal-list li {

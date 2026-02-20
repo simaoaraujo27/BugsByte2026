@@ -132,3 +132,98 @@ def analyze_image_ingredients(image_bytes: bytes, mode: str = "ingredients", api
         if 'content' in locals():
             print(f"Raw content from model: {content}")
         raise HTTPException(status_code=500, detail=f"Erro na análise visual: {str(e)}")
+
+
+def analyze_image_nutrition(image_bytes: bytes) -> schemas.NutritionAnalysisResponse:
+    client, model = get_client_config()
+    is_groq = "groq" in str(client.base_url)
+
+    if is_groq:
+        model = "meta-llama/llama-4-scout-17b-16e-instruct"
+
+    base64_image = base64.b64encode(image_bytes).decode('utf-8')
+
+    prompt = (
+        "Analisa esta imagem e estima os macronutrientes totais da refeição visível.\n"
+        "Se a imagem NÃO mostrar comida real (ou estiver ilegível), define 'is_food' como false e preenche 'error_message' em PT-PT.\n"
+        "Responde APENAS com JSON válido neste formato:\n"
+        "{"
+        "  'is_food': true,"
+        "  'error_message': null,"
+        "  'name': 'Nome curto da refeição em PT-PT',"
+        "  'calories': 0,"
+        "  'protein': 0.0,"
+        "  'carbs': 0.0,"
+        "  'fat': 0.0,"
+        "  'estimated_grams': 100"
+        "}\n"
+        "As estimativas devem representar a porção total observada na foto."
+    )
+
+    try:
+        extra_args = {}
+        if not is_groq:
+            extra_args["response_format"] = {"type": "json_object"}
+
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "És um nutricionista clínico PT-PT. Responde apenas JSON válido.",
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}},
+                    ],
+                },
+            ],
+            temperature=0.25,
+            **extra_args,
+        )
+
+        content = response.choices[0].message.content
+        if content.startswith("```json"):
+            content = content.replace("```json", "", 1).replace("```", "", 1).strip()
+        elif content.startswith("```"):
+            content = content.replace("```", "", 1).replace("```", "", 1).strip()
+
+        data = json.loads(content)
+
+        if not data.get("is_food", True):
+            raise HTTPException(
+                status_code=400,
+                detail=data.get("error_message", "Não consegui detetar uma refeição válida na imagem."),
+            )
+
+        return schemas.NutritionAnalysisResponse(
+            food_text="análise por foto",
+            is_food=True,
+            name=str(data.get("name", "Refeição analisada")).strip(),
+            calories=max(0, int(data.get("calories", 0) or 0)),
+            protein=max(0.0, float(data.get("protein", 0) or 0)),
+            carbs=max(0.0, float(data.get("carbs", 0) or 0)),
+            fat=max(0.0, float(data.get("fat", 0) or 0)),
+            estimated_grams=max(0, int(data.get("estimated_grams", 0) or 0)),
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        error_text = str(e).lower()
+        status_code = getattr(e, "status_code", None)
+        if (
+            status_code == status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+            or "request_too_large" in error_text
+            or "request entity too large" in error_text
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail="A imagem enviada é demasiado grande para análise. Tenta novamente com uma imagem mais leve.",
+            )
+
+        print(f"Erro Vision Nutrition ({model}): {e}")
+        if "content" in locals():
+            print(f"Raw content from model: {content}")
+        raise HTTPException(status_code=500, detail=f"Erro na análise nutricional por imagem: {str(e)}")
