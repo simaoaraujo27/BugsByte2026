@@ -91,6 +91,44 @@ npm install
 ---
 
 ## 👥 Equipa - BugsByte 2026
+
+
+<table>
+<tr>
+<td align="center">
+<a href="https://github.com/DelgadoDevT">
+<img src="https://github.com/DelgadoDevT.png" width="100px;" alt="DelgadoDevT"/><br />
+<sub><b>DelgadoDevT</b></sub>
+</a>
+</td>
+<td align="center">
+<a href="https://github.com/PaoComPlanta">
+<img src="https://github.com/PaoComPlanta.png" width="100px;" alt="PaoComPlanta"/><br />
+<sub><b>PaoComPlanta</b></sub>
+</a>
+</td>
+<td align="center">
+<a href="https://github.com/Francisco4112">
+<img src="https://github.com/Francisco4112.png" width="100px;" alt="Francisco4112"/><br />
+<sub><b>Francisco4112</b></sub>
+</a>
+</td>
+<td align="center">
+<a href="https://github.com/simaoaraujo27">
+<img src="https://github.com/simaoaraujo27.png" width="100px;" alt="simaoaraujo27"/><br />
+<sub><b>simaoaraujo27</b></sub>
+</a>
+</td>
+</td>
+<td align="center">
+<a href="https://github.com/pedromorais01">
+<img src="https://github.com/pedromorais01.png" width="100px;" alt="pedromorais01"/><br />
+<sub><b>pedromorais01</b></sub>
+</a>
+</td>
+</tr>
+</table>
+
 Desenvolvido com ❤️ por uma equipa focada em inovação e saúde.
 
 ---
